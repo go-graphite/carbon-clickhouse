@@ -1,6 +1,9 @@
 # carbon-clickhouse
 Graphite metrics receiver with ClickHouse as storage
 
+## Production status
+Not ready
+
 ## ClickHouse configuration
 
 1. Add `graphite_rollup` section to config.xml. Sample [here](https://github.com/yandex/ClickHouse/blob/master/dbms/src/Server/config.xml#L168).
