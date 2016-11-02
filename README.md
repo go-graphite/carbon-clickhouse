@@ -24,3 +24,5 @@ CREATE TABLE graphite_tree (
 ```
 
 [GraphiteMergeTree documentation](https://github.com/yandex/ClickHouse/blob/master/dbms/include/DB/DataStreams/GraphiteRollupSortedBlockInputStream.h)
+
+You can create Replicated tables. See [ClickHouse documentation](https://clickhouse.yandex/reference_en.html#Data replication)
