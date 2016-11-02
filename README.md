@@ -76,7 +76,7 @@ input-buffer = 1048576
 # Rotate (and upload) file every N bytes
 chunk-bytes = 134217728
 # And every interval seconds.
-# Minimize chunk-interval for minimize lag point receive and store
+# Minimize chunk-interval for minimize lag between point receive and store
 chunk-interval = "1m0s"
 
 [udp]
