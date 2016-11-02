@@ -1,0 +1,21 @@
+[submodule "vendor/github.com/BurntSushi/toml"]
+	path = vendor/github.com/BurntSushi/toml
+	url = https://github.com/BurntSushi/toml
+[submodule "vendor/github.com/Sirupsen/logrus"]
+	path = vendor/github.com/Sirupsen/logrus
+	url = https://github.com/Sirupsen/logrus
+[submodule "vendor/github.com/howeyc/fsnotify"]
+	path = vendor/github.com/howeyc/fsnotify
+	url = https://github.com/howeyc/fsnotify
+[submodule "vendor/github.com/hydrogen18/stalecucumber"]
+	path = vendor/github.com/hydrogen18/stalecucumber
+	url = https://github.com/hydrogen18/stalecucumber
+[submodule "vendor/github.com/kardianos/osext"]
+	path = vendor/github.com/kardianos/osext
+	url = https://github.com/kardianos/osext
+[submodule "vendor/github.com/lomik/go-carbon"]
+	path = vendor/github.com/lomik/go-carbon
+	url = https://github.com/lomik/go-carbon
+[submodule "vendor/github.com/sevlyar/go-daemon"]
+	path = vendor/github.com/sevlyar/go-daemon
+	url = https://github.com/sevlyar/go-daemon
