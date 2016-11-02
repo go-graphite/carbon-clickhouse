@@ -26,3 +26,74 @@ CREATE TABLE graphite_tree (
 [GraphiteMergeTree documentation](https://github.com/yandex/ClickHouse/blob/master/dbms/include/DB/DataStreams/GraphiteRollupSortedBlockInputStream.h)
 
 You can create Replicated tables. See [ClickHouse documentation](https://clickhouse.yandex/reference_en.html#Data replication)
+
+## Configuration
+```
+$ carbon-clickhouse -help
+Usage of carbon-clickhouse:
+  -check-config=false: Check config and exit
+  -config="": Filename of config
+  -config-print-default=false: Print default config
+  -daemon=false: Run in background
+  -pidfile="": Pidfile path (only for daemon)
+  -version=false: Print version
+```
+
+```toml
+[common]
+# Run as user. Works only in daemon mode
+user = ""
+# If logfile is empty use stderr
+logfile = "/var/log/carbon-clickhouse/carbon-clickhouse.log"
+# Logging error level. Valid values: "debug", "info", "warn", "warning", "error"
+loglevel = "info"
+# Prefix for store all internal carbon-clickhouse graphs. Supported macroses: {host}
+metric-prefix = "carbon.agents.{host}"
+# Endpoint for store internal carbon metrics. Valid values: "" or "local", "tcp://host:port", "udp://host:port"
+metric-endpoint = "local"
+# Interval of storing internal metrics. Like CARBON_METRIC_INTERVAL
+metric-interval = "1m0s"
+# GOMAXPROCS
+max-cpu = 1
+
+[clickhouse]
+# Url to ClickHouse http port. 
+url = "http://localhost:8123/"
+data-table = "graphite"
+# Set empty value if not need
+tree-table = "graphite_tree"
+# Concurent upload jobs
+threads = 1
+# Upload timeout
+data-timeout = "1m0s"
+tree-timeout = "1m0s"
+
+[data]
+# Folder for buffering received data
+path = "/data/carbon-clickhouse/"
+# Internal queue size between receiver and writer to files
+input-buffer = 1048576
+# Rotate (and upload) file every N bytes
+chunk-bytes = 134217728
+# And every interval seconds.
+# Minimize chunk-interval for minimize lag point receive and store
+chunk-interval = "1m0s"
+
+[udp]
+listen = ":2003"
+enabled = true
+log-incomplete = false
+
+[tcp]
+listen = ":2003"
+enabled = true
+
+[pickle]
+listen = ":2004"
+max-message-size = 67108864
+enabled = true
+
+[pprof]
+listen = "localhost:7007"
+enabled = false
+```
