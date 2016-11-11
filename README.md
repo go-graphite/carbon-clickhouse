@@ -2,7 +2,16 @@
 Graphite metrics receiver with ClickHouse as storage
 
 ## Production status
-Beta testers are welcome
+Beta users are welcome
+
+## Build
+```sh
+# build binary
+git clone https://github.com/lomik/carbon-clickhouse.git
+cd carbon-clickhouse
+make submodules
+make
+```
 
 ## ClickHouse configuration
 
