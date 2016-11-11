@@ -2,7 +2,7 @@
 Graphite metrics receiver with ClickHouse as storage
 
 ## Production status
-Not ready
+Beta testers are welcome
 
 ## ClickHouse configuration
 
