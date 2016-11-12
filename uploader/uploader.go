@@ -52,6 +52,12 @@ func TreeTable(t string) Option {
 	}
 }
 
+func TreeDate(t string) Option {
+	return func(u *Uploader) {
+		u.treeDate = t
+	}
+}
+
 func TreeTimeout(t time.Duration) Option {
 	return func(u *Uploader) {
 		u.treeTimeout = t
@@ -80,6 +86,7 @@ type Uploader struct {
 	dataTimeout        time.Duration
 	treeTable          string
 	treeTimeout        time.Duration
+	treeDate           string
 	filesUploaded      uint64 // stat "files"
 	threads            int
 	inProgressCallback func(string) bool
@@ -96,6 +103,7 @@ func New(options ...Option) *Uploader {
 		treeTable:          "graphite_tree",
 		dataTimeout:        time.Minute,
 		treeTimeout:        time.Minute,
+		treeDate:           "2016-11-01",
 		inProgressCallback: func(string) bool { return false },
 		queue:              make(chan string, 1024),
 		inQueue:            make(map[string]bool),
@@ -216,7 +224,6 @@ func (u *Uploader) upload(exit chan bool, filename string) (err error) {
 	var key string
 	var level int
 	var exists bool
-	var date string
 
 LineLoop:
 	for {
@@ -240,8 +247,6 @@ LineLoop:
 			continue LineLoop
 		}
 
-		date = row[3][:8] + "01" // first day of month
-
 		offset := 0
 		for level = 1; ; level++ {
 			p := strings.IndexByte(metric[offset:], '.')
@@ -253,7 +258,7 @@ LineLoop:
 			if !u.treeExists.Exists(key) {
 				if _, exists := localUniq[key]; !exists {
 					localUniq[key] = true
-					fmt.Fprintf(treeData, "%s\t%d\t%s\n", date, level, key)
+					fmt.Fprintf(treeData, "%s\t%d\t%s\n", u.treeDate, level, key)
 				}
 			}
 
@@ -261,7 +266,7 @@ LineLoop:
 		}
 
 		localUniq[metric] = true
-		fmt.Fprintf(treeData, "%s\t%d\t%s\n", date, level, metric)
+		fmt.Fprintf(treeData, "%s\t%d\t%s\n", u.treeDate, level, metric)
 	}
 
 	// @TODO: insert to tree data metrics

@@ -49,6 +49,7 @@ type clickhouseConfig struct {
 	DataTable   string    `toml:"data-table"`
 	DataTimeout *Duration `toml:"data-timeout"`
 	TreeTable   string    `toml:"tree-table"`
+	TreeDate    string    `toml:"tree-date"`
 	TreeTimeout *Duration `toml:"tree-timeout"`
 	Threads     int       `toml:"threads"`
 }
@@ -111,6 +112,7 @@ func NewConfig() *Config {
 			Url:       "http://localhost:8123/",
 			DataTable: "graphite",
 			TreeTable: "graphite_tree",
+			TreeDate:  "2016-11-01",
 			DataTimeout: &Duration{
 				Duration: time.Minute,
 			},
@@ -123,7 +125,7 @@ func NewConfig() *Config {
 			Path:        "/data/carbon-clickhouse/",
 			InputBuffer: 1024 * 1024,
 			FileInterval: &Duration{
-				Duration: time.Minute,
+				Duration: time.Second,
 			},
 			FileBytes: 128 * 1024 * 1024,
 		},

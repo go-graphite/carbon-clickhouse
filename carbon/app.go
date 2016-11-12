@@ -194,6 +194,7 @@ func (app *App) Start() (err error) {
 		uploader.DataTable(conf.ClickHouse.DataTable),
 		uploader.DataTimeout(conf.ClickHouse.DataTimeout.Value()),
 		uploader.TreeTable(conf.ClickHouse.TreeTable),
+		uploader.TreeDate(conf.ClickHouse.TreeDate),
 		uploader.TreeTimeout(conf.ClickHouse.TreeTimeout.Value()),
 		uploader.InProgressCallback(app.Writer.IsInProgress),
 		uploader.Threads(app.Config.ClickHouse.Threads),

@@ -74,6 +74,8 @@ url = "http://localhost:8123/"
 data-table = "graphite"
 # Set empty value if not need
 tree-table = "graphite_tree"
+# Date for records in graphite_tree table
+tree-date = "2016-11-01"
 # Concurent upload jobs
 threads = 1
 # Upload timeout
@@ -89,7 +91,7 @@ input-buffer = 1048576
 chunk-bytes = 134217728
 # And every interval seconds.
 # Minimize chunk-interval for minimize lag between point receive and store
-chunk-interval = "1m0s"
+chunk-interval = "1s"
 
 [udp]
 listen = ":2003"
