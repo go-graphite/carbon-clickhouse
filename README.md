@@ -46,15 +46,11 @@ Usage of carbon-clickhouse:
   -check-config=false: Check config and exit
   -config="": Filename of config
   -config-print-default=false: Print default config
-  -daemon=false: Run in background
-  -pidfile="": Pidfile path (only for daemon)
   -version=false: Print version
 ```
 
 ```toml
 [common]
-# Run as user. Works only in daemon mode
-user = ""
 # If logfile is empty use stderr
 logfile = "/var/log/carbon-clickhouse/carbon-clickhouse.log"
 # Logging error level. Valid values: "debug", "info", "warn", "warning", "error"

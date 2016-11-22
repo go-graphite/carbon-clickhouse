@@ -8,15 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"os/user"
 	"runtime"
-	"strconv"
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/lomik/carbon-clickhouse/carbon"
 	"github.com/lomik/go-carbon/logging"
-	daemon "github.com/sevlyar/go-daemon"
 )
 
 import _ "net/http/pprof"
@@ -50,9 +47,6 @@ func main() {
 
 	printVersion := flag.Bool("version", false, "Print version")
 
-	isDaemon := flag.Bool("daemon", false, "Run in background")
-	pidfile := flag.String("pidfile", "", "Pidfile path (only for daemon)")
-
 	flag.Parse()
 
 	if *printVersion {
@@ -75,14 +69,6 @@ func main() {
 
 	cfg := app.Config
 
-	var runAsUser *user.User
-	if cfg.Common.User != "" {
-		runAsUser, err = user.Lookup(cfg.Common.User)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
 	if err := logging.SetLevel(cfg.Common.LogLevel); err != nil {
 		log.Fatal(err)
 	}
@@ -92,48 +78,12 @@ func main() {
 		return
 	}
 
-	if err := logging.PrepareFile(cfg.Common.LogFile, runAsUser); err != nil {
+	if err := logging.PrepareFile(cfg.Common.LogFile, nil); err != nil {
 		logrus.Fatal(err)
 	}
 
 	if err := logging.SetFile(cfg.Common.LogFile); err != nil {
 		logrus.Fatal(err)
-	}
-
-	if *isDaemon {
-		runtime.LockOSThread()
-
-		context := new(daemon.Context)
-		if *pidfile != "" {
-			context.PidFileName = *pidfile
-			context.PidFilePerm = 0644
-		}
-
-		if runAsUser != nil {
-			uid, err := strconv.ParseInt(runAsUser.Uid, 10, 0)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			gid, err := strconv.ParseInt(runAsUser.Gid, 10, 0)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			context.Credential = &syscall.Credential{
-				Uid: uint32(uid),
-				Gid: uint32(gid),
-			}
-		}
-
-		child, _ := context.Reborn()
-
-		if child != nil {
-			return
-		}
-		defer context.Release()
-
-		runtime.UnlockOSThread()
 	}
 
 	runtime.GOMAXPROCS(cfg.Common.MaxCPU)

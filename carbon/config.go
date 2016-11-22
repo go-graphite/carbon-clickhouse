@@ -35,7 +35,6 @@ func (d *Duration) Value() time.Duration {
 }
 
 type commonConfig struct {
-	User           string    `toml:"user"`
 	LogFile        string    `toml:"logfile"`
 	LogLevel       string    `toml:"loglevel"`
 	MetricPrefix   string    `toml:"metric-prefix"`
@@ -106,7 +105,6 @@ func NewConfig() *Config {
 			},
 			MetricEndpoint: MetricEndpointLocal,
 			MaxCPU:         1,
-			User:           "",
 		},
 		ClickHouse: clickhouseConfig{
 			Url:       "http://localhost:8123/",
