@@ -1,0 +1,14 @@
+[Unit]
+Description=Graphite metrics receiver with ClickHouse as storage
+Documentation=https://github.com/lomik/carbon-clickhouse
+After=network.target
+
+[Service]
+Type=simple
+PermissionsStartOnly=true
+ExecStart=/usr/bin/carbon-clickhouse -config /etc/carbon-clickhouse/carbon-clickhouse.conf
+Restart=on-failure
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target
