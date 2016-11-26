@@ -26,7 +26,7 @@ func main() {
 
 	chunk := 50
 	for i := 0; i < chunk; i++ {
-		buf.Write([]byte(fmt.Sprintf("carbon.agents.localhost.cache.size 1412351 %s\n", time.Now().Unix())))
+		buf.Write([]byte(fmt.Sprintf("carbon.agents.localhost.cache.size 1412351 %d\n", time.Now().Unix())))
 	}
 
 	printEvery := 1000000 / chunk
