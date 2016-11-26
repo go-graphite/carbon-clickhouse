@@ -13,11 +13,24 @@ type Receiver interface {
 
 type Option func(Receiver) error
 
-// OutFunc creates option for New contructor
-func HandleBuffer(handler func(*Buffer)) Option {
+// WriteChan creates option for New contructor
+func WriteChan(ch chan *WriteBuffer) Option {
 	return func(r Receiver) error {
 		if t, ok := r.(*TCP); ok {
-			t.bufferHandler = handler
+			t.writeChan = ch
+		}
+		// if t, ok := r.(*UDP); ok {
+		// 	t.out = out
+		// }
+		return nil
+	}
+}
+
+// ParseThreads creates option for New contructor
+func ParseThreads(threads int) Option {
+	return func(r Receiver) error {
+		if t, ok := r.(*TCP); ok {
+			t.parseThreads = threads
 		}
 		// if t, ok := r.(*UDP); ok {
 		// 	t.out = out
@@ -40,8 +53,8 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &TCP{
-			bufferHandler: func(b *Buffer) { BufferPool.Put(b) },
-			name:          u.Scheme,
+			parseChan: make(chan *Buffer, 128),
+			name:      u.Scheme,
 		}
 
 		for _, optApply := range opts {

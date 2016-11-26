@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -23,7 +24,6 @@ type App struct {
 	TCP receiver.Receiver
 	// Pickle         receiver.Receiver
 	Collector *Collector // (!!!) Should be re-created on every change config/modules
-	inputChan chan *receiver.Buffer
 	writeChan chan *receiver.WriteBuffer
 	exit      chan bool
 }
@@ -175,7 +175,6 @@ func (app *App) Start() (err error) {
 
 	conf := app.Config
 
-	app.inputChan = make(chan *receiver.Buffer, 128)
 	app.writeChan = make(chan *receiver.WriteBuffer, 128)
 
 	/* WRITER start */
@@ -220,7 +219,8 @@ func (app *App) Start() (err error) {
 	if conf.Tcp.Enabled {
 		app.TCP, err = receiver.New(
 			"tcp://"+conf.Tcp.Listen,
-			receiver.HandleBuffer(func(b *receiver.Buffer) { app.inputChan <- b }),
+			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
+			receiver.WriteChan(app.writeChan),
 		)
 
 		if err != nil {

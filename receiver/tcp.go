@@ -16,12 +16,14 @@ import (
 // TCP receive metrics from TCP connections
 type TCP struct {
 	helper.Stoppable
-	bufferHandler   func(*Buffer)
 	name            string // name for store metrics
 	metricsReceived uint32
 	errors          uint32
 	active          int32 // counter
 	listener        *net.TCPListener
+	parseThreads    int
+	parseChan       chan *Buffer
+	writeChan       chan *WriteBuffer
 }
 
 // Addr returns binded socket address. For bind port 0 in tests
@@ -92,7 +94,7 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 				buffer.Used = chunkSize
 			}
 
-			rcv.bufferHandler(buffer)
+			rcv.parseChan <- buffer
 			buffer = newBuffer
 		}
 	}
@@ -134,6 +136,12 @@ func (rcv *TCP) Listen(addr *net.TCPAddr) error {
 			}
 
 		})
+
+		for i := 0; i < rcv.parseThreads; i++ {
+			rcv.Go(func(exit chan bool) {
+				PlainParseWorker(exit, rcv.parseChan, rcv.writeChan)
+			})
+		}
 
 		rcv.listener = tcpListener
 

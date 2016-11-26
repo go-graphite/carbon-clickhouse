@@ -103,16 +103,26 @@ MainLoop:
 	}
 }
 
-func PlainParser(in chan *Buffer, out chan *WriteBuffer) {
+func PlainParseWorker(exit chan bool, in chan *Buffer, out chan *WriteBuffer) {
 	for {
-		b := <-in
-		w := WriteBufferPool.Get().(*WriteBuffer)
-		w.Used = 0
-		ParseBufferPlain(b, w)
+		select {
+		case <-exit:
+			return
+		case b := <-in:
+			w := WriteBufferPool.Get().(*WriteBuffer)
+			w.Used = 0
+			ParseBufferPlain(b, w)
 
-		// release used buffer
-		BufferPool.Put(b)
+			// release used buffer
+			BufferPool.Put(b)
 
-		out <- w
+			select {
+			case out <- w:
+				// pass
+			case <-exit:
+				return
+			}
+
+		}
 	}
 }
