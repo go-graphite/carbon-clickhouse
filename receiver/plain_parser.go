@@ -26,6 +26,31 @@ func DaysFrom1970(t time.Time) int {
 type PlainParser struct {
 	In  chan *Buffer
 	Out chan *WriteBuffer
+
+	// cache current day days count from 1970
+	todayStartTimestamp uint32
+	todayEndTimestamp   uint32
+	todayDays           uint16
+}
+
+func (pp *PlainParser) Days(timestamp uint32, now uint32) uint16 {
+	if timestamp < pp.todayStartTimestamp {
+		return uint16(DaysFrom1970(time.Unix(int64(timestamp), 0)))
+	}
+
+	// timestamp >= pp.todayStartTimestamp
+	if timestamp <= pp.todayEndTimestamp {
+		return pp.todayDays
+	}
+
+	// timestamp > pp.todayEndTimestamp
+	// check now date
+	if now > pp.todayEndTimestamp {
+		// update "today" required
+		d := time.Unix(int64(now), 0)
+		pp.todayStartTimestamp = uint32(time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.Local).Unix())
+		pp.todayEndTimestamp = uint32(time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 0, time.Local).Unix())
+	}
 }
 
 func (pp *PlainParser) Line(p []byte) ([]byte, float64, uint32, error) {
