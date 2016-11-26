@@ -8,10 +8,9 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/lomik/carbon-clickhouse/receiver"
 	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/carbon-clickhouse/writer"
-	"github.com/lomik/go-carbon/points"
-	"github.com/lomik/go-carbon/receiver"
 )
 
 type App struct {
@@ -20,12 +19,13 @@ type App struct {
 	Config         *Config
 	Writer         *writer.Writer
 	Uploader       *uploader.Uploader
-	UDP            receiver.Receiver
-	TCP            receiver.Receiver
-	Pickle         receiver.Receiver
-	Collector      *Collector // (!!!) Should be re-created on every change config/modules
-	input          chan *points.Points
-	exit           chan bool
+	// UDP            receiver.Receiver
+	TCP receiver.Receiver
+	// Pickle         receiver.Receiver
+	Collector *Collector // (!!!) Should be re-created on every change config/modules
+	inputChan chan *receiver.Buffer
+	writeChan chan *receiver.WriteBuffer
+	exit      chan bool
 }
 
 // New App instance
@@ -114,17 +114,17 @@ func (app *App) stopListeners() {
 		logrus.Debug("[tcp] finished")
 	}
 
-	if app.Pickle != nil {
-		app.Pickle.Stop()
-		app.Pickle = nil
-		logrus.Debug("[pickle] finished")
-	}
+	// if app.Pickle != nil {
+	// 	app.Pickle.Stop()
+	// 	app.Pickle = nil
+	// 	logrus.Debug("[pickle] finished")
+	// }
 
-	if app.UDP != nil {
-		app.UDP.Stop()
-		app.UDP = nil
-		logrus.Debug("[udp] finished")
-	}
+	// if app.UDP != nil {
+	// 	app.UDP.Stop()
+	// 	app.UDP = nil
+	// 	logrus.Debug("[udp] finished")
+	// }
 }
 
 func (app *App) stopAll() {
@@ -175,14 +175,14 @@ func (app *App) Start() (err error) {
 
 	conf := app.Config
 
-	app.input = make(chan *points.Points, conf.Data.InputBuffer)
+	app.inputChan = make(chan *receiver.Buffer, 128)
+	app.writeChan = make(chan *receiver.WriteBuffer, 128)
 
 	/* WRITER start */
 	app.Writer = writer.New(
-		app.input,
+		app.writeChan,
 		conf.Data.Path,
 		conf.Data.FileInterval.Value(),
-		conf.Data.FileBytes,
 	)
 	app.Writer.Start()
 	/* WRITER end */
@@ -203,24 +203,24 @@ func (app *App) Start() (err error) {
 	/* UPLOADER end */
 
 	/* UDP start */
-	if conf.Udp.Enabled {
-		app.UDP, err = receiver.New(
-			"udp://"+conf.Udp.Listen,
-			receiver.OutChan(app.input),
-			receiver.UDPLogIncomplete(conf.Udp.LogIncomplete),
-		)
+	// if conf.Udp.Enabled {
+	// 	app.UDP, err = receiver.New(
+	// 		"udp://"+conf.Udp.Listen,
+	// 		receiver.OutChan(app.input),
+	// 		receiver.UDPLogIncomplete(conf.Udp.LogIncomplete),
+	// 	)
 
-		if err != nil {
-			return
-		}
-	}
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// }
 	/* UDP end */
 
 	/* TCP start */
 	if conf.Tcp.Enabled {
 		app.TCP, err = receiver.New(
 			"tcp://"+conf.Tcp.Listen,
-			receiver.OutChan(app.input),
+			receiver.HandleBuffer(func(b *receiver.Buffer) { app.inputChan <- b }),
 		)
 
 		if err != nil {
@@ -230,17 +230,17 @@ func (app *App) Start() (err error) {
 	/* TCP end */
 
 	/* PICKLE start */
-	if conf.Pickle.Enabled {
-		app.Pickle, err = receiver.New(
-			"pickle://"+conf.Pickle.Listen,
-			receiver.OutChan(app.input),
-			receiver.PickleMaxMessageSize(uint32(conf.Pickle.MaxMessageSize)),
-		)
+	// if conf.Pickle.Enabled {
+	// 	app.Pickle, err = receiver.New(
+	// 		"pickle://"+conf.Pickle.Listen,
+	// 		receiver.OutChan(app.input),
+	// 		receiver.PickleMaxMessageSize(uint32(conf.Pickle.MaxMessageSize)),
+	// 	)
 
-		if err != nil {
-			return
-		}
-	}
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// }
 	/* PICKLE end */
 
 	/* COLLECTOR start */

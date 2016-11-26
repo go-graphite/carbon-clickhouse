@@ -32,6 +32,10 @@ func (rcv *TCP) Addr() net.Addr {
 	return rcv.listener.Addr()
 }
 
+func (rcv *TCP) Stat(send func(metric string, value float64)) {
+
+}
+
 func (rcv *TCP) HandleConnection(conn net.Conn) {
 	atomic.AddInt32(&rcv.active, 1)
 	defer atomic.AddInt32(&rcv.active, -1)

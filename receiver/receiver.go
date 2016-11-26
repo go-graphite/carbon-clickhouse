@@ -7,7 +7,7 @@ import (
 )
 
 type Receiver interface {
-	// Stat(helper.StatCallback)
+	Stat(func(metric string, value float64))
 	Stop()
 }
 

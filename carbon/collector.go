@@ -2,8 +2,6 @@ package carbon
 
 import (
 	"fmt"
-	"net"
-	"net/url"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -15,7 +13,7 @@ import (
 type statFunc func()
 
 type statModule interface {
-	Stat(send helper.StatCallback)
+	Stat(send func(metric string, value float64))
 }
 
 type Collector struct {
@@ -33,9 +31,9 @@ func NewCollector(app *App) *Collector {
 	c := &Collector{
 		graphPrefix:    app.Config.Common.MetricPrefix,
 		metricInterval: app.Config.Common.MetricInterval.Value(),
-		data:           make(chan *points.Points, 4096),
-		endpoint:       app.Config.Common.MetricEndpoint,
-		stats:          make([]statFunc, 0),
+		// data:           make(chan *points.Points, 4096),
+		endpoint: app.Config.Common.MetricEndpoint,
+		stats:    make([]statFunc, 0),
 	}
 
 	c.Start()
@@ -44,13 +42,13 @@ func NewCollector(app *App) *Collector {
 		return func(metric string, value float64) {
 			key := fmt.Sprintf("%s.%s.%s", c.graphPrefix, moduleName, metric)
 			logrus.Infof("[stat] %s=%#v", key, value)
-			select {
-			case c.data <- points.NowPoint(key, value):
-				// pass
-			default:
-				logrus.WithField("key", key).WithField("value", value).
-					Warn("[stat] send queue is full. Metric dropped")
-			}
+			// select {
+			// case c.data <- points.NowPoint(key, value):
+			// 	// pass
+			// default:
+			// 	logrus.WithField("key", key).WithField("value", value).
+			// 		Warn("[stat] send queue is full. Metric dropped")
+			// }
 		}
 	}
 
@@ -60,17 +58,17 @@ func NewCollector(app *App) *Collector {
 		}
 	}
 
-	if app.UDP != nil {
-		c.stats = append(c.stats, moduleCallback("udp", app.UDP))
-	}
+	// if app.UDP != nil {
+	// 	c.stats = append(c.stats, moduleCallback("udp", app.UDP))
+	// }
 
 	if app.TCP != nil {
 		c.stats = append(c.stats, moduleCallback("tcp", app.TCP))
 	}
 
-	if app.Pickle != nil {
-		c.stats = append(c.stats, moduleCallback("pickle", app.Pickle))
-	}
+	// if app.Pickle != nil {
+	// 	c.stats = append(c.stats, moduleCallback("pickle", app.Pickle))
+	// }
 
 	// collector worker
 	c.Go(func(exit chan bool) {
@@ -86,95 +84,6 @@ func NewCollector(app *App) *Collector {
 			}
 		}
 	})
-
-	endpoint, err := url.Parse(c.endpoint)
-	if err != nil {
-		logrus.Errorf("[stat] metric-endpoint parse error: %s", err.Error())
-		c.endpoint = MetricEndpointLocal
-	}
-
-	if c.endpoint == MetricEndpointLocal {
-		// sender worker
-		out := app.input
-
-		c.Go(func(exit chan bool) {
-			for {
-				select {
-				case <-exit:
-					return
-				case p := <-c.data:
-					select {
-					case out <- p:
-					// pass
-					case <-exit:
-						return
-					}
-				}
-			}
-		})
-	} else {
-		chunkSize := 32768
-		if endpoint.Scheme == "udp" {
-			chunkSize = 1000 // nc limitation (1024 for udp) and mtu friendly
-		}
-
-		c.Go(func(exit chan bool) {
-			points.Glue(exit, c.data, chunkSize, time.Second, func(chunk []byte) {
-
-				var conn net.Conn
-				var err error
-				defaultTimeout := 5 * time.Second
-
-				// send data to endpoint
-			SendLoop:
-				for {
-
-					// check exit
-					select {
-					case <-exit:
-						break SendLoop
-					default:
-						// pass
-					}
-
-					// close old broken connection
-					if conn != nil {
-						conn.Close()
-						conn = nil
-					}
-
-					conn, err = net.DialTimeout(endpoint.Scheme, endpoint.Host, defaultTimeout)
-					if err != nil {
-						logrus.Errorf("[stat] dial %s failed: %s", c.endpoint, err.Error())
-						time.Sleep(time.Second)
-						continue SendLoop
-					}
-
-					err = conn.SetDeadline(time.Now().Add(defaultTimeout))
-					if err != nil {
-						logrus.Errorf("[stat] conn.SetDeadline failed: %s", err.Error())
-						time.Sleep(time.Second)
-						continue SendLoop
-					}
-
-					_, err := conn.Write(chunk)
-					if err != nil {
-						logrus.Errorf("[stat] conn.Write failed: %s", err.Error())
-						time.Sleep(time.Second)
-						continue SendLoop
-					}
-
-					break SendLoop
-				}
-
-				if conn != nil {
-					conn.Close()
-					conn = nil
-				}
-			})
-		})
-
-	}
 
 	return c
 }
