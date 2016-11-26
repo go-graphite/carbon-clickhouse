@@ -1,6 +1,7 @@
 package writer
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path"
@@ -49,6 +50,7 @@ func (w *Writer) IsInProgress(filename string) bool {
 
 func (w *Writer) worker(exit chan bool) {
 	var out *os.File
+	var outBuf *bufio.Writer
 	var fn string // current filename
 
 	defer func() {
@@ -60,8 +62,10 @@ func (w *Writer) worker(exit chan bool) {
 	// close old file, open new
 	rotate := func() {
 		if out != nil {
+			outBuf.Flush()
 			out.Close()
 			out = nil
+			outBuf = nil
 		}
 
 		var err error
@@ -92,6 +96,8 @@ func (w *Writer) worker(exit chan bool) {
 
 				continue OpenLoop
 			}
+
+			outBuf = bufio.NewWriterSize(out, 1024*1024)
 			break OpenLoop
 		}
 	}
@@ -103,7 +109,7 @@ func (w *Writer) worker(exit chan bool) {
 	for {
 		select {
 		case b := <-w.inputChan:
-			out.Write(b.Body[:b.Used])
+			outBuf.Write(b.Body[:b.Used])
 			receiver.WriteBufferPool.Put(b)
 		case <-ticker.C:
 			rotate()
