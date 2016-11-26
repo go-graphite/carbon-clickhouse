@@ -21,7 +21,14 @@ func DaysFrom1970(t time.Time) int {
 	return int(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Sub(ZeroDay) / (24 * time.Hour))
 }
 
-func ParseLine(p []byte) ([]byte, float64, uint32, error) {
+// PlainParser with local values cache
+// Not thread-safe!
+type PlainParser struct {
+	In  chan *Buffer
+	Out chan *WriteBuffer
+}
+
+func (pp *PlainParser) Line(p []byte) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
 		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
@@ -51,11 +58,11 @@ func ParseLine(p []byte) ([]byte, float64, uint32, error) {
 	return p[:i1], value, uint32(tsf), nil
 }
 
-func ParseBufferPlain(b *Buffer, wb *WriteBuffer) {
+func (pp *PlainParser) Buffer(b *Buffer, wb *WriteBuffer) {
 	offset := 0
 
 	version := make([]byte, 4)
-	binary.LittleEndian.PutUint32(version, uint32(b.Time.Unix()))
+	binary.LittleEndian.PutUint32(version, b.Time)
 
 MainLoop:
 	for offset < b.Used {
@@ -69,7 +76,7 @@ MainLoop:
 			continue MainLoop
 		}
 
-		name, value, timestamp, err := ParseLine(b.Body[offset : offset+lineEnd+1])
+		name, value, timestamp, err := pp.Line(b.Body[offset : offset+lineEnd+1])
 		offset += lineEnd + 1
 
 		// @TODO: check required buffer size, get new
@@ -103,21 +110,21 @@ MainLoop:
 	}
 }
 
-func PlainParseWorker(exit chan bool, in chan *Buffer, out chan *WriteBuffer) {
+func (pp *PlainParser) Worker(exit chan bool) {
 	for {
 		select {
 		case <-exit:
 			return
-		case b := <-in:
+		case b := <-pp.In:
 			w := WriteBufferPool.Get().(*WriteBuffer)
 			w.Used = 0
-			ParseBufferPlain(b, w)
+			pp.Buffer(b, w)
 
 			// release used buffer
 			BufferPool.Put(b)
 
 			select {
-			case out <- w:
+			case pp.Out <- w:
 				// pass
 			case <-exit:
 				return

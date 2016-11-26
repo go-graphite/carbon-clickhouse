@@ -68,7 +68,7 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 		n, err = conn.Read(buffer.Body[buffer.Used:])
 		conn.SetDeadline(time.Time{})
 		buffer.Used += n
-		buffer.Time = time.Now()
+		buffer.Time = uint32(time.Now().Unix())
 
 		if err != nil {
 			if err == io.EOF {
@@ -138,9 +138,7 @@ func (rcv *TCP) Listen(addr *net.TCPAddr) error {
 		})
 
 		for i := 0; i < rcv.parseThreads; i++ {
-			rcv.Go(func(exit chan bool) {
-				PlainParseWorker(exit, rcv.parseChan, rcv.writeChan)
-			})
+			rcv.Go((&PlainParser{In: rcv.parseChan, Out: rcv.writeChan}).Worker)
 		}
 
 		rcv.listener = tcpListener

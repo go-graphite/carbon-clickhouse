@@ -1,9 +1,6 @@
 package receiver
 
-import (
-	"sync"
-	"time"
-)
+import "sync"
 
 var BufferPool = sync.Pool{
 	New: func() interface{} {
@@ -12,7 +9,7 @@ var BufferPool = sync.Pool{
 }
 
 type Buffer struct {
-	Time time.Time
+	Time uint32
 	Used int
 	Body [262144]byte
 }
