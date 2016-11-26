@@ -50,7 +50,10 @@ func (pp *PlainParser) Days(timestamp uint32, now uint32) uint16 {
 		d := time.Unix(int64(now), 0)
 		pp.todayStartTimestamp = uint32(time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.Local).Unix())
 		pp.todayEndTimestamp = uint32(time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 0, time.Local).Unix())
+		pp.todayDays = uint16(DaysFrom1970(time.Unix(int64(now), 0)))
 	}
+
+	return uint16(DaysFrom1970(time.Unix(int64(timestamp), 0)))
 }
 
 func (pp *PlainParser) Line(p []byte) ([]byte, float64, uint32, error) {
