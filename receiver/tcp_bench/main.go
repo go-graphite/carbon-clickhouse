@@ -18,20 +18,25 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	ch := make(chan *receiver.Buffer, 128)
+	inCh := make(chan *receiver.Buffer, 128)
+	outCh := make(chan *receiver.WriteBuffer, 128)
+
 	workers := 4
 	for i := 0; i < workers; i++ {
-		go func() {
-			for {
-				b := <-ch
-				receiver.ParseBufferPlain(b)
-			}
-		}()
+		go receiver.PlainParser(inCh, outCh)
 	}
+
+	// out channel cleaner
+	go func() {
+		for {
+			w := <-outCh
+			receiver.WriteBufferPool.Put(w)
+		}
+	}()
 
 	rcv, err := receiver.New(
 		"tcp://127.0.0.1:0",
-		receiver.HandleBuffer(func(b *receiver.Buffer) { ch <- b }),
+		receiver.HandleBuffer(func(b *receiver.Buffer) { inCh <- b }),
 	)
 	defer rcv.Stop()
 
