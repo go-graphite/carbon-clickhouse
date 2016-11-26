@@ -129,7 +129,7 @@ MainLoop:
 		wb.Used += 4
 
 		// Date
-		binary.LittleEndian.PutUint16(wb.Body[wb.Used:], uint16(DaysFrom1970(time.Unix(int64(timestamp), 0))))
+		binary.LittleEndian.PutUint16(wb.Body[wb.Used:], pp.Days(timestamp, b.Time))
 		wb.Used += 2
 
 		// Timestamp (aka Version)
