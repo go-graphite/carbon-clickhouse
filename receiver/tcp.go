@@ -89,7 +89,7 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 			newBuffer.Used = 0
 
 			if chunkSize < buffer.Used { // has unfinished data
-				copy(buffer.Body[chunkSize:buffer.Used], newBuffer.Body[:])
+				copy(newBuffer.Body[:], buffer.Body[chunkSize:buffer.Used])
 				newBuffer.Used = buffer.Used - chunkSize
 				buffer.Used = chunkSize
 			}

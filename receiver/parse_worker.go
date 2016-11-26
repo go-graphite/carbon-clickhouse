@@ -82,7 +82,7 @@ MainLoop:
 		// write result to buffer for clickhouse
 		// Path
 		wb.Used += binary.PutUvarint(wb.Body[wb.Used:], uint64(len(name)))
-		copy(name, wb.Body[wb.Used:])
+		copy(wb.Body[wb.Used:], name)
 		wb.Used += len(name)
 
 		// Value
@@ -98,7 +98,7 @@ MainLoop:
 		wb.Used += 2
 
 		// Timestamp (aka Version)
-		copy(version, wb.Body[wb.Used:])
+		copy(wb.Body[wb.Used:], version)
 		wb.Used += 4
 	}
 }
