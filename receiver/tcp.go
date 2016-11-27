@@ -15,15 +15,17 @@ import (
 // TCP receive metrics from TCP connections
 type TCP struct {
 	stop.Struct
-	name            string // name for store metrics
-	metricsReceived uint32
-	errors          uint32
-	active          int32 // counter
-	listener        *net.TCPListener
-	parseThreads    int
-	parseChan       chan *Buffer
-	writeChan       chan *WriteBuffer
-	logger          zap.Logger
+	stat struct {
+		metricsReceived uint32 // atomic
+		errors          uint32 // atomic
+		active          int32  // atomic
+	}
+	name         string // name for store metrics
+	listener     *net.TCPListener
+	parseThreads int
+	parseChan    chan *Buffer
+	writeChan    chan *WriteBuffer
+	logger       zap.Logger
 }
 
 // Addr returns binded socket address. For bind port 0 in tests
@@ -35,12 +37,20 @@ func (rcv *TCP) Addr() net.Addr {
 }
 
 func (rcv *TCP) Stat(send func(metric string, value float64)) {
+	metricsReceived := atomic.LoadUint32(&rcv.stat.metricsReceived)
+	atomic.AddUint32(&rcv.stat.metricsReceived, -metricsReceived)
+	send("metricsReceived", float64(metricsReceived))
 
+	errors := atomic.LoadUint32(&rcv.stat.errors)
+	atomic.AddUint32(&rcv.stat.errors, -errors)
+	send("errors", float64(errors))
+
+	send("active", float64(atomic.LoadInt32(&rcv.stat.active)))
 }
 
 func (rcv *TCP) HandleConnection(conn net.Conn) {
-	atomic.AddInt32(&rcv.active, 1)
-	defer atomic.AddInt32(&rcv.active, -1)
+	atomic.AddInt32(&rcv.stat.active, 1)
+	defer atomic.AddInt32(&rcv.stat.active, -1)
 
 	defer conn.Close()
 
@@ -77,7 +87,7 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 					logger.Warn("unfinished line", zap.String("line", string(buffer.Body[:buffer.Used])))
 				}
 			} else {
-				atomic.AddUint32(&rcv.errors, 1)
+				atomic.AddUint32(&rcv.stat.errors, 1)
 				logger.Error("read failed", zap.Error(err))
 			}
 			break
@@ -139,7 +149,13 @@ func (rcv *TCP) Listen(addr *net.TCPAddr) error {
 
 		for i := 0; i < rcv.parseThreads; i++ {
 			rcv.Go(func(exit chan struct{}) {
-				PlainParser(exit, rcv.parseChan, rcv.writeChan)
+				PlainParser(
+					exit,
+					rcv.parseChan,
+					rcv.writeChan,
+					&rcv.stat.metricsReceived,
+					&rcv.stat.errors,
+				)
 			})
 		}
 

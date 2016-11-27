@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"sync/atomic"
 	"unsafe"
 )
 
@@ -44,8 +45,10 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	return p[:i1], value, uint32(tsf), nil
 }
 
-func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *WriteBuffer, days *DaysFrom1970) {
+func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *WriteBuffer, days *DaysFrom1970, metricsReceived *uint32, errors *uint32) {
 	offset := 0
+	metricCount := uint32(0)
+	errorCount := uint32(0)
 
 	version := make([]byte, 4)
 	binary.LittleEndian.PutUint32(version, b.Time)
@@ -56,6 +59,7 @@ MainLoop:
 	for offset < b.Used {
 		lineEnd := bytes.IndexByte(b.Body[offset:b.Used], '\n')
 		if lineEnd < 0 {
+			errorCount++
 			// @TODO: log unfinished line
 			break MainLoop
 		} else if lineEnd == 0 {
@@ -70,6 +74,7 @@ MainLoop:
 		// @TODO: check required buffer size, get new
 
 		if err != nil {
+			errorCount++
 			// @TODO: log error
 			continue MainLoop
 		}
@@ -80,6 +85,14 @@ MainLoop:
 		wb.RowBinaryWriteUint32(timestamp)
 		wb.RowBinaryWriteUint16(days.TimestampWithNow(timestamp, b.Time))
 		wb.Write(version)
+		metricCount++
+	}
+
+	if metricCount > 0 {
+		atomic.AddUint32(metricsReceived, metricCount)
+	}
+	if errorCount > 0 {
+		atomic.AddUint32(errors, errorCount)
 	}
 
 	if wb.Empty() {
@@ -95,7 +108,7 @@ MainLoop:
 	}
 }
 
-func PlainParser(exit chan struct{}, in chan *Buffer, out chan *WriteBuffer) {
+func PlainParser(exit chan struct{}, in chan *Buffer, out chan *WriteBuffer, metricsReceived *uint32, errors *uint32) {
 	days := &DaysFrom1970{}
 
 	for {
@@ -103,7 +116,7 @@ func PlainParser(exit chan struct{}, in chan *Buffer, out chan *WriteBuffer) {
 		case <-exit:
 			return
 		case b := <-in:
-			PlainParseBuffer(exit, b, out, days)
+			PlainParseBuffer(exit, b, out, days, metricsReceived, errors)
 			b.Release()
 		}
 	}
