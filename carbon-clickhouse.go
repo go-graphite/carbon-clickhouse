@@ -6,14 +6,10 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
-	"os/signal"
-	"runtime"
-	"syscall"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/lomik/carbon-clickhouse/carbon"
-	"github.com/lomik/go-carbon/logging"
+	"github.com/lomik/zapwriter"
+	"github.com/uber-go/zap"
 )
 
 import _ "net/http/pprof"
@@ -41,7 +37,7 @@ func main() {
 
 	/* CONFIG start */
 
-	configFile := flag.String("config", "", "Filename of config")
+	configFile := flag.String("config", "/etc/carbon-clickhouse/carbon-clickhouse.conf", "Filename of config")
 	printDefaultConfig := flag.Bool("config-print-default", false, "Print default config")
 	checkConfig := flag.Bool("check-config", false, "Check config and exit")
 
@@ -54,71 +50,72 @@ func main() {
 		return
 	}
 
+	cfg := carbon.NewConfig()
+
 	if *printDefaultConfig {
-		if err = carbon.PrintConfig(carbon.NewConfig()); err != nil {
+		if err = carbon.PrintConfig(cfg); err != nil {
 			log.Fatal(err)
 		}
 		return
 	}
 
-	app := carbon.New(*configFile)
-
-	if err = app.ParseConfig(); err != nil {
+	if err = carbon.ParseConfig(*configFile, cfg); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg := app.Config
-
-	if err := logging.SetLevel(cfg.Common.LogLevel); err != nil {
-		log.Fatal(err)
-	}
-
-	// config parsed successfully. Exit in check-only mode
 	if *checkConfig {
+		// check before logging init
+		if _, err = carbon.New(cfg); err != nil {
+			log.Fatal(err)
+		}
 		return
 	}
 
-	if err := logging.PrepareFile(cfg.Common.LogFile, nil); err != nil {
-		logrus.Fatal(err)
+	zapOutput, err := zapwriter.New(cfg.Common.LogFile)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	if err := logging.SetFile(cfg.Common.LogFile); err != nil {
-		logrus.Fatal(err)
-	}
+	logger := zap.New(
+		zapwriter.NewMixedEncoder(),
+		zap.AddCaller(),
+		zap.Output(zapOutput),
+	)
+	logger.SetLevel(cfg.Common.LogLevel)
 
-	runtime.GOMAXPROCS(cfg.Common.MaxCPU)
+	app, err := carbon.New(cfg)
 
 	/* CONFIG end */
 
 	// pprof
-	if cfg.Pprof.Enabled {
-		_, err = httpServe(cfg.Pprof.Listen)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-	}
+	// if cfg.Pprof.Enabled {
+	// 	_, err = httpServe(cfg.Pprof.Listen)
+	// 	if err != nil {
+	// 		logrus.Fatal(err)
+	// 	}
+	// }
 
 	if err = app.Start(); err != nil {
-		logrus.Fatal(err)
+		logger.Fatal("app start failed", zap.Error(err))
 	} else {
-		logrus.Info("started")
+		logger.Info("app started")
 	}
 
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGHUP)
-		for {
-			<-c
-			logrus.Info("HUP received. Reload config")
-			if err := app.ReloadConfig(); err != nil {
-				logrus.Errorf("Config reload failed: %s", err.Error())
-			} else {
-				logrus.Info("Config successfully reloaded")
-			}
-		}
-	}()
+	// go func() {
+	// 	c := make(chan os.Signal, 1)
+	// 	signal.Notify(c, syscall.SIGHUP)
+	// 	for {
+	// 		<-c
+	// 		logrus.Info("HUP received. Reload config")
+	// 		if err := app.ReloadConfig(); err != nil {
+	// 			logrus.Errorf("Config reload failed: %s", err.Error())
+	// 		} else {
+	// 			logrus.Info("Config successfully reloaded")
+	// 		}
+	// 	}
+	// }()
 
 	app.Loop()
 
-	logrus.Info("stopped")
+	logger.Info("app stopped")
 }
