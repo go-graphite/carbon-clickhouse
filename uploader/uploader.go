@@ -90,7 +90,7 @@ type Uploader struct {
 	stat struct {
 		uploaded  uint32
 		errors    uint32
-		unhandled uint32
+		unhandled uint32 // @TODO: maxUnhandled
 	}
 	path               string
 	clickHouseDSN      string
