@@ -25,3 +25,6 @@
 [submodule "vendor/github.com/lomik/zapwriter"]
 	path = vendor/github.com/lomik/zapwriter
 	url = https://github.com/lomik/zapwriter
+[submodule "vendor/github.com/lomik/stop"]
+	path = vendor/github.com/lomik/stop
+	url = https://github.com/lomik/stop
