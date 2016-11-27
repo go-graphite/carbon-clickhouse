@@ -112,7 +112,7 @@ func (w *Writer) worker(exit chan struct{}) {
 		select {
 		case b := <-w.inputChan:
 			outBuf.Write(b.Body[:b.Used])
-			receiver.WriteBufferPool.Put(b)
+			b.Release()
 		case <-ticker.C:
 			rotate()
 		case <-exit:

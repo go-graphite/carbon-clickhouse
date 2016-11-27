@@ -144,12 +144,9 @@ func (pp *PlainParser) Worker(exit chan struct{}) {
 		case <-exit:
 			return
 		case b := <-pp.In:
-			w := WriteBufferPool.Get().(*WriteBuffer)
-			w.Used = 0
+			w := GetWriteBuffer()
 			pp.Buffer(b, w)
-
-			// release used buffer
-			BufferPool.Put(b)
+			b.Release()
 
 			select {
 			case pp.Out <- w:

@@ -59,8 +59,7 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 		}
 	})
 
-	buffer := BufferPool.Get().(*Buffer)
-	buffer.Used = 0
+	buffer := GetBuffer()
 
 	var n int
 	var err error
@@ -87,8 +86,7 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 		chunkSize := bytes.LastIndexByte(buffer.Body[:buffer.Used], '\n') + 1
 
 		if chunkSize > 0 {
-			newBuffer := BufferPool.Get().(*Buffer)
-			newBuffer.Used = 0
+			newBuffer := GetBuffer()
 
 			if chunkSize < buffer.Used { // has unfinished data
 				copy(newBuffer.Body[:], buffer.Body[chunkSize:buffer.Used])
