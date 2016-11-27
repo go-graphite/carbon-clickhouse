@@ -71,13 +71,13 @@ func main() {
 		return
 	}
 
-	zapOutput, err := zapwriter.New(cfg.Common.LogFile)
+	zapOutput, err := zapwriter.New(cfg.Logging.File)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	var logLevel zap.Level
-	if err = logLevel.UnmarshalText([]byte(cfg.Common.LogLevel)); err != nil {
+	if err = logLevel.UnmarshalText([]byte(cfg.Logging.Level)); err != nil {
 		log.Fatal(err)
 	}
 

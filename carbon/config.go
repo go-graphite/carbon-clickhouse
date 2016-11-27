@@ -35,8 +35,6 @@ func (d *Duration) Value() time.Duration {
 }
 
 type commonConfig struct {
-	LogFile        string    `toml:"logfile"`
-	LogLevel       string    `toml:"loglevel"`
 	MetricPrefix   string    `toml:"metric-prefix"`
 	MetricInterval *Duration `toml:"metric-interval"`
 	MetricEndpoint string    `toml:"metric-endpoint"`
@@ -82,9 +80,15 @@ type dataConfig struct {
 	FileBytes    int       `toml:"chunk-bytes"`
 }
 
+type loggingConfig struct {
+	File  string `toml:"file"`
+	Level string `toml:"level"`
+}
+
 // Config ...
 type Config struct {
 	Common     commonConfig     `toml:"common"`
+	Logging    loggingConfig    `toml:"logging"`
 	ClickHouse clickhouseConfig `toml:"clickhouse"`
 	Data       dataConfig       `toml:"data"`
 	Udp        udpConfig        `toml:"udp"`
@@ -97,14 +101,16 @@ type Config struct {
 func NewConfig() *Config {
 	cfg := &Config{
 		Common: commonConfig{
-			LogFile:      "/var/log/carbon-clickhouse/carbon-clickhouse.log",
-			LogLevel:     "info",
 			MetricPrefix: "carbon.agents.{host}",
 			MetricInterval: &Duration{
 				Duration: time.Minute,
 			},
 			MetricEndpoint: MetricEndpointLocal,
 			MaxCPU:         1,
+		},
+		Logging: loggingConfig{
+			File:  "/var/log/carbon-clickhouse/carbon-clickhouse.log",
+			Level: "info",
 		},
 		ClickHouse: clickhouseConfig{
 			Url:       "http://localhost:8123/",
