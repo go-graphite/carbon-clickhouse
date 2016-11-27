@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-
-	"github.com/lomik/go-carbon/points"
 	"github.com/lomik/stop"
+	"github.com/uber-go/zap"
 )
 
 type statFunc func()
@@ -21,8 +19,8 @@ type Collector struct {
 	graphPrefix    string
 	metricInterval time.Duration
 	endpoint       string
-	data           chan *points.Points
 	stats          []statFunc
+	logger         zap.Logger
 }
 
 func NewCollector(app *App) *Collector {
@@ -31,9 +29,10 @@ func NewCollector(app *App) *Collector {
 	c := &Collector{
 		graphPrefix:    app.Config.Common.MetricPrefix,
 		metricInterval: app.Config.Common.MetricInterval.Value(),
+		endpoint:       app.Config.Common.MetricEndpoint,
+		stats:          make([]statFunc, 0),
+		logger:         app.logger,
 		// data:           make(chan *points.Points, 4096),
-		endpoint: app.Config.Common.MetricEndpoint,
-		stats:    make([]statFunc, 0),
 	}
 
 	c.Start()
@@ -41,7 +40,7 @@ func NewCollector(app *App) *Collector {
 	sendCallback := func(moduleName string) func(metric string, value float64) {
 		return func(metric string, value float64) {
 			key := fmt.Sprintf("%s.%s.%s", c.graphPrefix, moduleName, metric)
-			logrus.Infof("[stat] %s=%#v", key, value)
+			c.logger.Info("stat", zap.String("key", key), zap.Float("value", value))
 			// select {
 			// case c.data <- points.NowPoint(key, value):
 			// 	// pass

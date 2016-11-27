@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/lomik/carbon-clickhouse/receiver"
 	"github.com/lomik/stop"
+	"github.com/uber-go/zap"
 )
 
 // Writer dumps all received data in prepared for clickhouse format
@@ -23,14 +23,16 @@ type Writer struct {
 	writtenBytes uint64          // stat "bytes"
 	openedFiles  uint64          // stat "files"
 	inProgress   map[string]bool // current writing files
+	logger       zap.Logger
 }
 
-func New(in chan *receiver.WriteBuffer, path string, fileInterval time.Duration) *Writer {
+func New(in chan *receiver.WriteBuffer, path string, fileInterval time.Duration, logger zap.Logger) *Writer {
 	return &Writer{
 		inputChan:    in,
 		path:         path,
 		fileInterval: fileInterval,
 		inProgress:   make(map[string]bool),
+		logger:       zap.Logger,
 	}
 }
 
@@ -82,7 +84,7 @@ func (w *Writer) worker(exit chan bool) {
 			out, err = os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 
 			if err != nil {
-				logrus.Errorf("open %s: %s", fn, err.Error())
+				w.logger.Error("create failed", zap.String("filename", fn), zap.Error(err))
 
 				// check exit channel
 				select {

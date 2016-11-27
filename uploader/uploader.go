@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/lomik/stop"
 )
 
@@ -76,6 +75,12 @@ func Threads(t int) Option {
 	}
 }
 
+func Logger(logger zap.Logger) Option {
+	return func(u *Uploader) {
+		u.logger = logger
+	}
+}
+
 // Uploader upload files from local directory to clickhouse
 type Uploader struct {
 	stop.Struct
@@ -93,6 +98,7 @@ type Uploader struct {
 	queue              chan string
 	inQueue            map[string]bool // current uploading files
 	treeExists         CMap            // store known keys and don't load it to clickhouse tree
+	logger             zap.Logger
 }
 
 func New(options ...Option) *Uploader {
@@ -109,6 +115,7 @@ func New(options ...Option) *Uploader {
 		inQueue:            make(map[string]bool),
 		threads:            1,
 		treeExists:         NewCMap(),
+		logger:             zap.New(zap.NullEncoder()),
 	}
 
 	for _, o := range options {
@@ -166,13 +173,20 @@ func uploadData(chUrl string, table string, timeout time.Duration, data io.Reade
 
 func (u *Uploader) upload(exit chan bool, filename string) (err error) {
 	startTime := time.Now()
-	logrus.Infof("[uploader] start handle %s", filename)
+
+	logger := u.logger.With(zap.String("filename", filename))
+	logger.Info("start handle")
 
 	defer func() {
 		if err != nil {
-			logrus.Errorf("[uploader] %s", err.Error())
+			logger.Error("upload failed",
+				zap.Error(err),
+				zap.String("time", time.Now().Sub(startTime).String()),
+			)
 		} else {
-			logrus.Infof("[uploader] handle %s success, time=%s", filename, time.Now().Sub(startTime).String())
+			logger.Info("upload success",
+				zap.String("time", time.Now().Sub(startTime).String()),
+			)
 		}
 	}()
 
@@ -188,7 +202,7 @@ func (u *Uploader) upload(exit chan bool, filename string) (err error) {
 	}
 
 	if fi.Size() == 0 {
-		logrus.Infof("[uploader] %s is empty", filename)
+		logger.Info("file is empty")
 		return nil
 	}
 
@@ -293,9 +307,14 @@ func (u *Uploader) uploadWorker(exit chan bool) {
 			if err == nil {
 				err := os.Remove(filename)
 				if err != nil {
-					logrus.Errorf("[uploader] remove %s failed: %s", filename, err.Error())
+					u.logger.Error("file delete failed",
+						zap.String("filename", filename),
+						zap.Error(err),
+					)
 				} else {
-					logrus.Infof("[uploader] %s deleted", filename)
+					u.logger.Info("file deleted",
+						zap.String("filename", filename),
+					)
 				}
 			}
 			u.Lock()
@@ -308,7 +327,7 @@ func (u *Uploader) uploadWorker(exit chan bool) {
 func (u *Uploader) watch(exit chan bool) {
 	flist, err := ioutil.ReadDir(u.path)
 	if err != nil {
-		logrus.Errorf("[uploader] %s", err.Error())
+		logger.Error("ReadDir failed", zap.Error(err))
 		return
 	}
 

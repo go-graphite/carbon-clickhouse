@@ -8,10 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/lomik/carbon-clickhouse/receiver"
 	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/carbon-clickhouse/writer"
+	"github.com/uber-go/zap"
 )
 
 type App struct {
@@ -26,14 +26,16 @@ type App struct {
 	Collector *Collector // (!!!) Should be re-created on every change config/modules
 	writeChan chan *receiver.WriteBuffer
 	exit      chan bool
+	logger    zap.Logger
 }
 
 // New App instance
-func New(configFilename string) *App {
+func New(configFilename string, logger zap.Logger) *App {
 	app := &App{
 		ConfigFilename: configFilename,
 		Config:         NewConfig(),
 		exit:           make(chan bool),
+		logger:         logger,
 	}
 	return app
 }
@@ -197,6 +199,7 @@ func (app *App) Start() (err error) {
 		uploader.TreeTimeout(conf.ClickHouse.TreeTimeout.Value()),
 		uploader.InProgressCallback(app.Writer.IsInProgress),
 		uploader.Threads(app.Config.ClickHouse.Threads),
+		uploader.Logger(app.logger.With(zap.String("module", "upload"))),
 	)
 	app.Uploader.Start()
 	/* UPLOADER end */
