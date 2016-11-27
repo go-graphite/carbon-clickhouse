@@ -138,7 +138,9 @@ func (rcv *TCP) Listen(addr *net.TCPAddr) error {
 		})
 
 		for i := 0; i < rcv.parseThreads; i++ {
-			rcv.Go((&PlainParser{In: rcv.parseChan, Out: rcv.writeChan}).Worker)
+			rcv.Go(func(exit chan struct{}) {
+				PlainParser(exit, rcv.parseChan, rcv.writeChan)
+			})
 		}
 
 		rcv.listener = tcpListener

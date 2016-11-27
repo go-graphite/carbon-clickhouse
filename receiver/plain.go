@@ -14,15 +14,6 @@ func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-// PlainParser with local values cache
-// Not thread-safe!
-type PlainParser struct {
-	In  chan *Buffer
-	Out chan *WriteBuffer
-
-	days DaysFrom1970
-}
-
 func ParsePlainLine(p []byte) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
@@ -53,11 +44,13 @@ func ParsePlainLine(p []byte) ([]byte, float64, uint32, error) {
 	return p[:i1], value, uint32(tsf), nil
 }
 
-func (pp *PlainParser) Buffer(b *Buffer, wb *WriteBuffer) {
+func plainParseBuffer(exit chan struct{}, b *Buffer, out chan *WriteBuffer, days *DaysFrom1970) {
 	offset := 0
 
 	version := make([]byte, 4)
 	binary.LittleEndian.PutUint32(version, b.Time)
+
+	wb := GetWriteBuffer()
 
 MainLoop:
 	for offset < b.Used {
@@ -85,28 +78,33 @@ MainLoop:
 		wb.RowBinaryWriteBytes(name)
 		wb.RowBinaryWriteFloat64(value)
 		wb.RowBinaryWriteUint32(timestamp)
-		wb.RowBinaryWriteUint16(pp.days.TimestampWithNow(timestamp, b.Time))
+		wb.RowBinaryWriteUint16(days.TimestampWithNow(timestamp, b.Time))
 		wb.Write(version)
+	}
+
+	if wb.Empty() {
+		wb.Release()
+		return
+	}
+
+	select {
+	case out <- wb:
+		// pass
+	case <-exit:
+		return
 	}
 }
 
-func (pp *PlainParser) Worker(exit chan struct{}) {
+func PlainParser(exit chan struct{}, in chan *Buffer, out chan *WriteBuffer) {
+	days := &DaysFrom1970{}
+
 	for {
 		select {
 		case <-exit:
 			return
-		case b := <-pp.In:
-			w := GetWriteBuffer()
-			pp.Buffer(b, w)
+		case b := <-in:
+			plainParseBuffer(exit, b, out, days)
 			b.Release()
-
-			select {
-			case pp.Out <- w:
-				// pass
-			case <-exit:
-				return
-			}
-
 		}
 	}
 }

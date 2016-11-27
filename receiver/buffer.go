@@ -52,6 +52,10 @@ func (wb *WriteBuffer) Reset() *WriteBuffer {
 	return wb
 }
 
+func (wb *WriteBuffer) Empty() bool {
+	return wb.Used == 0
+}
+
 func (wb *WriteBuffer) Release() {
 	wb.Used = 0
 	WriteBufferPool.Put(wb)
