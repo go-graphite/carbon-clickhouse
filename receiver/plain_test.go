@@ -14,7 +14,9 @@ func BenchmarkPlainParseBuffer(b *testing.B) {
 	c1 := uint32(0)
 	c2 := uint32(0)
 
-	msg := fmt.Sprintf("carbon.agents.localhost.cache.size 1412351 %d\n", time.Now().Unix())
+	now := time.Now().Unix()
+	msg := fmt.Sprintf("carbon.agents.localhost.cache.size 1412351 %d\n", now)
+	buf.Time = uint32(now)
 
 	for i := 0; i < 50; i++ {
 		buf.Write([]byte(msg))
