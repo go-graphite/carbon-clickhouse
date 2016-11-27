@@ -14,7 +14,7 @@ func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func ParsePlainLine(p []byte) ([]byte, float64, uint32, error) {
+func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
 		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
@@ -44,7 +44,7 @@ func ParsePlainLine(p []byte) ([]byte, float64, uint32, error) {
 	return p[:i1], value, uint32(tsf), nil
 }
 
-func plainParseBuffer(exit chan struct{}, b *Buffer, out chan *WriteBuffer, days *DaysFrom1970) {
+func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *WriteBuffer, days *DaysFrom1970) {
 	offset := 0
 
 	version := make([]byte, 4)
@@ -64,7 +64,7 @@ MainLoop:
 			continue MainLoop
 		}
 
-		name, value, timestamp, err := ParsePlainLine(b.Body[offset : offset+lineEnd+1])
+		name, value, timestamp, err := PlainParseLine(b.Body[offset : offset+lineEnd+1])
 		offset += lineEnd + 1
 
 		// @TODO: check required buffer size, get new
@@ -103,7 +103,7 @@ func PlainParser(exit chan struct{}, in chan *Buffer, out chan *WriteBuffer) {
 		case <-exit:
 			return
 		case b := <-in:
-			plainParseBuffer(exit, b, out, days)
+			PlainParseBuffer(exit, b, out, days)
 			b.Release()
 		}
 	}
