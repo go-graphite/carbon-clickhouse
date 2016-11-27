@@ -75,9 +75,7 @@ type pprofConfig struct {
 
 type dataConfig struct {
 	Path         string    `toml:"path"`
-	InputBuffer  int       `toml:"input-buffer"`
 	FileInterval *Duration `toml:"chunk-interval"`
-	FileBytes    int       `toml:"chunk-bytes"`
 }
 
 type loggingConfig struct {
@@ -126,12 +124,10 @@ func NewConfig() *Config {
 			Threads: 1,
 		},
 		Data: dataConfig{
-			Path:        "/data/carbon-clickhouse/",
-			InputBuffer: 1024 * 1024,
+			Path: "/data/carbon-clickhouse/",
 			FileInterval: &Duration{
 				Duration: time.Second,
 			},
-			FileBytes: 128 * 1024 * 1024,
 		},
 		Udp: udpConfig{
 			Listen:        ":2003",
