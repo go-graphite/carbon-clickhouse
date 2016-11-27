@@ -138,7 +138,7 @@ MainLoop:
 	}
 }
 
-func (pp *PlainParser) Worker(exit chan bool) {
+func (pp *PlainParser) Worker(exit chan struct{}) {
 	for {
 		select {
 		case <-exit:

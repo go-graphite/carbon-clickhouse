@@ -44,6 +44,8 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 
 	defer conn.Close()
 
+	logger := rcv.logger.With(zap.String("peer", conn.RemoteAddr().String()))
+
 	finished := make(chan bool)
 	defer close(finished)
 
@@ -73,11 +75,11 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 		if err != nil {
 			if err == io.EOF {
 				if buffer.Used > 0 {
-					logrus.Warningf("[tcp] Unfinished line: %#v", string(buffer.Body[:buffer.Used]))
+					logger.Warn("unfinished line", zap.String("line", string(buffer.Body[:buffer.Used])))
 				}
 			} else {
 				atomic.AddUint32(&rcv.errors, 1)
-				logrus.Error(err)
+				logger.Error("read failed", zap.Error(err))
 			}
 			break
 		}
@@ -109,14 +111,14 @@ func (rcv *TCP) Listen(addr *net.TCPAddr) error {
 			return err
 		}
 
-		rcv.Go(func(exit chan bool) {
+		rcv.Go(func(exit chan struct{}) {
 			<-exit
 			tcpListener.Close()
 		})
 
 		handler := rcv.HandleConnection
 
-		rcv.Go(func(exit chan bool) {
+		rcv.Go(func(exit chan struct{}) {
 			defer tcpListener.Close()
 
 			for {
@@ -126,11 +128,11 @@ func (rcv *TCP) Listen(addr *net.TCPAddr) error {
 					if strings.Contains(err.Error(), "use of closed network connection") {
 						break
 					}
-					logrus.Warningf("[tcp] Failed to accept connection: %s", err)
+					rcv.logger.Warn("failed to accept connection", zap.Error(err))
 					continue
 				}
 
-				rcv.Go(func(exit chan bool) {
+				rcv.Go(func(exit chan struct{}) {
 					handler(conn)
 				})
 			}

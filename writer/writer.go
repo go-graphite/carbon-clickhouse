@@ -32,7 +32,7 @@ func New(in chan *receiver.WriteBuffer, path string, fileInterval time.Duration,
 		path:         path,
 		fileInterval: fileInterval,
 		inProgress:   make(map[string]bool),
-		logger:       zap.Logger,
+		logger:       logger,
 	}
 }
 
@@ -50,7 +50,7 @@ func (w *Writer) IsInProgress(filename string) bool {
 	return v
 }
 
-func (w *Writer) worker(exit chan bool) {
+func (w *Writer) worker(exit chan struct{}) {
 	var out *os.File
 	var outBuf *bufio.Writer
 	var fn string // current filename
