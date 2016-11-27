@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"time"
 	"unsafe"
 )
 
@@ -15,45 +14,13 @@ func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-var ZeroDay = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
-
-func DaysFrom1970(t time.Time) int {
-	return int(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Sub(ZeroDay) / (24 * time.Hour))
-}
-
 // PlainParser with local values cache
 // Not thread-safe!
 type PlainParser struct {
 	In  chan *Buffer
 	Out chan *WriteBuffer
 
-	// cache current day days count from 1970
-	todayStartTimestamp uint32
-	todayEndTimestamp   uint32
-	todayDays           uint16
-}
-
-func (pp *PlainParser) Days(timestamp uint32, now uint32) uint16 {
-	if timestamp < pp.todayStartTimestamp {
-		return uint16(DaysFrom1970(time.Unix(int64(timestamp), 0)))
-	}
-
-	// timestamp >= pp.todayStartTimestamp
-	if timestamp <= pp.todayEndTimestamp {
-		return pp.todayDays
-	}
-
-	// timestamp > pp.todayEndTimestamp
-	// check now date
-	if now > pp.todayEndTimestamp {
-		// update "today" required
-		d := time.Unix(int64(now), 0)
-		pp.todayStartTimestamp = uint32(time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.Local).Unix())
-		pp.todayEndTimestamp = uint32(time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 0, time.Local).Unix())
-		pp.todayDays = uint16(DaysFrom1970(time.Unix(int64(now), 0)))
-	}
-
-	return uint16(DaysFrom1970(time.Unix(int64(timestamp), 0)))
+	days DaysFrom1970
 }
 
 func ParsePlainLine(p []byte) ([]byte, float64, uint32, error) {
@@ -118,7 +85,7 @@ MainLoop:
 		wb.RowBinaryWriteBytes(name)
 		wb.RowBinaryWriteFloat64(value)
 		wb.RowBinaryWriteUint32(timestamp)
-		wb.RowBinaryWriteUint16(pp.Days(timestamp, b.Time))
+		wb.RowBinaryWriteUint16(pp.days.TimestampWithNow(timestamp, b.Time))
 		wb.Write(version)
 	}
 }
