@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lomik/stop"
@@ -93,7 +94,8 @@ type Uploader struct {
 	treeTable          string
 	treeTimeout        time.Duration
 	treeDate           string
-	filesUploaded      uint64 // stat "files"
+	filesUploaded      uint32 // stat "files"
+	filesFailed        uint32 // stat
 	threads            int
 	inProgressCallback func(string) bool
 	queue              chan string
@@ -138,6 +140,16 @@ func (u *Uploader) Start() error {
 	})
 }
 
+func (u *Uploader) Stat(send func(metric string, value float64)) {
+	filesUploaded := atomic.LoadUint32(&u.filesUploaded)
+	atomic.AddUint32(&u.filesUploaded, -filesUploaded)
+	send("filesUploaded", float64(filesUploaded))
+
+	filesFailed := atomic.LoadUint32(&u.filesFailed)
+	atomic.AddUint32(&u.filesFailed, -filesFailed)
+	send("filesFailed", float64(filesFailed))
+}
+
 func uploadData(chUrl string, table string, timeout time.Duration, data io.Reader) error {
 	p, err := url.Parse(chUrl)
 	if err != nil {
@@ -180,11 +192,13 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 
 	defer func() {
 		if err != nil {
+			atomic.AddUint32(&u.filesFailed, 1)
 			logger.Error("upload failed",
 				zap.Error(err),
 				zap.String("time", time.Now().Sub(startTime).String()),
 			)
 		} else {
+			atomic.AddUint32(&u.filesUploaded, 1)
 			logger.Info("upload success",
 				zap.String("time", time.Now().Sub(startTime).String()),
 			)

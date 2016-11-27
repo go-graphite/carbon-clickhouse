@@ -40,7 +40,7 @@ func NewCollector(app *App) *Collector {
 	sendCallback := func(moduleName string) func(metric string, value float64) {
 		return func(metric string, value float64) {
 			key := fmt.Sprintf("%s.%s.%s", c.graphPrefix, moduleName, metric)
-			c.logger.Info("stat", zap.String("key", key), zap.Float64("value", value))
+			c.logger.Info("stat", zap.String("metric", key), zap.Float64("value", value))
 			// select {
 			// case c.data <- points.NowPoint(key, value):
 			// 	// pass
@@ -57,9 +57,9 @@ func NewCollector(app *App) *Collector {
 		}
 	}
 
-	// if app.UDP != nil {
-	// 	c.stats = append(c.stats, moduleCallback("udp", app.UDP))
-	// }
+	if app.Uploader != nil {
+		c.stats = append(c.stats, moduleCallback("uploader", app.Uploader))
+	}
 
 	if app.TCP != nil {
 		c.stats = append(c.stats, moduleCallback("tcp", app.TCP))
