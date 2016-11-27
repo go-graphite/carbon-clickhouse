@@ -65,7 +65,7 @@ func main() {
 
 	if *checkConfig {
 		// check before logging init
-		if _, err = carbon.New(cfg); err != nil {
+		if _, err = carbon.New(cfg, zap.New(zap.NullEncoder())); err != nil {
 			log.Fatal(err)
 		}
 		return
@@ -76,14 +76,22 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var logLevel zap.Level
+	if err = logLevel.UnmarshalText([]byte(cfg.Common.LogLevel)); err != nil {
+		log.Fatal(err)
+	}
+
+	dynamicLevel := zap.DynamicLevel()
+	dynamicLevel.SetLevel(logLevel)
+
 	logger := zap.New(
 		zapwriter.NewMixedEncoder(),
 		zap.AddCaller(),
 		zap.Output(zapOutput),
+		dynamicLevel,
 	)
-	logger.SetLevel(cfg.Common.LogLevel)
 
-	app, err := carbon.New(cfg)
+	app, err := carbon.New(cfg, logger)
 
 	/* CONFIG end */
 

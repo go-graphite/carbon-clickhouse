@@ -40,7 +40,7 @@ func NewCollector(app *App) *Collector {
 	sendCallback := func(moduleName string) func(metric string, value float64) {
 		return func(metric string, value float64) {
 			key := fmt.Sprintf("%s.%s.%s", c.graphPrefix, moduleName, metric)
-			c.logger.Info("stat", zap.String("key", key), zap.Float("value", value))
+			c.logger.Info("stat", zap.String("key", key), zap.Float64("value", value))
 			// select {
 			// case c.data <- points.NowPoint(key, value):
 			// 	// pass
@@ -70,7 +70,7 @@ func NewCollector(app *App) *Collector {
 	// }
 
 	// collector worker
-	c.Go(func(exit chan bool) {
+	c.Go(func(exit chan struct{}) {
 		ticker := time.NewTicker(c.metricInterval)
 		defer ticker.Stop()
 

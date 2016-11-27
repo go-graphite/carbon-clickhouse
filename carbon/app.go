@@ -16,10 +16,9 @@ import (
 
 type App struct {
 	sync.RWMutex
-	ConfigFilename string
-	Config         *Config
-	Writer         *writer.Writer
-	Uploader       *uploader.Uploader
+	Config   *Config
+	Writer   *writer.Writer
+	Uploader *uploader.Uploader
 	// UDP            receiver.Receiver
 	TCP receiver.Receiver
 	// Pickle         receiver.Receiver
@@ -30,25 +29,20 @@ type App struct {
 }
 
 // New App instance
-func New(configFilename string, logger zap.Logger) *App {
+func New(cfg *Config, logger zap.Logger) (*App, error) {
 	app := &App{
-		ConfigFilename: configFilename,
-		Config:         NewConfig(),
-		exit:           make(chan bool),
-		logger:         logger,
+		exit:   make(chan bool),
+		logger: logger,
 	}
-	return app
+
+	if err := app.configure(cfg); err != nil {
+		return nil, err
+	}
+	return app, nil
 }
 
 // configure loads config from config file, schemas.conf, aggregation.conf
-func (app *App) configure() error {
-	var err error
-
-	cfg := NewConfig()
-	if err = ParseConfig(app.ConfigFilename, cfg); err != nil {
-		return err
-	}
-
+func (app *App) configure(cfg *Config) error {
 	// carbon-cache prefix
 	if hostname, err := os.Hostname(); err == nil {
 		hostname = strings.Replace(hostname, ".", "_", -1)
@@ -78,54 +72,46 @@ func (app *App) configure() error {
 	return nil
 }
 
-// ParseConfig loads config from config file, schemas.conf, aggregation.conf
-func (app *App) ParseConfig() error {
-	app.Lock()
-	defer app.Unlock()
+// // ReloadConfig reloads some settings from config
+// func (app *App) ReloadConfig() error {
+// 	app.Lock()
+// 	defer app.Unlock()
 
-	return app.configure()
-}
+// 	var err error
+// 	if err = app.configure(); err != nil {
+// 		return err
+// 	}
 
-// ReloadConfig reloads some settings from config
-func (app *App) ReloadConfig() error {
-	app.Lock()
-	defer app.Unlock()
+// 	// TODO: reload something?
 
-	var err error
-	if err = app.configure(); err != nil {
-		return err
-	}
+// 	if app.Collector != nil {
+// 		app.Collector.Stop()
+// 		app.Collector = nil
+// 	}
 
-	// TODO: reload something?
+// 	app.Collector = NewCollector(app)
 
-	if app.Collector != nil {
-		app.Collector.Stop()
-		app.Collector = nil
-	}
-
-	app.Collector = NewCollector(app)
-
-	return nil
-}
+// 	return nil
+// }
 
 // Stop all socket listeners
 func (app *App) stopListeners() {
 	if app.TCP != nil {
 		app.TCP.Stop()
 		app.TCP = nil
-		logrus.Debug("[tcp] finished")
+		app.logger.Debug("finished", zap.String("module", "tcp"))
 	}
 
 	// if app.Pickle != nil {
 	// 	app.Pickle.Stop()
 	// 	app.Pickle = nil
-	// 	logrus.Debug("[pickle] finished")
+	// 	app.logger.Debug("[pickle] finished")
 	// }
 
 	// if app.UDP != nil {
 	// 	app.UDP.Stop()
 	// 	app.UDP = nil
-	// 	logrus.Debug("[udp] finished")
+	// 	app.logger.Debug("[udp] finished")
 	// }
 }
 
@@ -135,25 +121,25 @@ func (app *App) stopAll() {
 	if app.Collector != nil {
 		app.Collector.Stop()
 		app.Collector = nil
-		logrus.Debug("[stat] finished")
+		app.logger.Debug("finished", zap.String("module", "stat"))
 	}
 
 	if app.Writer != nil {
 		app.Writer.Stop()
 		app.Writer = nil
-		logrus.Debug("[writer] finished")
+		app.logger.Debug("finished", zap.String("module", "writer"))
 	}
 
 	if app.Uploader != nil {
 		app.Uploader.Stop()
 		app.Uploader = nil
-		logrus.Debug("[uploader] finished")
+		app.logger.Debug("finished", zap.String("module", "uploader"))
 	}
 
 	if app.exit != nil {
 		close(app.exit)
 		app.exit = nil
-		logrus.Debug("[app] close(exit)")
+		app.logger.Debug("close(app.exit)", zap.String("module", "app"))
 	}
 }
 
@@ -184,6 +170,7 @@ func (app *App) Start() (err error) {
 		app.writeChan,
 		conf.Data.Path,
 		conf.Data.FileInterval.Value(),
+		app.logger.With(zap.String("module", "writer")),
 	)
 	app.Writer.Start()
 	/* WRITER end */
@@ -199,7 +186,7 @@ func (app *App) Start() (err error) {
 		uploader.TreeTimeout(conf.ClickHouse.TreeTimeout.Value()),
 		uploader.InProgressCallback(app.Writer.IsInProgress),
 		uploader.Threads(app.Config.ClickHouse.Threads),
-		uploader.Logger(app.logger.With(zap.String("module", "upload"))),
+		uploader.Logger(app.logger.With(zap.String("module", "uploader"))),
 	)
 	app.Uploader.Start()
 	/* UPLOADER end */
