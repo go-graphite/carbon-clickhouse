@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/receiver"
@@ -17,11 +18,12 @@ import (
 type Writer struct {
 	stop.Struct
 	sync.RWMutex
+	stat struct {
+		writtenBytes uint32
+	}
 	inputChan    chan *receiver.WriteBuffer
 	path         string
 	fileInterval time.Duration
-	writtenBytes uint64          // stat "bytes"
-	openedFiles  uint64          // stat "files"
 	inProgress   map[string]bool // current writing files
 	logger       zap.Logger
 }
@@ -41,6 +43,12 @@ func (w *Writer) Start() error {
 		w.Go(w.worker)
 		return nil
 	})
+}
+
+func (w *Writer) Stat(send func(metric string, value float64)) {
+	writtenBytes := atomic.LoadUint32(&w.stat.writtenBytes)
+	atomic.AddUint32(&w.stat.writtenBytes, -writtenBytes)
+	send("writtenBytes", float64(writtenBytes))
 }
 
 func (w *Writer) IsInProgress(filename string) bool {
@@ -112,6 +120,7 @@ func (w *Writer) worker(exit chan struct{}) {
 		select {
 		case b := <-w.inputChan:
 			outBuf.Write(b.Body[:b.Used])
+			atomic.AddUint32(&w.stat.writtenBytes, uint32(b.Used))
 			b.Release()
 		case <-ticker.C:
 			rotate()

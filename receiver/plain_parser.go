@@ -56,7 +56,7 @@ func (pp *PlainParser) Days(timestamp uint32, now uint32) uint16 {
 	return uint16(DaysFrom1970(time.Unix(int64(timestamp), 0)))
 }
 
-func (pp *PlainParser) Line(p []byte) ([]byte, float64, uint32, error) {
+func ParsePlainLine(p []byte) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
 		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
@@ -104,7 +104,7 @@ MainLoop:
 			continue MainLoop
 		}
 
-		name, value, timestamp, err := pp.Line(b.Body[offset : offset+lineEnd+1])
+		name, value, timestamp, err := ParsePlainLine(b.Body[offset : offset+lineEnd+1])
 		offset += lineEnd + 1
 
 		// @TODO: check required buffer size, get new

@@ -61,6 +61,10 @@ func NewCollector(app *App) *Collector {
 		c.stats = append(c.stats, moduleCallback("uploader", app.Uploader))
 	}
 
+	if app.Writer != nil {
+		c.stats = append(c.stats, moduleCallback("writer", app.Writer))
+	}
+
 	if app.TCP != nil {
 		c.stats = append(c.stats, moduleCallback("tcp", app.TCP))
 	}
