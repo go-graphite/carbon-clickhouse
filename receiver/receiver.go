@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+
+	"github.com/uber-go/zap"
 )
 
 type Receiver interface {
@@ -39,6 +41,19 @@ func ParseThreads(threads int) Option {
 	}
 }
 
+// Logger creates option for New contructor
+func Logger(logger zap.Logger) Option {
+	return func(r Receiver) error {
+		if t, ok := r.(*TCP); ok {
+			t.logger = logger
+		}
+		// if t, ok := r.(*UDP); ok {
+		// 	t.out = out
+		// }
+		return nil
+	}
+}
+
 // New creates udp, tcp, pickle receiver
 func New(dsn string, opts ...Option) (Receiver, error) {
 	u, err := url.Parse(dsn)
@@ -55,6 +70,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		r := &TCP{
 			parseChan: make(chan *Buffer, 128),
 			name:      u.Scheme,
+			logger:    zap.New(zap.NullEncoder()),
 		}
 
 		for _, optApply := range opts {

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/lomik/stop"
+	"github.com/uber-go/zap"
 )
 
 type Option func(u *Uploader)
@@ -171,7 +172,7 @@ func uploadData(chUrl string, table string, timeout time.Duration, data io.Reade
 	return nil
 }
 
-func (u *Uploader) upload(exit chan bool, filename string) (err error) {
+func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	startTime := time.Now()
 
 	logger := u.logger.With(zap.String("filename", filename))
@@ -297,7 +298,7 @@ LineLoop:
 	return nil
 }
 
-func (u *Uploader) uploadWorker(exit chan bool) {
+func (u *Uploader) uploadWorker(exit chan struct{}) {
 	for {
 		select {
 		case <-exit:
@@ -324,10 +325,10 @@ func (u *Uploader) uploadWorker(exit chan bool) {
 	}
 }
 
-func (u *Uploader) watch(exit chan bool) {
+func (u *Uploader) watch(exit chan struct{}) {
 	flist, err := ioutil.ReadDir(u.path)
 	if err != nil {
-		logger.Error("ReadDir failed", zap.Error(err))
+		u.logger.Error("ReadDir failed", zap.Error(err))
 		return
 	}
 
@@ -372,7 +373,7 @@ func (u *Uploader) watch(exit chan bool) {
 	}
 }
 
-func (u *Uploader) watchWorker(exit chan bool) {
+func (u *Uploader) watchWorker(exit chan struct{}) {
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
 

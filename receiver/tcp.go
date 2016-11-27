@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/lomik/stop"
+	"github.com/uber-go/zap"
 )
 
 // TCP receive metrics from TCP connections
@@ -22,6 +23,7 @@ type TCP struct {
 	parseThreads    int
 	parseChan       chan *Buffer
 	writeChan       chan *WriteBuffer
+	logger          zap.Logger
 }
 
 // Addr returns binded socket address. For bind port 0 in tests
@@ -45,7 +47,7 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 	finished := make(chan bool)
 	defer close(finished)
 
-	rcv.Go(func(exit chan bool) {
+	rcv.Go(func(exit chan struct{}) {
 		select {
 		case <-finished:
 			return
