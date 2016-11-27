@@ -47,6 +47,10 @@ func (b *Buffer) Release() {
 	BufferPool.Put(b)
 }
 
+func (b *Buffer) Write(p []byte) {
+	b.Used += copy(b.Body[b.Used:], p)
+}
+
 func (wb *WriteBuffer) Reset() *WriteBuffer {
 	wb.Used = 0
 	return wb
