@@ -28,3 +28,6 @@
 [submodule "vendor/github.com/lomik/stop"]
 	path = vendor/github.com/lomik/stop
 	url = https://github.com/lomik/stop
+[submodule "vendor/github.com/uber-go/atomic"]
+	path = vendor/github.com/uber-go/atomic
+	url = https://github.com/uber-go/atomic
