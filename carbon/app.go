@@ -121,7 +121,7 @@ func (app *App) stopAll() {
 	if app.Collector != nil {
 		app.Collector.Stop()
 		app.Collector = nil
-		app.logger.Debug("finished", zap.String("module", "stat"))
+		app.logger.Debug("finished", zap.String("module", "collector"))
 	}
 
 	if app.Writer != nil {
@@ -162,6 +162,8 @@ func (app *App) Start() (err error) {
 	}()
 
 	conf := app.Config
+
+	runtime.GOMAXPROCS(conf.Common.MaxCPU)
 
 	app.writeChan = make(chan *receiver.WriteBuffer, 128)
 
@@ -211,6 +213,7 @@ func (app *App) Start() (err error) {
 			"tcp://"+conf.Tcp.Listen,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
+			receiver.Logger(app.logger.With(zap.String("module", "tcp"))),
 		)
 
 		if err != nil {

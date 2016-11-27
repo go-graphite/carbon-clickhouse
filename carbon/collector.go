@@ -31,7 +31,7 @@ func NewCollector(app *App) *Collector {
 		metricInterval: app.Config.Common.MetricInterval.Value(),
 		endpoint:       app.Config.Common.MetricEndpoint,
 		stats:          make([]statFunc, 0),
-		logger:         app.logger,
+		logger:         app.logger.With(zap.String("module", "collector")),
 		// data:           make(chan *points.Points, 4096),
 	}
 
