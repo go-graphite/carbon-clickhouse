@@ -8,14 +8,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lomik/go-carbon/helper"
-
-	"github.com/Sirupsen/logrus"
+	"github.com/lomik/stop"
 )
 
 // TCP receive metrics from TCP connections
 type TCP struct {
-	helper.Stoppable
+	stop.Struct
 	name            string // name for store metrics
 	metricsReceived uint32
 	errors          uint32

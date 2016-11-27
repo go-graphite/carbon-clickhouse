@@ -6,8 +6,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
-	"github.com/lomik/go-carbon/helper"
 	"github.com/lomik/go-carbon/points"
+	"github.com/lomik/stop"
 )
 
 type statFunc func()
@@ -17,7 +17,7 @@ type statModule interface {
 }
 
 type Collector struct {
-	helper.Stoppable
+	stop.Struct
 	graphPrefix    string
 	metricInterval time.Duration
 	endpoint       string

@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/lomik/go-carbon/helper"
+	"github.com/lomik/stop"
 )
 
 type Option func(u *Uploader)
@@ -78,7 +78,7 @@ func Threads(t int) Option {
 
 // Uploader upload files from local directory to clickhouse
 type Uploader struct {
-	helper.Stoppable
+	stop.Struct
 	sync.Mutex
 	path               string
 	clickHouseDSN      string

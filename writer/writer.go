@@ -10,12 +10,12 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/lomik/carbon-clickhouse/receiver"
-	"github.com/lomik/go-carbon/helper"
+	"github.com/lomik/stop"
 )
 
 // Writer dumps all received data in prepared for clickhouse format
 type Writer struct {
-	helper.Stoppable
+	stop.Struct
 	sync.RWMutex
 	inputChan    chan *receiver.WriteBuffer
 	path         string
