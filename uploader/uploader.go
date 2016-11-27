@@ -87,6 +87,11 @@ func Logger(logger zap.Logger) Option {
 type Uploader struct {
 	stop.Struct
 	sync.Mutex
+	stat struct {
+		uploaded  uint32
+		errors    uint32
+		unhandled uint32
+	}
 	path               string
 	clickHouseDSN      string
 	dataTable          string
@@ -94,8 +99,6 @@ type Uploader struct {
 	treeTable          string
 	treeTimeout        time.Duration
 	treeDate           string
-	filesUploaded      uint32 // stat "files"
-	filesFailed        uint32 // stat
 	threads            int
 	inProgressCallback func(string) bool
 	queue              chan string
@@ -141,13 +144,15 @@ func (u *Uploader) Start() error {
 }
 
 func (u *Uploader) Stat(send func(metric string, value float64)) {
-	filesUploaded := atomic.LoadUint32(&u.filesUploaded)
-	atomic.AddUint32(&u.filesUploaded, -filesUploaded)
-	send("filesUploaded", float64(filesUploaded))
+	uploaded := atomic.LoadUint32(&u.stat.uploaded)
+	atomic.AddUint32(&u.stat.uploaded, -uploaded)
+	send("uploaded", float64(uploaded))
 
-	filesFailed := atomic.LoadUint32(&u.filesFailed)
-	atomic.AddUint32(&u.filesFailed, -filesFailed)
-	send("filesFailed", float64(filesFailed))
+	errors := atomic.LoadUint32(&u.stat.errors)
+	atomic.AddUint32(&u.stat.errors, -errors)
+	send("errors", float64(errors))
+
+	send("unhandled", float64(atomic.LoadUint32(&u.stat.unhandled)))
 }
 
 func uploadData(chUrl string, table string, timeout time.Duration, data io.Reader) error {
@@ -158,7 +163,7 @@ func uploadData(chUrl string, table string, timeout time.Duration, data io.Reade
 
 	q := p.Query()
 
-	q.Set("query", fmt.Sprintf("INSERT INTO %s FORMAT TabSeparated", table))
+	q.Set("query", fmt.Sprintf("INSERT INTO %s FORMAT RowBinary", table))
 
 	p.RawQuery = q.Encode()
 	queryUrl := p.String()
@@ -192,13 +197,13 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 
 	defer func() {
 		if err != nil {
-			atomic.AddUint32(&u.filesFailed, 1)
+			atomic.AddUint32(&u.stat.errors, 1)
 			logger.Error("upload failed",
 				zap.Error(err),
 				zap.String("time", time.Now().Sub(startTime).String()),
 			)
 		} else {
-			atomic.AddUint32(&u.filesUploaded, 1)
+			atomic.AddUint32(&u.stat.uploaded, 1)
 			logger.Info("upload success",
 				zap.String("time", time.Now().Sub(startTime).String()),
 			)
@@ -357,6 +362,8 @@ func (u *Uploader) watch(exit chan struct{}) {
 
 		files = append(files, path.Join(u.path, f.Name()))
 	}
+
+	atomic.StoreUint32(&u.stat.unhandled, uint32(len(files)))
 
 	if len(files) == 0 {
 		return
