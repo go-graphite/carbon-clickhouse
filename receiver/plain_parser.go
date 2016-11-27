@@ -115,26 +115,11 @@ MainLoop:
 		}
 
 		// write result to buffer for clickhouse
-		// Path
-		wb.Used += binary.PutUvarint(wb.Body[wb.Used:], uint64(len(name)))
-		copy(wb.Body[wb.Used:], name)
-		wb.Used += len(name)
-
-		// Value
-		binary.LittleEndian.PutUint64(wb.Body[wb.Used:], math.Float64bits(value))
-		wb.Used += 8
-
-		// Time
-		binary.LittleEndian.PutUint32(wb.Body[wb.Used:], timestamp)
-		wb.Used += 4
-
-		// Date
-		binary.LittleEndian.PutUint16(wb.Body[wb.Used:], pp.Days(timestamp, b.Time))
-		wb.Used += 2
-
-		// Timestamp (aka Version)
-		copy(wb.Body[wb.Used:], version)
-		wb.Used += 4
+		wb.RowBinaryWriteBytes(name)
+		wb.RowBinaryWriteFloat64(value)
+		wb.RowBinaryWriteUint32(timestamp)
+		wb.RowBinaryWriteUint16(pp.Days(timestamp, b.Time))
+		wb.Write(version)
 	}
 }
 
