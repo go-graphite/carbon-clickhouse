@@ -3,16 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/lomik/carbon-clickhouse/carbon"
+	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/zapwriter"
 	"github.com/uber-go/zap"
-)
 
-import _ "net/http/pprof"
+	_ "net/http/pprof"
+)
 
 // Version of carbon-clickhouse
 const Version = "0.1"
@@ -40,13 +43,49 @@ func main() {
 	configFile := flag.String("config", "/etc/carbon-clickhouse/carbon-clickhouse.conf", "Filename of config")
 	printDefaultConfig := flag.Bool("config-print-default", false, "Print default config")
 	checkConfig := flag.Bool("check-config", false, "Check config and exit")
-
 	printVersion := flag.Bool("version", false, "Print version")
+	cat := flag.String("cat", "", "Print RowBinary file in TabSeparated format")
+	bincat := flag.String("recover", "", "Read all good records from corrupted data file. Write binary data to stdout")
 
 	flag.Parse()
 
 	if *printVersion {
 		fmt.Print(Version)
+		return
+	}
+
+	if *cat != "" {
+		reader, err := uploader.NewReader(*cat)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for {
+			metric, err := reader.ReadRecord()
+			if err != nil {
+				if err == io.EOF {
+					return
+				}
+				log.Fatal(err)
+			}
+
+			fmt.Printf("%s\t%#v\t%d\t%s\t%d\n",
+				string(metric),
+				reader.Value(),
+				reader.Timestamp(),
+				reader.DaysString(),
+				reader.Version(),
+			)
+		}
+	}
+
+	if *bincat != "" {
+		reader, err := uploader.NewReader(*bincat)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		io.Copy(os.Stdout, reader)
 		return
 	}
 

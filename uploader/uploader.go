@@ -229,6 +229,23 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	err = uploadData(u.clickHouseDSN, u.dataTable, u.dataTimeout, file)
 
 	if err != nil {
+
+		if strings.Index(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") >= 0 {
+			logger.Warn("file corrupted, try to recover")
+
+			var reader *Reader
+			reader, err = NewReader(filename)
+			if err != nil {
+				return err
+			}
+
+			// try slow read method with skip bad records
+			err = uploadData(u.clickHouseDSN, u.dataTable, u.dataTimeout, reader)
+			if err != nil {
+				return err
+			}
+		}
+
 		return err
 	}
 
