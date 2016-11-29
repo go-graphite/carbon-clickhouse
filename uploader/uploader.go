@@ -16,6 +16,8 @@ import (
 
 	"github.com/lomik/stop"
 	"github.com/uber-go/zap"
+
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 )
 
 type Option func(u *Uploader)
@@ -230,8 +232,8 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 		if strings.Index(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") >= 0 {
 			logger.Warn("file corrupted, try to recover")
 
-			var reader *Reader
-			reader, err = NewReader(filename)
+			var reader *RowBinary.Reader
+			reader, err = RowBinary.NewReader(filename)
 			if err != nil {
 				return err
 			}

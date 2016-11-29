@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"unsafe"
+
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 )
 
 // https://github.com/golang/go/issues/2632#issuecomment-66061057
@@ -13,7 +15,7 @@ func unsafeString(b []byte) string {
 }
 
 func MakeTree(filename string) (io.ReadWriter, error) {
-	reader, err := NewReader(filename)
+	reader, err := RowBinary.NewReader(filename)
 
 	if err != nil {
 		return nil, err
