@@ -40,7 +40,7 @@ func (dd *DaysFrom1970) TimestampWithNow(timestamp uint32, now uint32) uint16 {
 		d := time.Unix(int64(now), 0)
 		dd.todayStartTimestamp = uint32(time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.Local).Unix())
 		dd.todayEndTimestamp = uint32(time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 0, time.Local).Unix())
-		dd.todayDays = dd.fromTimestamp(timestamp)
+		dd.todayDays = dd.fromTimestamp(now)
 	}
 
 	return dd.Timestamp(timestamp)
