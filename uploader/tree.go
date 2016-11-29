@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"time"
 	"unsafe"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/carbon-clickhouse/helper/days1970"
 )
 
 // https://github.com/golang/go/issues/2632#issuecomment-66061057
@@ -14,13 +16,14 @@ func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func MakeTree(filename string) (io.ReadWriter, error) {
+func MakeTree(filename string, date time.Time) (io.ReadWriter, error) {
 	reader, err := RowBinary.NewReader(filename)
-
 	if err != nil {
 		return nil, err
 	}
 	defer reader.Close()
+
+	days := (&days1970.Days{}).Timestamp(uint32(date.Unix()))
 
 	treeData := bytes.NewBuffer(nil)
 
@@ -30,6 +33,8 @@ func MakeTree(filename string) (io.ReadWriter, error) {
 	var level, index int
 	// var exists bool
 	var p []byte
+
+	wb := RowBinary.GetWriteBuffer()
 
 LineLoop:
 	for {
@@ -49,7 +54,13 @@ LineLoop:
 			level++
 		}
 
+		wb.Reset()
+
 		localUniq[string(name)] = true
+		wb.WriteUint16(days)
+		wb.WriteUint32(uint32(level))
+		wb.WriteBytes(name)
+
 		fmt.Println(string(name), level)
 
 		p = name
@@ -60,11 +71,18 @@ LineLoop:
 			}
 
 			localUniq[string(p[:index+1])] = true
+			wb.WriteUint16(days)
+			wb.WriteUint32(uint32(level))
+			wb.WriteBytes(name)
+
 			fmt.Println(string(p[:index+1]), level)
 			p = p[:index]
 		}
+
+		treeData.Write(wb.Bytes()) // @TODO: error check?
 	}
 
+	wb.Release()
 	return treeData, nil
 	// 	row := strings.Split(string(line), "\t")
 	// 	metric := row[0]

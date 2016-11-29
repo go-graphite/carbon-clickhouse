@@ -91,8 +91,10 @@ func main() {
 		return
 	}
 
+	cfg := carbon.NewConfig()
+
 	if *tree != "" {
-		buf, err := uploader.MakeTree(*tree)
+		buf, err := uploader.MakeTree(*tree, cfg.ClickHouse.TreeDate)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -100,8 +102,6 @@ func main() {
 		io.Copy(os.Stdout, buf)
 		return
 	}
-
-	cfg := carbon.NewConfig()
 
 	if *printDefaultConfig {
 		if err = carbon.PrintConfig(cfg); err != nil {

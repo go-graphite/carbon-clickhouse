@@ -42,13 +42,14 @@ type commonConfig struct {
 }
 
 type clickhouseConfig struct {
-	Url         string    `toml:"url"`
-	DataTable   string    `toml:"data-table"`
-	DataTimeout *Duration `toml:"data-timeout"`
-	TreeTable   string    `toml:"tree-table"`
-	TreeDate    string    `toml:"tree-date"`
-	TreeTimeout *Duration `toml:"tree-timeout"`
-	Threads     int       `toml:"threads"`
+	Url            string    `toml:"url"`
+	DataTable      string    `toml:"data-table"`
+	DataTimeout    *Duration `toml:"data-timeout"`
+	TreeTable      string    `toml:"tree-table"`
+	TreeDateString string    `toml:"tree-date"`
+	TreeDate       time.Time `toml:"-"`
+	TreeTimeout    *Duration `toml:"tree-timeout"`
+	Threads        int       `toml:"threads"`
 }
 
 type udpConfig struct {
@@ -111,10 +112,10 @@ func NewConfig() *Config {
 			Level: "info",
 		},
 		ClickHouse: clickhouseConfig{
-			Url:       "http://localhost:8123/",
-			DataTable: "graphite",
-			TreeTable: "graphite_tree",
-			TreeDate:  "2016-11-01",
+			Url:            "http://localhost:8123/",
+			DataTable:      "graphite",
+			TreeTable:      "graphite_tree",
+			TreeDateString: "2016-11-01",
 			DataTimeout: &Duration{
 				Duration: time.Minute,
 			},
@@ -153,7 +154,7 @@ func NewConfig() *Config {
 }
 
 // PrintConfig ...
-func PrintConfig(cfg interface{}) error {
+func PrintConfig(cfg *Config) error {
 	buf := new(bytes.Buffer)
 
 	encoder := toml.NewEncoder(buf)
@@ -168,11 +169,18 @@ func PrintConfig(cfg interface{}) error {
 }
 
 // ParseConfig ...
-func ParseConfig(filename string, cfg interface{}) error {
+func ParseConfig(filename string, cfg *Config) error {
 	if filename != "" {
 		if _, err := toml.DecodeFile(filename, cfg); err != nil {
 			return err
 		}
 	}
+
+	var err error
+	cfg.ClickHouse.TreeDate, err = time.ParseInLocation("2006-01-02", cfg.ClickHouse.TreeDateString, time.Local)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -52,7 +52,7 @@ func TreeTable(t string) Option {
 	}
 }
 
-func TreeDate(t string) Option {
+func TreeDate(t time.Time) Option {
 	return func(u *Uploader) {
 		u.treeDate = t
 	}
@@ -97,7 +97,7 @@ type Uploader struct {
 	dataTimeout        time.Duration
 	treeTable          string
 	treeTimeout        time.Duration
-	treeDate           string
+	treeDate           time.Time
 	threads            int
 	inProgressCallback func(string) bool
 	queue              chan string
@@ -114,7 +114,7 @@ func New(options ...Option) *Uploader {
 		treeTable:          "graphite_tree",
 		dataTimeout:        time.Minute,
 		treeTimeout:        time.Minute,
-		treeDate:           "2016-11-01",
+		treeDate:           time.Date(2016, 11, 1, 0, 0, 0, 0, time.Local),
 		inProgressCallback: func(string) bool { return false },
 		queue:              make(chan string, 1024),
 		inQueue:            make(map[string]bool),

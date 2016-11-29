@@ -30,6 +30,10 @@ func (wb *WriteBuffer) Empty() bool {
 	return wb.Used == 0
 }
 
+func (wb *WriteBuffer) Bytes() []byte {
+	return wb.Body[:wb.Used]
+}
+
 func (wb *WriteBuffer) Release() {
 	wb.Used = 0
 	WriteBufferPool.Put(wb)
