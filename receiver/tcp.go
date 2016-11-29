@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/stop"
 	"github.com/uber-go/zap"
 )
@@ -24,7 +25,7 @@ type TCP struct {
 	listener     *net.TCPListener
 	parseThreads int
 	parseChan    chan *Buffer
-	writeChan    chan *WriteBuffer
+	writeChan    chan *RowBinary.WriteBuffer
 	logger       zap.Logger
 }
 

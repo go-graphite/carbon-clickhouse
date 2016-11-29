@@ -1,12 +1,9 @@
 package uploader
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -254,82 +251,6 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	}
 
 	// MAKE INDEX
-
-	// reopen file
-	file, err = os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	if err != nil {
-		return err
-	}
-
-	reader := bufio.NewReaderSize(file, 1024*1024)
-
-	treeData := bytes.NewBuffer(nil)
-
-	localUniq := make(map[string]bool)
-
-	var key string
-	var level int
-	var exists bool
-
-LineLoop:
-	for {
-		line, _, err := reader.ReadLine()
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		row := strings.Split(string(line), "\t")
-		metric := row[0]
-
-		if u.treeExists.Exists(metric) {
-			continue LineLoop
-		}
-
-		if _, exists = localUniq[metric]; exists {
-			continue LineLoop
-		}
-
-		offset := 0
-		for level = 1; ; level++ {
-			p := strings.IndexByte(metric[offset:], '.')
-			if p < 0 {
-				break
-			}
-			key = metric[:offset+p+1]
-
-			if !u.treeExists.Exists(key) {
-				if _, exists := localUniq[key]; !exists {
-					localUniq[key] = true
-					fmt.Fprintf(treeData, "%s\t%d\t%s\n", u.treeDate, level, key)
-				}
-			}
-
-			offset += p + 1
-		}
-
-		localUniq[metric] = true
-		fmt.Fprintf(treeData, "%s\t%d\t%s\n", u.treeDate, level, metric)
-	}
-
-	// @TODO: insert to tree data metrics
-	err = uploadData(u.clickHouseDSN, u.treeTable, u.treeTimeout, treeData)
-	if err != nil {
-		return err
-	}
-
-	// copy data from localUniq to global
-	for key, _ = range localUniq {
-		u.treeExists.Add(key)
-	}
 
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/uber-go/zap"
 )
 
@@ -16,7 +17,7 @@ type Receiver interface {
 type Option func(Receiver) error
 
 // WriteChan creates option for New contructor
-func WriteChan(ch chan *WriteBuffer) Option {
+func WriteChan(ch chan *RowBinary.WriteBuffer) Option {
 	return func(r Receiver) error {
 		if t, ok := r.(*TCP); ok {
 			t.writeChan = ch

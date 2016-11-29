@@ -46,6 +46,7 @@ func main() {
 	printVersion := flag.Bool("version", false, "Print version")
 	cat := flag.String("cat", "", "Print RowBinary file in TabSeparated format")
 	bincat := flag.String("recover", "", "Read all good records from corrupted data file. Write binary data to stdout")
+	tree := flag.String("tree", "", "Make tree from data file")
 
 	flag.Parse()
 
@@ -86,6 +87,16 @@ func main() {
 		}
 
 		io.Copy(os.Stdout, reader)
+		return
+	}
+
+	if *tree != "" {
+		buf, err := uploader.MakeTree(*tree)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		io.Copy(os.Stdout, buf)
 		return
 	}
 

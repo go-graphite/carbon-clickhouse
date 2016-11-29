@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/lomik/carbon-clickhouse/receiver"
+	"github.com/lomik/carbon-clickhouse/helper/days1970"
 )
 
 // Read all good records from unfinished RowBinary file.
@@ -21,7 +21,7 @@ type Reader struct {
 	offset int
 	size   int
 	eof    bool
-	days   receiver.DaysFrom1970
+	days   days1970.Days
 	line   [524288]byte
 }
 

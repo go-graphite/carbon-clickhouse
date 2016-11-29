@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"sync/atomic"
 	"unsafe"
+
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/carbon-clickhouse/helper/days1970"
 )
 
 // https://github.com/golang/go/issues/2632#issuecomment-66061057
@@ -45,7 +48,7 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	return p[:i1], value, uint32(tsf), nil
 }
 
-func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *WriteBuffer, days *DaysFrom1970, metricsReceived *uint32, errors *uint32) {
+func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *RowBinary.WriteBuffer, days *days1970.Days, metricsReceived *uint32, errors *uint32) {
 	offset := 0
 	metricCount := uint32(0)
 	errorCount := uint32(0)
@@ -53,7 +56,7 @@ func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *WriteBuffer, days
 	version := make([]byte, 4)
 	binary.LittleEndian.PutUint32(version, b.Time)
 
-	wb := GetWriteBuffer()
+	wb := RowBinary.GetWriteBuffer()
 
 MainLoop:
 	for offset < b.Used {
@@ -73,6 +76,8 @@ MainLoop:
 
 		// @TODO: check required buffer size, get new
 
+		// @TODO: replace ".." with "."
+
 		if err != nil {
 			errorCount++
 			// @TODO: log error
@@ -80,10 +85,10 @@ MainLoop:
 		}
 
 		// write result to buffer for clickhouse
-		wb.RowBinaryWriteBytes(name)
-		wb.RowBinaryWriteFloat64(value)
-		wb.RowBinaryWriteUint32(timestamp)
-		wb.RowBinaryWriteUint16(days.TimestampWithNow(timestamp, b.Time))
+		wb.WriteBytes(name)
+		wb.WriteFloat64(value)
+		wb.WriteUint32(timestamp)
+		wb.WriteUint16(days.TimestampWithNow(timestamp, b.Time))
 		wb.Write(version)
 		metricCount++
 	}
@@ -108,8 +113,8 @@ MainLoop:
 	}
 }
 
-func PlainParser(exit chan struct{}, in chan *Buffer, out chan *WriteBuffer, metricsReceived *uint32, errors *uint32) {
-	days := &DaysFrom1970{}
+func PlainParser(exit chan struct{}, in chan *Buffer, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
+	days := &days1970.Days{}
 
 	for {
 		select {

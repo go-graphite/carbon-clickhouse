@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/receiver"
 	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/carbon-clickhouse/writer"
@@ -23,7 +24,7 @@ type App struct {
 	TCP receiver.Receiver
 	// Pickle         receiver.Receiver
 	Collector *Collector // (!!!) Should be re-created on every change config/modules
-	writeChan chan *receiver.WriteBuffer
+	writeChan chan *RowBinary.WriteBuffer
 	exit      chan bool
 	logger    zap.Logger
 }
@@ -165,7 +166,7 @@ func (app *App) Start() (err error) {
 
 	runtime.GOMAXPROCS(conf.Common.MaxCPU)
 
-	app.writeChan = make(chan *receiver.WriteBuffer, 128)
+	app.writeChan = make(chan *RowBinary.WriteBuffer, 128)
 
 	/* WRITER start */
 	app.Writer = writer.New(

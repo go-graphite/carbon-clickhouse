@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lomik/carbon-clickhouse/receiver"
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/stop"
 	"github.com/uber-go/zap"
 )
@@ -21,14 +21,14 @@ type Writer struct {
 	stat struct {
 		writtenBytes uint32
 	}
-	inputChan    chan *receiver.WriteBuffer
+	inputChan    chan *RowBinary.WriteBuffer
 	path         string
 	fileInterval time.Duration
 	inProgress   map[string]bool // current writing files
 	logger       zap.Logger
 }
 
-func New(in chan *receiver.WriteBuffer, path string, fileInterval time.Duration, logger zap.Logger) *Writer {
+func New(in chan *RowBinary.WriteBuffer, path string, fileInterval time.Duration, logger zap.Logger) *Writer {
 	return &Writer{
 		inputChan:    in,
 		path:         path,
