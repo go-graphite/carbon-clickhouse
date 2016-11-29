@@ -253,6 +253,15 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	}
 
 	// MAKE INDEX
+	treeData, err := u.MakeTree(filename)
+	if err != nil {
+		return err
+	}
+
+	err = uploadData(u.clickHouseDSN, u.treeTable, u.treeTimeout, treeData)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

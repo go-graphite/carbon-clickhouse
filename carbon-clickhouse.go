@@ -11,7 +11,6 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/carbon"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/zapwriter"
 	"github.com/uber-go/zap"
 
@@ -47,7 +46,6 @@ func main() {
 	printVersion := flag.Bool("version", false, "Print version")
 	cat := flag.String("cat", "", "Print RowBinary file in TabSeparated format")
 	bincat := flag.String("recover", "", "Read all good records from corrupted data file. Write binary data to stdout")
-	tree := flag.String("tree", "", "Make tree from data file")
 
 	flag.Parse()
 
@@ -92,16 +90,6 @@ func main() {
 	}
 
 	cfg := carbon.NewConfig()
-
-	if *tree != "" {
-		buf, err := uploader.MakeTree(*tree, cfg.ClickHouse.TreeDate)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		io.Copy(os.Stdout, buf)
-		return
-	}
 
 	if *printDefaultConfig {
 		if err = carbon.PrintConfig(cfg); err != nil {

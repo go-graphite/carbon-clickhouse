@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"time"
 	"unsafe"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -16,14 +15,14 @@ func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func MakeTree(filename string, date time.Time) (io.ReadWriter, error) {
+func (u *Uploader) MakeTree(filename string) (io.ReadWriter, error) {
 	reader, err := RowBinary.NewReader(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer reader.Close()
 
-	days := (&days1970.Days{}).Timestamp(uint32(date.Unix()))
+	days := (&days1970.Days{}).Timestamp(uint32(u.treeDate.Unix()))
 
 	treeData := bytes.NewBuffer(nil)
 
@@ -39,7 +38,7 @@ func MakeTree(filename string, date time.Time) (io.ReadWriter, error) {
 LineLoop:
 	for {
 		name, err := reader.ReadRecord()
-		if err == io.EOF {
+		if err != nil { // io.EOF or corrupted file
 			break
 		}
 
@@ -82,49 +81,11 @@ LineLoop:
 		treeData.Write(wb.Bytes()) // @TODO: error check?
 	}
 
+	// copy data from localUniq to global
+	for key, _ := range localUniq {
+		u.treeExists.Add(key)
+	}
+
 	wb.Release()
 	return treeData, nil
-	// 	row := strings.Split(string(line), "\t")
-	// 	metric := row[0]
-
-	// 	if u.treeExists.Exists(metric) {
-	// 		continue LineLoop
-	// 	}
-
-	// 	if _, exists = localUniq[metric]; exists {
-	// 		continue LineLoop
-	// 	}
-
-	// 	offset := 0
-	// 	for level = 1; ; level++ {
-	// 		p := strings.IndexByte(metric[offset:], '.')
-	// 		if p < 0 {
-	// 			break
-	// 		}
-	// 		key = metric[:offset+p+1]
-
-	// 		if !u.treeExists.Exists(key) {
-	// 			if _, exists := localUniq[key]; !exists {
-	// 				localUniq[key] = true
-	// 				fmt.Fprintf(treeData, "%s\t%d\t%s\n", u.treeDate, level, key)
-	// 			}
-	// 		}
-
-	// 		offset += p + 1
-	// 	}
-
-	// 	localUniq[metric] = true
-	// 	fmt.Fprintf(treeData, "%s\t%d\t%s\n", u.treeDate, level, metric)
-	// }
-
-	// // @TODO: insert to tree data metrics
-	// err = uploadData(u.clickHouseDSN, u.treeTable, u.treeTimeout, treeData)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // copy data from localUniq to global
-	// for key, _ = range localUniq {
-	// 	u.treeExists.Add(key)
-	// }
 }
