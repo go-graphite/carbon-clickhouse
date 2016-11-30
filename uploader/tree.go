@@ -2,7 +2,6 @@ package uploader
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"unsafe"
 
@@ -60,7 +59,7 @@ LineLoop:
 		wb.WriteUint32(uint32(level))
 		wb.WriteBytes(name)
 
-		fmt.Println(string(name), level)
+		// fmt.Println(string(name), level)
 
 		p = name
 		for level--; level > 0; level-- {
@@ -74,7 +73,7 @@ LineLoop:
 			wb.WriteUint32(uint32(level))
 			wb.WriteBytes(name)
 
-			fmt.Println(string(p[:index+1]), level)
+			// fmt.Println(string(p[:index+1]), level)
 			p = p[:index]
 		}
 
