@@ -41,6 +41,10 @@ LineLoop:
 			break
 		}
 
+		if u.treeExists.Exists(unsafeString(name)) {
+			continue LineLoop
+		}
+
 		if localUniq[unsafeString(name)] {
 			continue LineLoop
 		}
@@ -71,7 +75,7 @@ LineLoop:
 			localUniq[string(p[:index+1])] = true
 			wb.WriteUint16(days)
 			wb.WriteUint32(uint32(level))
-			wb.WriteBytes(name)
+			wb.WriteBytes(p[:index+1])
 
 			// fmt.Println(string(p[:index+1]), level)
 			p = p[:index]
