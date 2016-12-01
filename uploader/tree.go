@@ -2,7 +2,6 @@ package uploader
 
 import (
 	"bytes"
-	"io"
 	"unsafe"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -14,7 +13,7 @@ func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func (u *Uploader) MakeTree(filename string) (io.ReadWriter, error) {
+func (u *Uploader) MakeTree(filename string) (*bytes.Buffer, error) {
 	reader, err := RowBinary.NewReader(filename)
 	if err != nil {
 		return nil, err

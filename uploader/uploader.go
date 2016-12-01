@@ -258,9 +258,11 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 		return err
 	}
 
-	err = uploadData(u.clickHouseDSN, u.treeTable, u.treeTimeout, treeData)
-	if err != nil {
-		return err
+	if treeData.Len() > 0 {
+		err = uploadData(u.clickHouseDSN, u.treeTable, u.treeTimeout, treeData)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
