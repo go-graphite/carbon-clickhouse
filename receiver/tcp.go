@@ -21,7 +21,6 @@ type TCP struct {
 		errors          uint32 // atomic
 		active          int32  // atomic
 	}
-	name         string // name for store metrics
 	listener     *net.TCPListener
 	parseThreads int
 	parseChan    chan *Buffer

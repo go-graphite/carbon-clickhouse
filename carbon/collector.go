@@ -14,6 +14,12 @@ type statModule interface {
 	Stat(send func(metric string, value float64))
 }
 
+type Point struct {
+	Metric    string
+	Value     float64
+	Timestamp uint32
+}
+
 type Collector struct {
 	stop.Struct
 	graphPrefix    string
@@ -21,6 +27,7 @@ type Collector struct {
 	endpoint       string
 	stats          []statFunc
 	logger         zap.Logger
+	data           chan *Point
 }
 
 func NewCollector(app *App) *Collector {
@@ -32,7 +39,7 @@ func NewCollector(app *App) *Collector {
 		endpoint:       app.Config.Common.MetricEndpoint,
 		stats:          make([]statFunc, 0),
 		logger:         app.logger.With(zap.String("module", "collector")),
-		// data:           make(chan *points.Points, 4096),
+		data:           make(chan *Point, 4096),
 	}
 
 	c.Start()
@@ -40,14 +47,19 @@ func NewCollector(app *App) *Collector {
 	sendCallback := func(moduleName string) func(metric string, value float64) {
 		return func(metric string, value float64) {
 			key := fmt.Sprintf("%s.%s.%s", c.graphPrefix, moduleName, metric)
+
 			c.logger.Info("stat", zap.String("metric", key), zap.Float64("value", value))
-			// select {
-			// case c.data <- points.NowPoint(key, value):
-			// 	// pass
-			// default:
-			// 	logrus.WithField("key", key).WithField("value", value).
-			// 		Warn("[stat] send queue is full. Metric dropped")
-			// }
+
+			select {
+			case c.data <- &Point{Metric: key, Value: value, Timestamp: uint32(time.Now().Unix())}:
+				// pass
+			default:
+				c.logger.Warn(
+					"send queue is full. metric dropped",
+					zap.String("metric", key),
+					zap.Float64("value", value),
+				)
+			}
 		}
 	}
 

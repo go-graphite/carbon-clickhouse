@@ -70,7 +70,6 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 
 		r := &TCP{
 			parseChan: make(chan *Buffer, 128),
-			name:      u.Scheme,
 			logger:    zap.New(zap.NullEncoder()),
 		}
 
