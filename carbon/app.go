@@ -17,12 +17,11 @@ import (
 
 type App struct {
 	sync.RWMutex
-	Config   *Config
-	Writer   *writer.Writer
-	Uploader *uploader.Uploader
-	// UDP            receiver.Receiver
-	TCP receiver.Receiver
-	// Pickle         receiver.Receiver
+	Config    *Config
+	Writer    *writer.Writer
+	Uploader  *uploader.Uploader
+	UDP       receiver.Receiver
+	TCP       receiver.Receiver
 	Collector *Collector // (!!!) Should be re-created on every change config/modules
 	writeChan chan *RowBinary.WriteBuffer
 	exit      chan bool
@@ -103,17 +102,11 @@ func (app *App) stopListeners() {
 		app.logger.Debug("finished", zap.String("module", "tcp"))
 	}
 
-	// if app.Pickle != nil {
-	// 	app.Pickle.Stop()
-	// 	app.Pickle = nil
-	// 	app.logger.Debug("[pickle] finished")
-	// }
-
-	// if app.UDP != nil {
-	// 	app.UDP.Stop()
-	// 	app.UDP = nil
-	// 	app.logger.Debug("[udp] finished")
-	// }
+	if app.UDP != nil {
+		app.UDP.Stop()
+		app.UDP = nil
+		app.logger.Debug("finished", zap.String("module", "udp"))
+	}
 }
 
 func (app *App) stopAll() {
@@ -194,21 +187,7 @@ func (app *App) Start() (err error) {
 	app.Uploader.Start()
 	/* UPLOADER end */
 
-	/* UDP start */
-	// if conf.Udp.Enabled {
-	// 	app.UDP, err = receiver.New(
-	// 		"udp://"+conf.Udp.Listen,
-	// 		receiver.OutChan(app.input),
-	// 		receiver.UDPLogIncomplete(conf.Udp.LogIncomplete),
-	// 	)
-
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// }
-	/* UDP end */
-
-	/* TCP start */
+	/* RECEIVER start */
 	if conf.Tcp.Enabled {
 		app.TCP, err = receiver.New(
 			"tcp://"+conf.Tcp.Listen,
@@ -221,21 +200,20 @@ func (app *App) Start() (err error) {
 			return
 		}
 	}
-	/* TCP end */
 
-	/* PICKLE start */
-	// if conf.Pickle.Enabled {
-	// 	app.Pickle, err = receiver.New(
-	// 		"pickle://"+conf.Pickle.Listen,
-	// 		receiver.OutChan(app.input),
-	// 		receiver.PickleMaxMessageSize(uint32(conf.Pickle.MaxMessageSize)),
-	// 	)
+	if conf.Udp.Enabled {
+		app.UDP, err = receiver.New(
+			"udp://"+conf.Udp.Listen,
+			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
+			receiver.WriteChan(app.writeChan),
+			receiver.Logger(app.logger.With(zap.String("module", "udp"))),
+		)
 
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// }
-	/* PICKLE end */
+		if err != nil {
+			return
+		}
+	}
+	/* RECEIVER end */
 
 	/* COLLECTOR start */
 	app.Collector = NewCollector(app)

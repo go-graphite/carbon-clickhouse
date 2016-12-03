@@ -81,9 +81,9 @@ func NewCollector(app *App) *Collector {
 		c.stats = append(c.stats, moduleCallback("tcp", app.TCP))
 	}
 
-	// if app.Pickle != nil {
-	// 	c.stats = append(c.stats, moduleCallback("pickle", app.Pickle))
-	// }
+	if app.UDP != nil {
+		c.stats = append(c.stats, moduleCallback("udp", app.UDP))
+	}
 
 	// collector worker
 	c.Go(func(exit chan struct{}) {

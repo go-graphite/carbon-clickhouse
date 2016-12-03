@@ -22,9 +22,9 @@ func WriteChan(ch chan *RowBinary.WriteBuffer) Option {
 		if t, ok := r.(*TCP); ok {
 			t.writeChan = ch
 		}
-		// if t, ok := r.(*UDP); ok {
-		// 	t.out = out
-		// }
+		if t, ok := r.(*UDP); ok {
+			t.writeChan = ch
+		}
 		return nil
 	}
 }
@@ -35,9 +35,9 @@ func ParseThreads(threads int) Option {
 		if t, ok := r.(*TCP); ok {
 			t.parseThreads = threads
 		}
-		// if t, ok := r.(*UDP); ok {
-		// 	t.out = out
-		// }
+		if t, ok := r.(*UDP); ok {
+			t.parseThreads = threads
+		}
 		return nil
 	}
 }
@@ -48,9 +48,9 @@ func Logger(logger zap.Logger) Option {
 		if t, ok := r.(*TCP); ok {
 			t.logger = logger
 		}
-		// if t, ok := r.(*UDP); ok {
-		// 	t.out = out
-		// }
+		if t, ok := r.(*UDP); ok {
+			t.logger = logger
+		}
 		return nil
 	}
 }
@@ -84,28 +84,27 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		return r, err
 	}
 
-	// if u.Scheme == "udp" {
-	// 	addr, err := net.ResolveUDPAddr("udp", u.Host)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
+	if u.Scheme == "udp" {
+		addr, err := net.ResolveUDPAddr("udp", u.Host)
+		if err != nil {
+			return nil, err
+		}
 
-	// 	r := &UDP{
-	// 		out:  blackhole,
-	// 		name: u.Scheme,
-	// 	}
+		r := &UDP{
+			parseChan: make(chan *Buffer, 128),
+			logger:    zap.New(zap.NullEncoder()),
+		}
 
-	// 	for _, optApply := range opts {
-	// 		optApply(r)
-	// 	}
+		for _, optApply := range opts {
+			optApply(r)
+		}
 
-	// 	err = r.Listen(addr)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
+		if err = r.Listen(addr); err != nil {
+			return nil, err
+		}
 
-	// 	return r, err
-	// }
+		return r, err
+	}
 
 	return nil, fmt.Errorf("unknown proto %#v", u.Scheme)
 }
