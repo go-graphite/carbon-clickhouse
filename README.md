@@ -51,10 +51,6 @@ Usage of carbon-clickhouse:
 
 ```toml
 [common]
-# If logfile is empty use stderr
-logfile = "/var/log/carbon-clickhouse/carbon-clickhouse.log"
-# Logging error level. Valid values: "debug", "info", "warn", "warning", "error"
-loglevel = "info"
 # Prefix for store all internal carbon-clickhouse graphs. Supported macroses: {host}
 metric-prefix = "carbon.agents.{host}"
 # Endpoint for store internal carbon metrics. Valid values: "" or "local", "tcp://host:port", "udp://host:port"
@@ -63,6 +59,12 @@ metric-endpoint = "local"
 metric-interval = "1m0s"
 # GOMAXPROCS
 max-cpu = 1
+
+[logging]
+# "stderr", "stdout" can be used as file name
+file = "/var/log/carbon-clickhouse/carbon-clickhouse.log"
+# Logging error level. Valid values: "debug", "info", "warn" "error"
+level = "info"
 
 [clickhouse]
 # Url to ClickHouse http port. 
@@ -82,25 +84,16 @@ tree-timeout = "1m0s"
 # Folder for buffering received data
 path = "/data/carbon-clickhouse/"
 # Internal queue size between receiver and writer to files
-input-buffer = 1048576
-# Rotate (and upload) file every N bytes
-chunk-bytes = 134217728
-# And every interval seconds.
+# Rotate (and upload) file interval.
 # Minimize chunk-interval for minimize lag between point receive and store
 chunk-interval = "1s"
 
 [udp]
 listen = ":2003"
 enabled = true
-log-incomplete = false
 
 [tcp]
 listen = ":2003"
-enabled = true
-
-[pickle]
-listen = ":2004"
-max-message-size = 67108864
 enabled = true
 
 [pprof]
