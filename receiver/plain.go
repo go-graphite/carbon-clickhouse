@@ -107,8 +107,6 @@ MainLoop:
 
 		// @TODO: check required buffer size, get new
 
-		// @TODO: replace ".." with "."
-
 		if err != nil {
 			errorCount++
 			// @TODO: log error
