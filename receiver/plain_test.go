@@ -46,6 +46,25 @@ func BenchmarkPlainParseBuffer(b *testing.B) {
 	}
 }
 
+func TestRemoveDoubleDot(t *testing.T) {
+	table := [](struct {
+		input    string
+		expected string
+	}){
+		{"", ""},
+		{"hello.world", "hello.world"},
+		{"hello..world", "hello.world"},
+		{"..hello..world..", ".hello.world."},
+	}
+
+	for _, p := range table {
+		v := RemoveDoubleDot([]byte(p.input))
+		if string(v) != p.expected {
+			t.Fatalf("%#v != %#v", string(v), p.expected)
+		}
+	}
+}
+
 func TestPlainParseLine(t *testing.T) {
 	table := [](struct {
 		b         string
@@ -57,6 +76,7 @@ func TestPlainParseLine(t *testing.T) {
 		{b: ""},
 		{b: "\n"},
 		{b: "metric..name 42 \n"},
+		{b: "metric..name 42"},
 		{b: "metric.name 42 a1422642189\n"},
 		{b: "metric.name 42a 1422642189\n"},
 		{b: "metric.name NaN 1422642189\n"},
