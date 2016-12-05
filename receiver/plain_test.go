@@ -35,7 +35,7 @@ func BenchmarkPlainParseBuffer(b *testing.B) {
 	b.ResetTimer()
 
 	var wb *RowBinary.WriteBuffer
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < b.N; i += 100 {
 		PlainParseBuffer(nil, buf, out, days, &c1, &c2)
 		wb = <-out
 		wb.Release()
@@ -63,7 +63,8 @@ func TestPlainParseLine(t *testing.T) {
 		{b: "metric.name 42 NaN\n"},
 		{"metric.name -42.76 1422642189\n", "metric.name", -42.76, 1422642189},
 		{"metric.name 42.15 1422642189\n", "metric.name", 42.15, 1422642189},
-		// {"metric..name 42.15 1422642189\n", "metric.name", 42.15, 1422642189},
+		{"metric..name 42.15 1422642189\n", "metric.name", 42.15, 1422642189},
+		{"metric...name 42.15 1422642189\n", "metric.name", 42.15, 1422642189},
 	}
 
 	for _, p := range table {

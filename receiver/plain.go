@@ -18,6 +18,37 @@ func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
+func HasDoubleDot(p []byte) bool {
+	for i := 1; i < len(p); i += 2 {
+		if p[i] == '.' {
+			if p[i-1] == '.' {
+				return true
+			}
+			if i+1 < len(p) && p[i+1] == '.' {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func RemoveDoubleDot(p []byte) []byte {
+	if !HasDoubleDot(p) {
+		return p
+	}
+
+	shift := 0
+	for i := 1; i < len(p); i++ {
+		if p[i] == '.' && p[i-1-shift] == '.' {
+			shift++
+		} else if shift > 0 {
+			p[i-shift] = p[i]
+		}
+	}
+
+	return p[:len(p)-shift]
+}
+
 func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
@@ -45,7 +76,7 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
 	}
 
-	return p[:i1], value, uint32(tsf), nil
+	return RemoveDoubleDot(p[:i1]), value, uint32(tsf), nil
 }
 
 func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *RowBinary.WriteBuffer, days *days1970.Days, metricsReceived *uint32, errors *uint32) {
