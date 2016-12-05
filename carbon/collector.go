@@ -93,21 +93,6 @@ func NewCollector(app *App) *Collector {
 		c.stats = append(c.stats, moduleCallback("udp", app.UDP))
 	}
 
-	// collector worker
-	c.Go(func(exit chan struct{}) {
-		ticker := time.NewTicker(c.metricInterval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-exit:
-				return
-			case <-ticker.C:
-				c.collect()
-			}
-		}
-	})
-
 	var u *url.URL
 	var err error
 
@@ -136,6 +121,21 @@ func NewCollector(app *App) *Collector {
 			c.remote(exit, u)
 		})
 	}
+
+	// collector worker
+	c.Go(func(exit chan struct{}) {
+		ticker := time.NewTicker(c.metricInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-exit:
+				return
+			case <-ticker.C:
+				c.collect()
+			}
+		}
+	})
 
 	return c
 }
