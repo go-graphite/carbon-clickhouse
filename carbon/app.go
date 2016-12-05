@@ -8,11 +8,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/uber-go/zap"
+
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/receiver"
 	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/carbon-clickhouse/writer"
-	"github.com/uber-go/zap"
 )
 
 type App struct {

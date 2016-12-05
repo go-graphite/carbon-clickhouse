@@ -12,9 +12,11 @@ var WriteBufferPool = sync.Pool{
 	},
 }
 
+const WriteBufferSize = 524288
+
 type WriteBuffer struct {
 	Used int
-	Body [524288]byte
+	Body [WriteBufferSize]byte
 }
 
 func GetWriteBuffer() *WriteBuffer {
@@ -66,4 +68,17 @@ func (wb *WriteBuffer) WriteUint64(value uint64) {
 
 func (wb *WriteBuffer) Write(p []byte) {
 	wb.Used += copy(wb.Body[wb.Used:], p)
+}
+
+func (wb *WriteBuffer) WriteGraphitePoint(name []byte, value float64, timestamp uint32, days uint16, version uint32) {
+	wb.WriteBytes(name)
+	wb.WriteFloat64(value)
+	wb.WriteUint32(timestamp)
+	wb.WriteUint16(days)
+	wb.WriteUint32(version)
+}
+
+func (wb *WriteBuffer) CanWriteGraphitePoint(metricLen int) bool {
+	// required (maxvarint{5}, name{metricLen}, value{8}, timestamp{4}, days(date){2}, version{4})
+	return (WriteBufferSize - wb.Used) > (metricLen + 23)
 }
