@@ -225,7 +225,12 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 		return nil
 	}
 
-	err = uploadData(u.clickHouseDSN, u.dataTable, u.dataTimeout, file)
+	err = uploadData(
+		u.clickHouseDSN,
+		fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.dataTable),
+		u.dataTimeout,
+		file,
+	)
 
 	if err != nil {
 
@@ -239,7 +244,12 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 			}
 
 			// try slow read method with skip bad records
-			err = uploadData(u.clickHouseDSN, u.dataTable, u.dataTimeout, reader)
+			err = uploadData(
+				u.clickHouseDSN,
+				fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.dataTable),
+				u.dataTimeout,
+				reader,
+			)
 			if err != nil {
 				return err
 			}
@@ -259,7 +269,12 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	}
 
 	if treeData.Len() > 0 {
-		err = uploadData(u.clickHouseDSN, u.treeTable, u.treeTimeout, treeData)
+		err = uploadData(
+			u.clickHouseDSN,
+			fmt.Sprintf("%s (Date, Level, Path)", u.treeTable),
+			u.treeTimeout,
+			treeData,
+		)
 		if err != nil {
 			return err
 		}
