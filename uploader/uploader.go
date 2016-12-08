@@ -1,12 +1,9 @@
 package uploader
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,10 +11,13 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/lomik/go-carbon/helper"
+	"github.com/lomik/stop"
+	"github.com/uber-go/zap"
+
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 )
 
 type Option func(u *Uploader)
@@ -52,7 +52,7 @@ func TreeTable(t string) Option {
 	}
 }
 
-func TreeDate(t string) Option {
+func TreeDate(t time.Time) Option {
 	return func(u *Uploader) {
 		u.treeDate = t
 	}
@@ -76,23 +76,34 @@ func Threads(t int) Option {
 	}
 }
 
+func Logger(logger zap.Logger) Option {
+	return func(u *Uploader) {
+		u.logger = logger
+	}
+}
+
 // Uploader upload files from local directory to clickhouse
 type Uploader struct {
-	helper.Stoppable
+	stop.Struct
 	sync.Mutex
+	stat struct {
+		uploaded  uint32
+		errors    uint32
+		unhandled uint32 // @TODO: maxUnhandled
+	}
 	path               string
 	clickHouseDSN      string
 	dataTable          string
 	dataTimeout        time.Duration
 	treeTable          string
 	treeTimeout        time.Duration
-	treeDate           string
-	filesUploaded      uint64 // stat "files"
+	treeDate           time.Time
 	threads            int
 	inProgressCallback func(string) bool
 	queue              chan string
 	inQueue            map[string]bool // current uploading files
 	treeExists         CMap            // store known keys and don't load it to clickhouse tree
+	logger             zap.Logger
 }
 
 func New(options ...Option) *Uploader {
@@ -103,12 +114,13 @@ func New(options ...Option) *Uploader {
 		treeTable:          "graphite_tree",
 		dataTimeout:        time.Minute,
 		treeTimeout:        time.Minute,
-		treeDate:           "2016-11-01",
+		treeDate:           time.Date(2016, 11, 1, 0, 0, 0, 0, time.Local),
 		inProgressCallback: func(string) bool { return false },
 		queue:              make(chan string, 1024),
 		inQueue:            make(map[string]bool),
 		threads:            1,
 		treeExists:         NewCMap(),
+		logger:             zap.New(zap.NullEncoder()),
 	}
 
 	for _, o := range options {
@@ -130,6 +142,18 @@ func (u *Uploader) Start() error {
 	})
 }
 
+func (u *Uploader) Stat(send func(metric string, value float64)) {
+	uploaded := atomic.LoadUint32(&u.stat.uploaded)
+	atomic.AddUint32(&u.stat.uploaded, -uploaded)
+	send("uploaded", float64(uploaded))
+
+	errors := atomic.LoadUint32(&u.stat.errors)
+	atomic.AddUint32(&u.stat.errors, -errors)
+	send("errors", float64(errors))
+
+	send("unhandled", float64(atomic.LoadUint32(&u.stat.unhandled)))
+}
+
 func uploadData(chUrl string, table string, timeout time.Duration, data io.Reader) error {
 	p, err := url.Parse(chUrl)
 	if err != nil {
@@ -138,7 +162,7 @@ func uploadData(chUrl string, table string, timeout time.Duration, data io.Reade
 
 	q := p.Query()
 
-	q.Set("query", fmt.Sprintf("INSERT INTO %s FORMAT TabSeparated", table))
+	q.Set("query", fmt.Sprintf("INSERT INTO %s FORMAT RowBinary", table))
 
 	p.RawQuery = q.Encode()
 	queryUrl := p.String()
@@ -164,15 +188,24 @@ func uploadData(chUrl string, table string, timeout time.Duration, data io.Reade
 	return nil
 }
 
-func (u *Uploader) upload(exit chan bool, filename string) (err error) {
+func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	startTime := time.Now()
-	logrus.Infof("[uploader] start handle %s", filename)
+
+	logger := u.logger.With(zap.String("filename", filename))
+	logger.Info("start handle")
 
 	defer func() {
 		if err != nil {
-			logrus.Errorf("[uploader] %s", err.Error())
+			atomic.AddUint32(&u.stat.errors, 1)
+			logger.Error("upload failed",
+				zap.Error(err),
+				zap.String("time", time.Now().Sub(startTime).String()),
+			)
 		} else {
-			logrus.Infof("[uploader] handle %s success, time=%s", filename, time.Now().Sub(startTime).String())
+			atomic.AddUint32(&u.stat.uploaded, 1)
+			logger.Info("upload success",
+				zap.String("time", time.Now().Sub(startTime).String()),
+			)
 		}
 	}()
 
@@ -188,13 +221,40 @@ func (u *Uploader) upload(exit chan bool, filename string) (err error) {
 	}
 
 	if fi.Size() == 0 {
-		logrus.Infof("[uploader] %s is empty", filename)
+		logger.Info("file is empty")
 		return nil
 	}
 
-	err = uploadData(u.clickHouseDSN, u.dataTable, u.dataTimeout, file)
+	err = uploadData(
+		u.clickHouseDSN,
+		fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.dataTable),
+		u.dataTimeout,
+		file,
+	)
 
 	if err != nil {
+
+		if strings.Index(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") >= 0 {
+			logger.Warn("file corrupted, try to recover")
+
+			var reader *RowBinary.Reader
+			reader, err = RowBinary.NewReader(filename)
+			if err != nil {
+				return err
+			}
+
+			// try slow read method with skip bad records
+			err = uploadData(
+				u.clickHouseDSN,
+				fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.dataTable),
+				u.dataTimeout,
+				reader,
+			)
+			if err != nil {
+				return err
+			}
+		}
+
 		return err
 	}
 
@@ -203,87 +263,27 @@ func (u *Uploader) upload(exit chan bool, filename string) (err error) {
 	}
 
 	// MAKE INDEX
-
-	// reopen file
-	file, err = os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
+	treeData, err := u.MakeTree(filename)
 	if err != nil {
 		return err
 	}
 
-	reader := bufio.NewReaderSize(file, 1024*1024)
-
-	treeData := bytes.NewBuffer(nil)
-
-	localUniq := make(map[string]bool)
-
-	var key string
-	var level int
-	var exists bool
-
-LineLoop:
-	for {
-		line, _, err := reader.ReadLine()
-		if err == io.EOF {
-			break
-		}
-
+	if treeData.Len() > 0 {
+		err = uploadData(
+			u.clickHouseDSN,
+			fmt.Sprintf("%s (Date, Level, Path)", u.treeTable),
+			u.treeTimeout,
+			treeData,
+		)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-
-		row := strings.Split(string(line), "\t")
-		metric := row[0]
-
-		if u.treeExists.Exists(metric) {
-			continue LineLoop
-		}
-
-		if _, exists = localUniq[metric]; exists {
-			continue LineLoop
-		}
-
-		offset := 0
-		for level = 1; ; level++ {
-			p := strings.IndexByte(metric[offset:], '.')
-			if p < 0 {
-				break
-			}
-			key = metric[:offset+p+1]
-
-			if !u.treeExists.Exists(key) {
-				if _, exists := localUniq[key]; !exists {
-					localUniq[key] = true
-					fmt.Fprintf(treeData, "%s\t%d\t%s\n", u.treeDate, level, key)
-				}
-			}
-
-			offset += p + 1
-		}
-
-		localUniq[metric] = true
-		fmt.Fprintf(treeData, "%s\t%d\t%s\n", u.treeDate, level, metric)
-	}
-
-	// @TODO: insert to tree data metrics
-	err = uploadData(u.clickHouseDSN, u.treeTable, u.treeTimeout, treeData)
-	if err != nil {
-		return err
-	}
-
-	// copy data from localUniq to global
-	for key, _ = range localUniq {
-		u.treeExists.Add(key)
 	}
 
 	return nil
 }
 
-func (u *Uploader) uploadWorker(exit chan bool) {
+func (u *Uploader) uploadWorker(exit chan struct{}) {
 	for {
 		select {
 		case <-exit:
@@ -293,9 +293,14 @@ func (u *Uploader) uploadWorker(exit chan bool) {
 			if err == nil {
 				err := os.Remove(filename)
 				if err != nil {
-					logrus.Errorf("[uploader] remove %s failed: %s", filename, err.Error())
+					u.logger.Error("file delete failed",
+						zap.String("filename", filename),
+						zap.Error(err),
+					)
 				} else {
-					logrus.Infof("[uploader] %s deleted", filename)
+					u.logger.Info("file deleted",
+						zap.String("filename", filename),
+					)
 				}
 			}
 			u.Lock()
@@ -305,10 +310,10 @@ func (u *Uploader) uploadWorker(exit chan bool) {
 	}
 }
 
-func (u *Uploader) watch(exit chan bool) {
+func (u *Uploader) watch(exit chan struct{}) {
 	flist, err := ioutil.ReadDir(u.path)
 	if err != nil {
-		logrus.Errorf("[uploader] %s", err.Error())
+		u.logger.Error("ReadDir failed", zap.Error(err))
 		return
 	}
 
@@ -323,6 +328,8 @@ func (u *Uploader) watch(exit chan bool) {
 
 		files = append(files, path.Join(u.path, f.Name()))
 	}
+
+	atomic.StoreUint32(&u.stat.unhandled, uint32(len(files)))
 
 	if len(files) == 0 {
 		return
@@ -353,7 +360,7 @@ func (u *Uploader) watch(exit chan bool) {
 	}
 }
 
-func (u *Uploader) watchWorker(exit chan bool) {
+func (u *Uploader) watchWorker(exit chan struct{}) {
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
 

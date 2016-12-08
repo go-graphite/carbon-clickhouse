@@ -19,3 +19,15 @@
 [submodule "vendor/github.com/sevlyar/go-daemon"]
 	path = vendor/github.com/sevlyar/go-daemon
 	url = https://github.com/sevlyar/go-daemon
+[submodule "vendor/github.com/uber-go/zap"]
+	path = vendor/github.com/uber-go/zap
+	url = https://github.com/uber-go/zap
+[submodule "vendor/github.com/lomik/zapwriter"]
+	path = vendor/github.com/lomik/zapwriter
+	url = https://github.com/lomik/zapwriter
+[submodule "vendor/github.com/lomik/stop"]
+	path = vendor/github.com/lomik/stop
+	url = https://github.com/lomik/stop
+[submodule "vendor/github.com/uber-go/atomic"]
+	path = vendor/github.com/uber-go/atomic
+	url = https://github.com/uber-go/atomic

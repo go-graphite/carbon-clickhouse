@@ -4,49 +4,46 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/uber-go/zap"
+
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/carbon-clickhouse/receiver"
 	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/carbon-clickhouse/writer"
-	"github.com/lomik/go-carbon/points"
-	"github.com/lomik/go-carbon/receiver"
 )
 
 type App struct {
 	sync.RWMutex
-	ConfigFilename string
-	Config         *Config
-	Writer         *writer.Writer
-	Uploader       *uploader.Uploader
-	UDP            receiver.Receiver
-	TCP            receiver.Receiver
-	Pickle         receiver.Receiver
-	Collector      *Collector // (!!!) Should be re-created on every change config/modules
-	input          chan *points.Points
-	exit           chan bool
+	Config    *Config
+	Writer    *writer.Writer
+	Uploader  *uploader.Uploader
+	UDP       receiver.Receiver
+	TCP       receiver.Receiver
+	Collector *Collector // (!!!) Should be re-created on every change config/modules
+	writeChan chan *RowBinary.WriteBuffer
+	exit      chan bool
+	logger    zap.Logger
 }
 
 // New App instance
-func New(configFilename string) *App {
+func New(cfg *Config, logger zap.Logger) (*App, error) {
 	app := &App{
-		ConfigFilename: configFilename,
-		Config:         NewConfig(),
-		exit:           make(chan bool),
+		exit:   make(chan bool),
+		logger: logger,
 	}
-	return app
+
+	if err := app.configure(cfg); err != nil {
+		return nil, err
+	}
+	return app, nil
 }
 
 // configure loads config from config file, schemas.conf, aggregation.conf
-func (app *App) configure() error {
-	var err error
-
-	cfg := NewConfig()
-	if err = ParseConfig(app.ConfigFilename, cfg); err != nil {
-		return err
-	}
-
+func (app *App) configure(cfg *Config) error {
 	// carbon-cache prefix
 	if hostname, err := os.Hostname(); err == nil {
 		hostname = strings.Replace(hostname, ".", "_", -1)
@@ -76,54 +73,40 @@ func (app *App) configure() error {
 	return nil
 }
 
-// ParseConfig loads config from config file, schemas.conf, aggregation.conf
-func (app *App) ParseConfig() error {
-	app.Lock()
-	defer app.Unlock()
+// // ReloadConfig reloads some settings from config
+// func (app *App) ReloadConfig() error {
+// 	app.Lock()
+// 	defer app.Unlock()
 
-	return app.configure()
-}
+// 	var err error
+// 	if err = app.configure(); err != nil {
+// 		return err
+// 	}
 
-// ReloadConfig reloads some settings from config
-func (app *App) ReloadConfig() error {
-	app.Lock()
-	defer app.Unlock()
+// 	// TODO: reload something?
 
-	var err error
-	if err = app.configure(); err != nil {
-		return err
-	}
+// 	if app.Collector != nil {
+// 		app.Collector.Stop()
+// 		app.Collector = nil
+// 	}
 
-	// TODO: reload something?
+// 	app.Collector = NewCollector(app)
 
-	if app.Collector != nil {
-		app.Collector.Stop()
-		app.Collector = nil
-	}
-
-	app.Collector = NewCollector(app)
-
-	return nil
-}
+// 	return nil
+// }
 
 // Stop all socket listeners
 func (app *App) stopListeners() {
 	if app.TCP != nil {
 		app.TCP.Stop()
 		app.TCP = nil
-		logrus.Debug("[tcp] finished")
-	}
-
-	if app.Pickle != nil {
-		app.Pickle.Stop()
-		app.Pickle = nil
-		logrus.Debug("[pickle] finished")
+		app.logger.Debug("finished", zap.String("module", "tcp"))
 	}
 
 	if app.UDP != nil {
 		app.UDP.Stop()
 		app.UDP = nil
-		logrus.Debug("[udp] finished")
+		app.logger.Debug("finished", zap.String("module", "udp"))
 	}
 }
 
@@ -133,25 +116,25 @@ func (app *App) stopAll() {
 	if app.Collector != nil {
 		app.Collector.Stop()
 		app.Collector = nil
-		logrus.Debug("[stat] finished")
+		app.logger.Debug("finished", zap.String("module", "collector"))
 	}
 
 	if app.Writer != nil {
 		app.Writer.Stop()
 		app.Writer = nil
-		logrus.Debug("[writer] finished")
+		app.logger.Debug("finished", zap.String("module", "writer"))
 	}
 
 	if app.Uploader != nil {
 		app.Uploader.Stop()
 		app.Uploader = nil
-		logrus.Debug("[uploader] finished")
+		app.logger.Debug("finished", zap.String("module", "uploader"))
 	}
 
 	if app.exit != nil {
 		close(app.exit)
 		app.exit = nil
-		logrus.Debug("[app] close(exit)")
+		app.logger.Debug("close(app.exit)", zap.String("module", "app"))
 	}
 }
 
@@ -175,14 +158,16 @@ func (app *App) Start() (err error) {
 
 	conf := app.Config
 
-	app.input = make(chan *points.Points, conf.Data.InputBuffer)
+	runtime.GOMAXPROCS(conf.Common.MaxCPU)
+
+	app.writeChan = make(chan *RowBinary.WriteBuffer)
 
 	/* WRITER start */
 	app.Writer = writer.New(
-		app.input,
+		app.writeChan,
 		conf.Data.Path,
 		conf.Data.FileInterval.Value(),
-		conf.Data.FileBytes,
+		app.logger.With(zap.String("module", "writer")),
 	)
 	app.Writer.Start()
 	/* WRITER end */
@@ -198,50 +183,38 @@ func (app *App) Start() (err error) {
 		uploader.TreeTimeout(conf.ClickHouse.TreeTimeout.Value()),
 		uploader.InProgressCallback(app.Writer.IsInProgress),
 		uploader.Threads(app.Config.ClickHouse.Threads),
+		uploader.Logger(app.logger.With(zap.String("module", "uploader"))),
 	)
 	app.Uploader.Start()
 	/* UPLOADER end */
 
-	/* UDP start */
-	if conf.Udp.Enabled {
-		app.UDP, err = receiver.New(
-			"udp://"+conf.Udp.Listen,
-			receiver.OutChan(app.input),
-			receiver.UDPLogIncomplete(conf.Udp.LogIncomplete),
-		)
-
-		if err != nil {
-			return
-		}
-	}
-	/* UDP end */
-
-	/* TCP start */
+	/* RECEIVER start */
 	if conf.Tcp.Enabled {
 		app.TCP, err = receiver.New(
 			"tcp://"+conf.Tcp.Listen,
-			receiver.OutChan(app.input),
+			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
+			receiver.WriteChan(app.writeChan),
+			receiver.Logger(app.logger.With(zap.String("module", "tcp"))),
 		)
 
 		if err != nil {
 			return
 		}
 	}
-	/* TCP end */
 
-	/* PICKLE start */
-	if conf.Pickle.Enabled {
-		app.Pickle, err = receiver.New(
-			"pickle://"+conf.Pickle.Listen,
-			receiver.OutChan(app.input),
-			receiver.PickleMaxMessageSize(uint32(conf.Pickle.MaxMessageSize)),
+	if conf.Udp.Enabled {
+		app.UDP, err = receiver.New(
+			"udp://"+conf.Udp.Listen,
+			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
+			receiver.WriteChan(app.writeChan),
+			receiver.Logger(app.logger.With(zap.String("module", "udp"))),
 		)
 
 		if err != nil {
 			return
 		}
 	}
-	/* PICKLE end */
+	/* RECEIVER end */
 
 	/* COLLECTOR start */
 	app.Collector = NewCollector(app)

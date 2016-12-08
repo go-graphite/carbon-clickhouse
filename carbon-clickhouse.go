@@ -3,20 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
-	"runtime"
-	"syscall"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/lomik/carbon-clickhouse/carbon"
-	"github.com/lomik/go-carbon/logging"
-)
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/zapwriter"
+	"github.com/uber-go/zap"
 
-import _ "net/http/pprof"
+	_ "net/http/pprof"
+)
 
 // Version of carbon-clickhouse
 const Version = "0.1"
@@ -41,11 +40,12 @@ func main() {
 
 	/* CONFIG start */
 
-	configFile := flag.String("config", "", "Filename of config")
+	configFile := flag.String("config", "/etc/carbon-clickhouse/carbon-clickhouse.conf", "Filename of config")
 	printDefaultConfig := flag.Bool("config-print-default", false, "Print default config")
 	checkConfig := flag.Bool("check-config", false, "Check config and exit")
-
 	printVersion := flag.Bool("version", false, "Print version")
+	cat := flag.String("cat", "", "Print RowBinary file in TabSeparated format")
+	bincat := flag.String("recover", "", "Read all good records from corrupted data file. Write binary data to stdout")
 
 	flag.Parse()
 
@@ -54,71 +54,115 @@ func main() {
 		return
 	}
 
+	if *cat != "" {
+		reader, err := RowBinary.NewReader(*cat)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for {
+			metric, err := reader.ReadRecord()
+			if err != nil {
+				if err == io.EOF {
+					return
+				}
+				log.Fatal(err)
+			}
+
+			fmt.Printf("%s\t%#v\t%d\t%s\t%d\n",
+				string(metric),
+				reader.Value(),
+				reader.Timestamp(),
+				reader.DaysString(),
+				reader.Version(),
+			)
+		}
+	}
+
+	if *bincat != "" {
+		reader, err := RowBinary.NewReader(*bincat)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		io.Copy(os.Stdout, reader)
+		return
+	}
+
+	cfg := carbon.NewConfig()
+
 	if *printDefaultConfig {
-		if err = carbon.PrintConfig(carbon.NewConfig()); err != nil {
+		if err = carbon.PrintConfig(cfg); err != nil {
 			log.Fatal(err)
 		}
 		return
 	}
 
-	app := carbon.New(*configFile)
-
-	if err = app.ParseConfig(); err != nil {
+	if err = carbon.ParseConfig(*configFile, cfg); err != nil {
 		log.Fatal(err)
 	}
 
-	cfg := app.Config
-
-	if err := logging.SetLevel(cfg.Common.LogLevel); err != nil {
-		log.Fatal(err)
-	}
-
-	// config parsed successfully. Exit in check-only mode
 	if *checkConfig {
+		// check before logging init
+		if _, err = carbon.New(cfg, zap.New(zap.NullEncoder())); err != nil {
+			log.Fatal(err)
+		}
 		return
 	}
 
-	if err := logging.PrepareFile(cfg.Common.LogFile, nil); err != nil {
-		logrus.Fatal(err)
+	zapOutput, err := zapwriter.New(cfg.Logging.File)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	if err := logging.SetFile(cfg.Common.LogFile); err != nil {
-		logrus.Fatal(err)
+	var logLevel zap.Level
+	if err = logLevel.UnmarshalText([]byte(cfg.Logging.Level)); err != nil {
+		log.Fatal(err)
 	}
 
-	runtime.GOMAXPROCS(cfg.Common.MaxCPU)
+	dynamicLevel := zap.DynamicLevel()
+	dynamicLevel.SetLevel(logLevel)
+
+	logger := zap.New(
+		zapwriter.NewMixedEncoder(),
+		zap.AddCaller(),
+		zap.Output(zapOutput),
+		dynamicLevel,
+	)
+
+	app, err := carbon.New(cfg, logger)
 
 	/* CONFIG end */
 
 	// pprof
-	if cfg.Pprof.Enabled {
-		_, err = httpServe(cfg.Pprof.Listen)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-	}
+	// if cfg.Pprof.Enabled {
+	// 	_, err = httpServe(cfg.Pprof.Listen)
+	// 	if err != nil {
+	// 		logrus.Fatal(err)
+	// 	}
+	// }
 
 	if err = app.Start(); err != nil {
-		logrus.Fatal(err)
+		logger.Fatal("app start failed", zap.Error(err))
 	} else {
-		logrus.Info("started")
+		logger.Info("app started")
 	}
 
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGHUP)
-		for {
-			<-c
-			logrus.Info("HUP received. Reload config")
-			if err := app.ReloadConfig(); err != nil {
-				logrus.Errorf("Config reload failed: %s", err.Error())
-			} else {
-				logrus.Info("Config successfully reloaded")
-			}
-		}
-	}()
+	// go func() {
+	// 	c := make(chan os.Signal, 1)
+	// 	signal.Notify(c, syscall.SIGHUP)
+	// 	for {
+	// 		<-c
+	// 		logrus.Info("HUP received. Reload config")
+	// 		if err := app.ReloadConfig(); err != nil {
+	// 			logrus.Errorf("Config reload failed: %s", err.Error())
+	// 		} else {
+	// 			logrus.Info("Config successfully reloaded")
+	// 		}
+	// 	}
+	// }()
 
 	app.Loop()
 
-	logrus.Info("stopped")
+	logger.Info("app stopped")
 }
