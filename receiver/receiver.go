@@ -69,7 +69,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &TCP{
-			parseChan: make(chan *Buffer, 128),
+			parseChan: make(chan *Buffer),
 			logger:    zap.New(zap.NullEncoder()),
 		}
 
@@ -91,7 +91,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &UDP{
-			parseChan: make(chan *Buffer, 128),
+			parseChan: make(chan *Buffer),
 			logger:    zap.New(zap.NullEncoder()),
 		}
 

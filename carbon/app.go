@@ -160,7 +160,7 @@ func (app *App) Start() (err error) {
 
 	runtime.GOMAXPROCS(conf.Common.MaxCPU)
 
-	app.writeChan = make(chan *RowBinary.WriteBuffer, 128)
+	app.writeChan = make(chan *RowBinary.WriteBuffer)
 
 	/* WRITER start */
 	app.Writer = writer.New(
