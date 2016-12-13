@@ -135,12 +135,12 @@ func main() {
 	/* CONFIG end */
 
 	// pprof
-	// if cfg.Pprof.Enabled {
-	// 	_, err = httpServe(cfg.Pprof.Listen)
-	// 	if err != nil {
-	// 		logrus.Fatal(err)
-	// 	}
-	// }
+	if cfg.Pprof.Enabled {
+		_, err = httpServe(cfg.Pprof.Listen)
+		if err != nil {
+			logger.Fatal("pprof listen failed", zap.Error(err))
+		}
+	}
 
 	if err = app.Start(); err != nil {
 		logger.Fatal("app start failed", zap.Error(err))
