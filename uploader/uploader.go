@@ -263,22 +263,24 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	}
 
 	// MAKE INDEX
-	treeData, err := u.MakeTree(filename)
+	tree, err := u.MakeTree(filename)
 	if err != nil {
 		return err
 	}
 
-	if treeData.Len() > 0 {
+	if tree.data.Len() > 0 {
 		err = uploadData(
 			u.clickHouseDSN,
-			fmt.Sprintf("%s (Date, Level, Path)", u.treeTable),
+			fmt.Sprintf("%s (Date, Level, Path, Version)", u.treeTable),
 			u.treeTimeout,
-			treeData,
+			tree.data,
 		)
 		if err != nil {
 			return err
 		}
 	}
+
+	tree.Success()
 
 	return nil
 }

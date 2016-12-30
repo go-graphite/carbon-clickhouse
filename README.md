@@ -29,10 +29,12 @@ CREATE TABLE graphite (
  
 -- optional table for faster metric search
 CREATE TABLE graphite_tree (
-  Date Date,  
-  Level UInt32,  
-  Path String
-) ENGINE = ReplacingMergeTree(Date, (Level, Path), 8192);
+  Date Date,
+  Level UInt32,
+  Path String,
+  Deleted UInt8,
+  Version UInt32
+) ENGINE = ReplacingMergeTree(Date, (Level, Path), 8192, Version);
 ```
 
 [GraphiteMergeTree documentation](https://github.com/yandex/ClickHouse/blob/master/dbms/include/DB/DataStreams/GraphiteRollupSortedBlockInputStream.h)

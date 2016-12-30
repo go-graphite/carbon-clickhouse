@@ -2,6 +2,7 @@ package uploader
 
 import (
 	"bytes"
+	"time"
 	"unsafe"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -13,7 +14,20 @@ func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func (u *Uploader) MakeTree(filename string) (*bytes.Buffer, error) {
+type Tree struct {
+	data     *bytes.Buffer
+	uniq     map[string]bool
+	uploader *Uploader
+}
+
+func (tree *Tree) Success() {
+	// copy data from local uniq to global
+	for key, _ := range tree.uniq {
+		tree.uploader.treeExists.Add(key)
+	}
+}
+
+func (u *Uploader) MakeTree(filename string) (*Tree, error) {
 	reader, err := RowBinary.NewReader(filename)
 	if err != nil {
 		return nil, err
@@ -21,10 +35,13 @@ func (u *Uploader) MakeTree(filename string) (*bytes.Buffer, error) {
 	defer reader.Close()
 
 	days := (&days1970.Days{}).Timestamp(uint32(u.treeDate.Unix()))
+	version := uint32(time.Now().Unix())
 
-	treeData := bytes.NewBuffer(nil)
-
-	localUniq := make(map[string]bool)
+	tree := &Tree{
+		data:     bytes.NewBuffer(nil),
+		uniq:     make(map[string]bool),
+		uploader: u,
+	}
 
 	// var key string
 	var level, index int
@@ -44,7 +61,7 @@ LineLoop:
 			continue LineLoop
 		}
 
-		if localUniq[unsafeString(name)] {
+		if tree.uniq[unsafeString(name)] {
 			continue LineLoop
 		}
 
@@ -57,37 +74,34 @@ LineLoop:
 
 		wb.Reset()
 
-		localUniq[string(name)] = true
+		tree.uniq[string(name)] = true
 		wb.WriteUint16(days)
 		wb.WriteUint32(uint32(level))
 		wb.WriteBytes(name)
+		wb.WriteUint32(version)
 
 		// fmt.Println(string(name), level)
 
 		p = name
 		for level--; level > 0; level-- {
 			index = bytes.LastIndexByte(p, '.')
-			if localUniq[unsafeString(p[:index+1])] {
+			if tree.uniq[unsafeString(p[:index+1])] {
 				break
 			}
 
-			localUniq[string(p[:index+1])] = true
+			tree.uniq[string(p[:index+1])] = true
 			wb.WriteUint16(days)
 			wb.WriteUint32(uint32(level))
 			wb.WriteBytes(p[:index+1])
+			wb.WriteUint32(version)
 
 			// fmt.Println(string(p[:index+1]), level)
 			p = p[:index]
 		}
 
-		treeData.Write(wb.Bytes()) // @TODO: error check?
-	}
-
-	// copy data from localUniq to global
-	for key, _ := range localUniq {
-		u.treeExists.Add(key)
+		tree.data.Write(wb.Bytes()) // @TODO: error check?
 	}
 
 	wb.Release()
-	return treeData, nil
+	return tree, nil
 }
