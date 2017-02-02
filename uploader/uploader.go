@@ -152,6 +152,12 @@ func (u *Uploader) Stat(send func(metric string, value float64)) {
 	send("errors", float64(errors))
 
 	send("unhandled", float64(atomic.LoadUint32(&u.stat.unhandled)))
+
+	send("treeExistsCacheSize", float64(u.treeExists.Count()))
+}
+
+func (u *Uploader) ClearTreeExistsCache() {
+	u.treeExists.Clear()
 }
 
 func uploadData(chUrl string, table string, timeout time.Duration, data io.Reader) error {

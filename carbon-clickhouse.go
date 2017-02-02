@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/lomik/carbon-clickhouse/carbon"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -148,19 +150,16 @@ func main() {
 		logger.Info("app started")
 	}
 
-	// go func() {
-	// 	c := make(chan os.Signal, 1)
-	// 	signal.Notify(c, syscall.SIGHUP)
-	// 	for {
-	// 		<-c
-	// 		logrus.Info("HUP received. Reload config")
-	// 		if err := app.ReloadConfig(); err != nil {
-	// 			logrus.Errorf("Config reload failed: %s", err.Error())
-	// 		} else {
-	// 			logrus.Info("Config successfully reloaded")
-	// 		}
-	// 	}
-	// }()
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGUSR1)
+
+		for {
+			<-c
+			logger.Info("USR1 received. Clear tree cache")
+			app.ClearTreeExistsCache()
+		}
+	}()
 
 	app.Loop()
 

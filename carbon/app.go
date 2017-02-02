@@ -223,6 +223,17 @@ func (app *App) Start() (err error) {
 	return
 }
 
+// ClearTreeExistsCache in Uploader
+func (app *App) ClearTreeExistsCache() {
+	app.Lock()
+	up := app.Uploader
+	app.Unlock()
+
+	if up != nil {
+		go up.ClearTreeExistsCache()
+	}
+}
+
 // Loop ...
 func (app *App) Loop() {
 	app.RLock()

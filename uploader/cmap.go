@@ -47,6 +47,17 @@ func (m CMap) Count() int {
 	return count
 }
 
+func (m CMap) Clear() int {
+	count := 0
+	for i := 0; i < shardCount; i++ {
+		shard := m[i]
+		shard.Lock()
+		shard.items = make(map[string]bool)
+		shard.Unlock()
+	}
+	return count
+}
+
 // Returns shard under given key
 func (m CMap) GetShard(key string) *CMapShard {
 	// @TODO: remove type casts
