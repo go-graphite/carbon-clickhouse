@@ -65,6 +65,9 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	if p[i3-1] == '\n' {
 		i3--
 	}
+	if p[i3-1] == '\r' {
+		i3--
+	}
 
 	value, err := strconv.ParseFloat(unsafeString(p[i1+1:i2]), 64)
 	if err != nil || math.IsNaN(value) {
