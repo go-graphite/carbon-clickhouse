@@ -10,7 +10,7 @@ import (
 	"flag"
 )
 
-func body(hosts int, plugins int, values int, hostFactor int)([]([]byte)) {
+func body(hosts int, plugins int, values int, hostStart int)([]([]byte)) {
 
 	out := make([][]byte, hosts*plugins)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -23,7 +23,7 @@ func body(hosts int, plugins int, values int, hostFactor int)([]([]byte)) {
 					[]byte(
 						fmt.Sprintf(
 							"loadtest.host%d.plugin%d.stuff%d.value %f %d\n",
-							(host*hostFactor),
+							(host + hostStart),
 							plugin,
 							value,
 							r.NormFloat64(),
@@ -53,8 +53,9 @@ func main() {
 	plugins := 50
 	values := 10
 	printEvery := 1
+	hostStart := (*hostFactor - 1) * hosts
 	for {
-		body := body(hosts, plugins, values, *hostFactor)
+		body := body(hosts, plugins, values, hostStart)
 		for i :=0; i < len(body); i++ {
 			if _, err := conn.Write(body[i]); err != nil {
 				log.Fatal(err)
