@@ -85,7 +85,6 @@ tree-timeout = "1m0s"
 [data]
 # Folder for buffering received data
 path = "/data/carbon-clickhouse/"
-# Internal queue size between receiver and writer to files
 # Rotate (and upload) file interval.
 # Minimize chunk-interval for minimize lag between point receive and store
 chunk-interval = "1s"
