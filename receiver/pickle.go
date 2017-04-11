@@ -1,10 +1,8 @@
 package receiver
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -99,88 +97,12 @@ func (rcv *Pickle) HandleConnection(conn net.Conn) {
 			return
 		}
 
-		msgs, err := points.ParsePickle(data)
-
-		if err != nil {
-			atomic.AddUint32(&rcv.stat.errors, 1)
-			rcv.logger.Info("can't unpickle message",
-				zap.String("data", string(data)),
-				zap.Error(err),
-			)
-			return
-		}
-
-		for _, msg := range msgs {
-			atomic.AddUint32(&rcv.stat.metricsReceived, uint32(len(msg.Data)))
-			rcv.out(msg)
-		}
-	}
-}
-
-func (rcv *Pickle) HandleConnection(conn net.Conn) {
-	atomic.AddInt32(&rcv.stat.active, 1)
-	defer atomic.AddInt32(&rcv.stat.active, -1)
-
-	defer conn.Close()
-
-	logger := rcv.logger.With(zap.String("peer", conn.RemoteAddr().String()))
-
-	finished := make(chan bool)
-	defer close(finished)
-
-	rcv.Go(func(exit chan struct{}) {
-		select {
-		case <-finished:
-			return
-		case <-exit:
-			conn.Close()
-			return
-		}
-	})
-
-	buffer := GetBuffer()
-
-	var n int
-	var err error
-
-	for {
-		conn.SetReadDeadline(time.Now().Add(2 * time.Minute))
-		n, err = conn.Read(buffer.Body[buffer.Used:])
-		conn.SetDeadline(time.Time{})
-		buffer.Used += n
-		buffer.Time = uint32(time.Now().Unix())
-
-		if err != nil {
-			if err == io.EOF {
-				if buffer.Used > 0 {
-					logger.Warn("unfinished line", zap.String("line", string(buffer.Body[:buffer.Used])))
-				}
-			} else {
-				atomic.AddUint32(&rcv.stat.errors, 1)
-				logger.Error("read failed", zap.Error(err))
-			}
-			break
-		}
-
-		chunkSize := bytes.LastIndexByte(buffer.Body[:buffer.Used], '\n') + 1
-
-		if chunkSize > 0 {
-			newBuffer := GetBuffer()
-
-			if chunkSize < buffer.Used { // has unfinished data
-				copy(newBuffer.Body[:], buffer.Body[chunkSize:buffer.Used])
-				newBuffer.Used = buffer.Used - chunkSize
-				buffer.Used = chunkSize
-			}
-
-			rcv.parseChan <- buffer
-			buffer = newBuffer
-		}
+		rcv.parseChan <- data
 	}
 }
 
 // Listen bind port. Receive messages and send to out channel
-func (rcv *TCP) Listen(addr *net.TCPAddr) error {
+func (rcv *Pickle) Listen(addr *net.TCPAddr) error {
 	return rcv.StartFunc(func() error {
 
 		tcpListener, err := net.ListenTCP("tcp", addr)
@@ -218,7 +140,7 @@ func (rcv *TCP) Listen(addr *net.TCPAddr) error {
 
 		for i := 0; i < rcv.parseThreads; i++ {
 			rcv.Go(func(exit chan struct{}) {
-				PlainParser(
+				PickleParser(
 					exit,
 					rcv.parseChan,
 					rcv.writeChan,
