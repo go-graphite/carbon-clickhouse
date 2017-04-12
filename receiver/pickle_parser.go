@@ -104,7 +104,7 @@ func asFloat64(value interface{}) (float64, bool) {
 }
 
 func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBinary.WriteBuffer, days *days1970.Days, metricsReceived *uint32, errors *uint32) {
-	d := ogórek.NewDecoder(bytes.NewBuffer(b))
+	d := ogórek.NewDecoder(bytes.NewReader(b))
 
 	// metricCount := uint32(0)
 	wb := RowBinary.GetWriteBuffer()
