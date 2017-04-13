@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/framing"
+	"github.com/lomik/graphite-pickle/framing"
 	"github.com/lomik/stop"
 	"github.com/uber-go/zap"
 )

@@ -31,3 +31,9 @@
 [submodule "vendor/github.com/uber-go/atomic"]
 	path = vendor/github.com/uber-go/atomic
 	url = https://github.com/uber-go/atomic
+[submodule "vendor/github.com/lomik/graphite-pickle"]
+	path = vendor/github.com/lomik/graphite-pickle
+	url = https://github.com/lomik/graphite-pickle
+[submodule "vendor/github.com/lomik/og-rek"]
+	path = vendor/github.com/lomik/og-rek
+	url = https://github.com/lomik/og-rek
