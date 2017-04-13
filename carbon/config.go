@@ -63,6 +63,11 @@ type tcpConfig struct {
 	Enabled bool   `toml:"enabled"`
 }
 
+type pickleConfig struct {
+	Listen  string `toml:"listen"`
+	Enabled bool   `toml:"enabled"`
+}
+
 type pprofConfig struct {
 	Listen  string `toml:"listen"`
 	Enabled bool   `toml:"enabled"`
@@ -86,6 +91,7 @@ type Config struct {
 	Data       dataConfig       `toml:"data"`
 	Udp        udpConfig        `toml:"udp"`
 	Tcp        tcpConfig        `toml:"tcp"`
+	Pickle     pickleConfig     `toml:"pickle"`
 	Pprof      pprofConfig      `toml:"pprof"`
 }
 
@@ -130,6 +136,10 @@ func NewConfig() *Config {
 		},
 		Tcp: tcpConfig{
 			Listen:  ":2003",
+			Enabled: true,
+		},
+		Pickle: pickleConfig{
+			Listen:  ":2004",
 			Enabled: true,
 		},
 		Pprof: pprofConfig{

@@ -22,6 +22,9 @@ func WriteChan(ch chan *RowBinary.WriteBuffer) Option {
 		if t, ok := r.(*TCP); ok {
 			t.writeChan = ch
 		}
+		if t, ok := r.(*Pickle); ok {
+			t.writeChan = ch
+		}
 		if t, ok := r.(*UDP); ok {
 			t.writeChan = ch
 		}
@@ -35,6 +38,9 @@ func ParseThreads(threads int) Option {
 		if t, ok := r.(*TCP); ok {
 			t.parseThreads = threads
 		}
+		if t, ok := r.(*Pickle); ok {
+			t.parseThreads = threads
+		}
 		if t, ok := r.(*UDP); ok {
 			t.parseThreads = threads
 		}
@@ -46,6 +52,9 @@ func ParseThreads(threads int) Option {
 func Logger(logger zap.Logger) Option {
 	return func(r Receiver) error {
 		if t, ok := r.(*TCP); ok {
+			t.logger = logger
+		}
+		if t, ok := r.(*Pickle); ok {
 			t.logger = logger
 		}
 		if t, ok := r.(*UDP); ok {
@@ -70,6 +79,28 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 
 		r := &TCP{
 			parseChan: make(chan *Buffer),
+			logger:    zap.New(zap.NullEncoder()),
+		}
+
+		for _, optApply := range opts {
+			optApply(r)
+		}
+
+		if err = r.Listen(addr); err != nil {
+			return nil, err
+		}
+
+		return r, err
+	}
+
+	if u.Scheme == "pickle" {
+		addr, err := net.ResolveTCPAddr("tcp", u.Host)
+		if err != nil {
+			return nil, err
+		}
+
+		r := &Pickle{
+			parseChan: make(chan []byte),
 			logger:    zap.New(zap.NullEncoder()),
 		}
 
