@@ -23,6 +23,7 @@ type App struct {
 	Uploader  *uploader.Uploader
 	UDP       receiver.Receiver
 	TCP       receiver.Receiver
+	Pickle    receiver.Receiver
 	Collector *Collector // (!!!) Should be re-created on every change config/modules
 	writeChan chan *RowBinary.WriteBuffer
 	exit      chan bool
@@ -101,6 +102,12 @@ func (app *App) stopListeners() {
 		app.TCP.Stop()
 		app.TCP = nil
 		app.logger.Debug("finished", zap.String("module", "tcp"))
+	}
+
+	if app.Pickle != nil {
+		app.Pickle.Stop()
+		app.Pickle = nil
+		app.logger.Debug("finished", zap.String("module", "pickle"))
 	}
 
 	if app.UDP != nil {
@@ -208,6 +215,19 @@ func (app *App) Start() (err error) {
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
 			receiver.Logger(app.logger.With(zap.String("module", "udp"))),
+		)
+
+		if err != nil {
+			return
+		}
+	}
+
+	if conf.Pickle.Enabled {
+		app.Pickle, err = receiver.New(
+			"pickle://"+conf.Pickle.Listen,
+			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
+			receiver.WriteChan(app.writeChan),
+			receiver.Logger(app.logger.With(zap.String("module", "pickle"))),
 		)
 
 		if err != nil {

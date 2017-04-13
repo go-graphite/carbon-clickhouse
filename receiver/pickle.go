@@ -3,6 +3,7 @@ package receiver
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -92,8 +93,10 @@ func (rcv *Pickle) HandleConnection(conn net.Conn) {
 			rcv.logger.Warn("bad message size")
 			return
 		} else if err != nil {
-			atomic.AddUint32(&rcv.stat.errors, 1)
-			rcv.logger.Warn("can't read message body", zap.Error(err))
+			if err != io.EOF {
+				atomic.AddUint32(&rcv.stat.errors, 1)
+				rcv.logger.Warn("can't read message body", zap.Error(err))
+			}
 			return
 		}
 
