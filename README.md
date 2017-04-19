@@ -97,6 +97,10 @@ enabled = true
 listen = ":2003"
 enabled = true
 
+[pickle]
+listen = ":2004"
+enabled = true
+
 [pprof]
 listen = "localhost:7007"
 enabled = false
