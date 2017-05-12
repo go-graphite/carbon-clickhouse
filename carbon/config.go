@@ -42,8 +42,10 @@ type commonConfig struct {
 }
 
 type clickhouseConfig struct {
-	Url            string    `toml:"url"`
-	DataTable      string    `toml:"data-table"`
+	Url        string   `toml:"url"`
+	DataTable  string   `toml:"data-table"`
+	DataTables []string `toml:"data-tables"`
+
 	DataTimeout    *Duration `toml:"data-timeout"`
 	TreeTable      string    `toml:"tree-table"`
 	TreeDateString string    `toml:"tree-date"`
@@ -113,6 +115,7 @@ func NewConfig() *Config {
 		ClickHouse: clickhouseConfig{
 			Url:            "http://localhost:8123/",
 			DataTable:      "graphite",
+			DataTables:     []string{},
 			TreeTable:      "graphite_tree",
 			TreeDateString: "2016-11-01",
 			DataTimeout: &Duration{

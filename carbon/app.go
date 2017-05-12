@@ -180,10 +180,28 @@ func (app *App) Start() (err error) {
 	/* WRITER end */
 
 	/* UPLOADER start */
+	dataTables := conf.ClickHouse.DataTables
+	if dataTables == nil {
+		dataTables = make([]string, 0)
+	}
+
+	if conf.ClickHouse.DataTable != "" {
+		exists := false
+		for i := 0; i < len(dataTables); i++ {
+			if dataTables[i] == conf.ClickHouse.DataTable {
+				exists = true
+			}
+		}
+
+		if !exists {
+			dataTables = append(dataTables, conf.ClickHouse.DataTable)
+		}
+	}
+
 	app.Uploader = uploader.New(
 		uploader.Path(conf.Data.Path),
 		uploader.ClickHouse(conf.ClickHouse.Url),
-		uploader.DataTable(conf.ClickHouse.DataTable),
+		uploader.DataTables(conf.ClickHouse.DataTables),
 		uploader.DataTimeout(conf.ClickHouse.DataTimeout.Value()),
 		uploader.TreeTable(conf.ClickHouse.TreeTable),
 		uploader.TreeDate(conf.ClickHouse.TreeDate),
