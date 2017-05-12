@@ -34,12 +34,6 @@ func ClickHouse(dsn string) Option {
 	}
 }
 
-func DataTable(t string) Option {
-	return func(u *Uploader) {
-		u.dataTable = t
-	}
-}
-
 func DataTables(t []string) Option {
 	return func(u *Uploader) {
 		u.dataTables = t
@@ -99,7 +93,6 @@ type Uploader struct {
 	}
 	path               string
 	clickHouseDSN      string
-	dataTable          string
 	dataTables         []string
 	dataTimeout        time.Duration
 	treeTable          string
@@ -117,9 +110,8 @@ func New(options ...Option) *Uploader {
 
 	u := &Uploader{
 		path:               "/data/carbon-clickhouse/",
-		dataTable:          "graphite",
 		dataTables:         []string{},
-		treeTable:          "graphite_tree",
+		treeTable:          "",
 		dataTimeout:        time.Minute,
 		treeTimeout:        time.Minute,
 		treeDate:           time.Date(2016, 11, 1, 0, 0, 0, 0, time.Local),
@@ -201,6 +193,57 @@ func uploadData(chUrl string, table string, timeout time.Duration, data io.Reade
 	return nil
 }
 
+func (u *Uploader) uploadDataTable(filename string, tablename string) error {
+	logger := u.logger.With(zap.String("filename", filename))
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	fi, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	if fi.Size() == 0 {
+		logger.Info("file is empty")
+		return nil
+	}
+	err = uploadData(
+		u.clickHouseDSN,
+		fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", tablename),
+		u.dataTimeout,
+		file,
+	)
+
+	if err != nil {
+		if strings.Index(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") >= 0 {
+			logger.Warn("file corrupted, try to recover")
+
+			var reader *RowBinary.Reader
+			reader, err = RowBinary.NewReader(filename)
+			if err != nil {
+				return err
+			}
+
+			// try slow read method with skip bad records
+			err = uploadData(
+				u.clickHouseDSN,
+				fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", tablename),
+				u.dataTimeout,
+				reader,
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return err
+}
+
 func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	startTime := time.Now()
 
@@ -221,99 +264,10 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 			)
 		}
 	}()
-	if len(u.dataTables) == 0 {
-		file, err := os.Open(filename)
+
+	for _, tablename := range u.dataTables {
+		err = u.uploadDataTable(filename, tablename)
 		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		fi, err := file.Stat()
-		if err != nil {
-			return err
-		}
-
-		if fi.Size() == 0 {
-			logger.Info("file is empty")
-			return nil
-		}
-		err = uploadData(
-			u.clickHouseDSN,
-			fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.dataTable),
-			u.dataTimeout,
-			file,
-		)
-
-		if err != nil {
-
-			if strings.Index(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") >= 0 {
-				logger.Warn("file corrupted, try to recover")
-
-				var reader *RowBinary.Reader
-				reader, err = RowBinary.NewReader(filename)
-				if err != nil {
-					return err
-				}
-
-				// try slow read method with skip bad records
-				err = uploadData(
-					u.clickHouseDSN,
-					fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.dataTable),
-					u.dataTimeout,
-					reader,
-				)
-				if err != nil {
-					return err
-				}
-			}
-			return err
-		}
-	}
-	for _, dt := range u.dataTables {
-		file, err := os.Open(filename)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		fi, err := file.Stat()
-		if err != nil {
-			return err
-		}
-
-		if fi.Size() == 0 {
-			logger.Info("file is empty")
-			return nil
-		}
-		err = uploadData(
-			u.clickHouseDSN,
-			fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", dt),
-			u.dataTimeout,
-			file,
-		)
-
-		if err != nil {
-
-			if strings.Index(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") >= 0 {
-				logger.Warn("file corrupted, try to recover")
-
-				var reader *RowBinary.Reader
-				reader, err = RowBinary.NewReader(filename)
-				if err != nil {
-					return err
-				}
-
-				// try slow read method with skip bad records
-				err = uploadData(
-					u.clickHouseDSN,
-					fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", dt),
-					u.dataTimeout,
-					reader,
-				)
-				if err != nil {
-					return err
-				}
-			}
 			return err
 		}
 	}

@@ -72,6 +72,8 @@ level = "info"
 # Url to ClickHouse http port. 
 url = "http://localhost:8123/"
 data-table = "graphite"
+# You can define additional data tables
+# data-tables = ["graphite60", "graphite3600"]
 # Set empty value if not need
 tree-table = "graphite_tree"
 # Date for records in graphite_tree table
