@@ -201,7 +201,7 @@ func (app *App) Start() (err error) {
 	app.Uploader = uploader.New(
 		uploader.Path(conf.Data.Path),
 		uploader.ClickHouse(conf.ClickHouse.Url),
-		uploader.DataTables(conf.ClickHouse.DataTables),
+		uploader.DataTables(dataTables),
 		uploader.DataTimeout(conf.ClickHouse.DataTimeout.Value()),
 		uploader.TreeTable(conf.ClickHouse.TreeTable),
 		uploader.TreeDate(conf.ClickHouse.TreeDate),
