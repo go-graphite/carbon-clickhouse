@@ -42,17 +42,17 @@ type commonConfig struct {
 }
 
 type clickhouseConfig struct {
-	Url        string   `toml:"url"`
-	DataTable  string   `toml:"data-table"`
-	DataTables []string `toml:"data-tables"`
-
-	DataTimeout      *Duration `toml:"data-timeout"`
-	TreeTable        string    `toml:"tree-table"`
-	ReverseTreeTable string    `toml:"reverse-tree-table"`
-	TreeDateString   string    `toml:"tree-date"`
-	TreeDate         time.Time `toml:"-"`
-	TreeTimeout      *Duration `toml:"tree-timeout"`
-	Threads          int       `toml:"threads"`
+	Url               string    `toml:"url"`
+	DataTable         string    `toml:"data-table"`
+	DataTables        []string  `toml:"data-tables"`
+	ReverseDataTables []string  `toml:"reverse-data-tables"`
+	DataTimeout       *Duration `toml:"data-timeout"`
+	TreeTable         string    `toml:"tree-table"`
+	ReverseTreeTable  string    `toml:"reverse-tree-table"`
+	TreeDateString    string    `toml:"tree-date"`
+	TreeDate          time.Time `toml:"-"`
+	TreeTimeout       *Duration `toml:"tree-timeout"`
+	Threads           int       `toml:"threads"`
 }
 
 type udpConfig struct {
@@ -114,11 +114,12 @@ func NewConfig() *Config {
 			Level: "info",
 		},
 		ClickHouse: clickhouseConfig{
-			Url:            "http://localhost:8123/",
-			DataTable:      "graphite",
-			DataTables:     []string{},
-			TreeTable:      "graphite_tree",
-			TreeDateString: "2016-11-01",
+			Url:               "http://localhost:8123/",
+			DataTable:         "graphite",
+			DataTables:        []string{},
+			ReverseDataTables: []string{},
+			TreeTable:         "graphite_tree",
+			TreeDateString:    "2016-11-01",
 			DataTimeout: &Duration{
 				Duration: time.Minute,
 			},

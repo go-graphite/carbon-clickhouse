@@ -198,10 +198,16 @@ func (app *App) Start() (err error) {
 		}
 	}
 
+	reverseDataTables := conf.ClickHouse.ReverseDataTables
+	if reverseDataTables == nil {
+		reverseDataTables = make([]string, 0)
+	}
+
 	app.Uploader = uploader.New(
 		uploader.Path(conf.Data.Path),
 		uploader.ClickHouse(conf.ClickHouse.Url),
 		uploader.DataTables(dataTables),
+		uploader.ReverseDataTables(reverseDataTables),
 		uploader.DataTimeout(conf.ClickHouse.DataTimeout.Value()),
 		uploader.TreeTable(conf.ClickHouse.TreeTable),
 		uploader.ReverseTreeTable(conf.ClickHouse.ReverseTreeTable),

@@ -2,6 +2,7 @@ package RowBinary
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -15,14 +16,15 @@ import (
 
 // Read all good records from unfinished RowBinary file.
 type Reader struct {
-	now    uint32
-	fd     *os.File
-	reader *bufio.Reader
-	offset int
-	size   int
-	eof    bool
-	days   days1970.Days
-	line   [524288]byte
+	now       uint32
+	fd        *os.File
+	reader    *bufio.Reader
+	offset    int
+	size      int
+	eof       bool
+	days      days1970.Days
+	line      [524288]byte
+	isReverse bool
 }
 
 func (r *Reader) Timestamp() uint32 {
@@ -45,6 +47,18 @@ func (r *Reader) Version() uint32 {
 	return binary.LittleEndian.Uint32(r.line[r.size-4 : r.size])
 }
 
+func ReverseBytes(target []byte) []byte {
+	// @TODO: check performance
+	a := bytes.Split(target, []byte{'.'})
+
+	l := len(a)
+	for i := 0; i < l/2; i++ {
+		a[i], a[l-i-1] = a[l-i-1], a[i]
+	}
+
+	return bytes.Join(a, []byte{'.'})
+}
+
 func (r *Reader) readRecord() ([]byte, error) {
 	r.size = 0
 	r.offset = 0
@@ -64,6 +78,10 @@ func (r *Reader) readRecord() ([]byte, error) {
 	}
 	if n != int(namelen) {
 		return nil, errors.New("name truncated")
+	}
+
+	if r.isReverse {
+		copy(r.line[r.size:], ReverseBytes(r.line[r.size:r.size+n]))
 	}
 
 	name := r.line[r.size : r.size+n]
@@ -142,4 +160,12 @@ func NewReader(filename string) (*Reader, error) {
 		reader: bufio.NewReader(fd),
 		now:    uint32(time.Now().Unix()),
 	}, nil
+}
+
+func NewReverseReader(filename string) (*Reader, error) {
+	reader, err := NewReader(filename)
+	if err == nil {
+		reader.isReverse = true
+	}
+	return reader, err
 }

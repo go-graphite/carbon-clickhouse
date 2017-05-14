@@ -40,6 +40,12 @@ func DataTables(t []string) Option {
 	}
 }
 
+func ReverseDataTables(t []string) Option {
+	return func(u *Uploader) {
+		u.reverseDataTables = t
+	}
+}
+
 func DataTimeout(t time.Duration) Option {
 	return func(u *Uploader) {
 		u.dataTimeout = t
@@ -100,6 +106,7 @@ type Uploader struct {
 	path               string
 	clickHouseDSN      string
 	dataTables         []string
+	reverseDataTables  []string
 	dataTimeout        time.Duration
 	treeTable          string
 	reverseTreeTable   string
@@ -118,6 +125,7 @@ func New(options ...Option) *Uploader {
 	u := &Uploader{
 		path:               "/data/carbon-clickhouse/",
 		dataTables:         []string{},
+		reverseDataTables:  []string{},
 		treeTable:          "",
 		dataTimeout:        time.Minute,
 		treeTimeout:        time.Minute,
@@ -251,6 +259,26 @@ func (u *Uploader) uploadDataTable(filename string, tablename string) error {
 	return err
 }
 
+func (u *Uploader) uploadReverseDataTable(filename string, tablename string) error {
+	reader, err := RowBinary.NewReverseReader(filename)
+	if err != nil {
+		return err
+	}
+
+	// try slow read method with skip bad records
+	err = uploadData(
+		u.clickHouseDSN,
+		fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", tablename),
+		u.dataTimeout,
+		reader,
+	)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
 func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	startTime := time.Now()
 
@@ -274,6 +302,13 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 
 	for _, tablename := range u.dataTables {
 		err = u.uploadDataTable(filename, tablename)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, tablename := range u.reverseDataTables {
+		err = u.uploadReverseDataTable(filename, tablename)
 		if err != nil {
 			return err
 		}

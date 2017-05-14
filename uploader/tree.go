@@ -46,7 +46,7 @@ func (u *Uploader) MakeTree(filename string, withReverse bool) (*Tree, error) {
 	}
 
 	// var key string
-	var level, index int
+	var level, index, l int
 	// var exists bool
 	var p []byte
 
@@ -85,7 +85,8 @@ LineLoop:
 		// fmt.Println(string(name), level)
 
 		p = name
-		for level--; level > 0; level-- {
+		l = level
+		for l--; l > 0; l-- {
 			index = bytes.LastIndexByte(p, '.')
 			if tree.uniq[unsafeString(p[:index+1])] {
 				break
@@ -93,7 +94,7 @@ LineLoop:
 
 			tree.uniq[string(p[:index+1])] = true
 			wb.WriteUint16(days)
-			wb.WriteUint32(uint32(level))
+			wb.WriteUint32(uint32(l))
 			wb.WriteBytes(p[:index+1])
 			wb.WriteUint32(version)
 
