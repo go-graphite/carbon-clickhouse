@@ -1,6 +1,7 @@
 package RowBinary
 
 import (
+	"bytes"
 	"encoding/binary"
 	"math"
 	"sync"
@@ -44,6 +45,24 @@ func (wb *WriteBuffer) Release() {
 func (wb *WriteBuffer) WriteBytes(p []byte) {
 	wb.Used += binary.PutUvarint(wb.Body[wb.Used:], uint64(len(p)))
 	wb.Used += copy(wb.Body[wb.Used:], p)
+}
+
+func (wb *WriteBuffer) WriteReversePath(p []byte) {
+	wb.Used += binary.PutUvarint(wb.Body[wb.Used:], uint64(len(p)))
+
+	var index int
+	for {
+		index = bytes.LastIndexByte(p, '.')
+		if index < 0 {
+			wb.Used += copy(wb.Body[wb.Used:], p)
+			break
+		}
+
+		wb.Used += copy(wb.Body[wb.Used:], p[index+1:])
+		wb.Body[wb.Used] = '.'
+		wb.Used++
+		p = p[:index]
+	}
 }
 
 func (wb *WriteBuffer) WriteFloat64(value float64) {

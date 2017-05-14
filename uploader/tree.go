@@ -15,9 +15,10 @@ func unsafeString(b []byte) string {
 }
 
 type Tree struct {
-	data     *bytes.Buffer
-	uniq     map[string]bool
-	uploader *Uploader
+	data        *bytes.Buffer
+	dataReverse *bytes.Buffer
+	uniq        map[string]bool
+	uploader    *Uploader
 }
 
 func (tree *Tree) Success() {
@@ -27,7 +28,7 @@ func (tree *Tree) Success() {
 	}
 }
 
-func (u *Uploader) MakeTree(filename string) (*Tree, error) {
+func (u *Uploader) MakeTree(filename string, withReverse bool) (*Tree, error) {
 	reader, err := RowBinary.NewReader(filename)
 	if err != nil {
 		return nil, err
@@ -38,9 +39,10 @@ func (u *Uploader) MakeTree(filename string) (*Tree, error) {
 	version := uint32(time.Now().Unix())
 
 	tree := &Tree{
-		data:     bytes.NewBuffer(nil),
-		uniq:     make(map[string]bool),
-		uploader: u,
+		data:        bytes.NewBuffer(nil),
+		dataReverse: bytes.NewBuffer(nil),
+		uniq:        make(map[string]bool),
+		uploader:    u,
 	}
 
 	// var key string
@@ -100,6 +102,17 @@ LineLoop:
 		}
 
 		tree.data.Write(wb.Bytes()) // @TODO: error check?
+
+		if withReverse {
+			wb.Reset()
+
+			wb.WriteUint16(days)
+			wb.WriteUint32(uint32(level))
+			wb.WriteReversePath(name)
+			wb.WriteUint32(version)
+
+			tree.dataReverse.Write(wb.Bytes()) // @TODO: error check?
+		}
 	}
 
 	wb.Release()

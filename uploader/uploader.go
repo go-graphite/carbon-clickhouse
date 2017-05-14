@@ -52,6 +52,12 @@ func TreeTable(t string) Option {
 	}
 }
 
+func ReverseTreeTable(t string) Option {
+	return func(u *Uploader) {
+		u.reverseTreeTable = t
+	}
+}
+
 func TreeDate(t time.Time) Option {
 	return func(u *Uploader) {
 		u.treeDate = t
@@ -96,6 +102,7 @@ type Uploader struct {
 	dataTables         []string
 	dataTimeout        time.Duration
 	treeTable          string
+	reverseTreeTable   string
 	treeTimeout        time.Duration
 	treeDate           time.Time
 	threads            int
@@ -277,7 +284,7 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	}
 
 	// MAKE INDEX
-	tree, err := u.MakeTree(filename)
+	tree, err := u.MakeTree(filename, u.reverseTreeTable != "")
 	if err != nil {
 		return err
 	}
@@ -288,6 +295,18 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 			fmt.Sprintf("%s (Date, Level, Path, Version)", u.treeTable),
 			u.treeTimeout,
 			tree.data,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	if u.reverseTreeTable != "" && tree.dataReverse.Len() > 0 {
+		err = uploadData(
+			u.clickHouseDSN,
+			fmt.Sprintf("%s (Date, Level, Path, Version)", u.reverseTreeTable),
+			u.treeTimeout,
+			tree.dataReverse,
 		)
 		if err != nil {
 			return err

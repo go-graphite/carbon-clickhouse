@@ -46,12 +46,13 @@ type clickhouseConfig struct {
 	DataTable  string   `toml:"data-table"`
 	DataTables []string `toml:"data-tables"`
 
-	DataTimeout    *Duration `toml:"data-timeout"`
-	TreeTable      string    `toml:"tree-table"`
-	TreeDateString string    `toml:"tree-date"`
-	TreeDate       time.Time `toml:"-"`
-	TreeTimeout    *Duration `toml:"tree-timeout"`
-	Threads        int       `toml:"threads"`
+	DataTimeout      *Duration `toml:"data-timeout"`
+	TreeTable        string    `toml:"tree-table"`
+	ReverseTreeTable string    `toml:"reverse-tree-table"`
+	TreeDateString   string    `toml:"tree-date"`
+	TreeDate         time.Time `toml:"-"`
+	TreeTimeout      *Duration `toml:"tree-timeout"`
+	Threads          int       `toml:"threads"`
 }
 
 type udpConfig struct {
