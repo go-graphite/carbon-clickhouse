@@ -14,7 +14,7 @@ import (
 	"github.com/lomik/carbon-clickhouse/carbon"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/zapwriter"
-	"github.com/uber-go/zap"
+	"go.uber.org/zap"
 
 	_ "net/http/pprof"
 )
@@ -91,48 +91,31 @@ func main() {
 		return
 	}
 
-	cfg := carbon.NewConfig()
-
 	if *printDefaultConfig {
-		if err = carbon.PrintConfig(cfg); err != nil {
+		if err = carbon.PrintDefaultConfig(); err != nil {
 			log.Fatal(err)
 		}
 		return
 	}
 
-	if err = carbon.ParseConfig(*configFile, cfg); err != nil {
+	app := carbon.New(*configFile)
+
+	if err = app.ParseConfig(); err != nil {
 		log.Fatal(err)
 	}
 
+	// config parsed successfully. Exit in check-only mode
 	if *checkConfig {
-		// check before logging init
-		if _, err = carbon.New(cfg, zap.New(zap.NullEncoder())); err != nil {
-			log.Fatal(err)
-		}
 		return
 	}
 
-	zapOutput, err := zapwriter.New(cfg.Logging.File)
-	if err != nil {
+	cfg := app.Config
+
+	if err = zapwriter.ApplyConfig(cfg.Logging); err != nil {
 		log.Fatal(err)
 	}
 
-	var logLevel zap.Level
-	if err = logLevel.UnmarshalText([]byte(cfg.Logging.Level)); err != nil {
-		log.Fatal(err)
-	}
-
-	dynamicLevel := zap.DynamicLevel()
-	dynamicLevel.SetLevel(logLevel)
-
-	logger := zap.New(
-		zapwriter.NewMixedEncoder(),
-		zap.AddCaller(),
-		zap.Output(zapOutput),
-		dynamicLevel,
-	)
-
-	app, err := carbon.New(cfg, logger)
+	mainLogger := zapwriter.Logger("main")
 
 	/* CONFIG end */
 
@@ -140,14 +123,14 @@ func main() {
 	if cfg.Pprof.Enabled {
 		_, err = httpServe(cfg.Pprof.Listen)
 		if err != nil {
-			logger.Fatal("pprof listen failed", zap.Error(err))
+			mainLogger.Fatal("pprof listen failed", zap.Error(err))
 		}
 	}
 
 	if err = app.Start(); err != nil {
-		logger.Fatal("app start failed", zap.Error(err))
+		mainLogger.Fatal("app start failed", zap.Error(err))
 	} else {
-		logger.Info("app started")
+		mainLogger.Info("app started")
 	}
 
 	go func() {
@@ -156,12 +139,12 @@ func main() {
 
 		for {
 			<-c
-			logger.Info("USR1 received. Clear tree cache")
+			mainLogger.Info("USR1 received. Clear tree cache")
 			app.ClearTreeExistsCache()
 		}
 	}()
 
 	app.Loop()
 
-	logger.Info("app stopped")
+	mainLogger.Info("app stopped")
 }

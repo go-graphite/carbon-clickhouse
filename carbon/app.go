@@ -8,43 +8,46 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/uber-go/zap"
+	"go.uber.org/zap"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/receiver"
 	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/carbon-clickhouse/writer"
+	"github.com/lomik/zapwriter"
 )
 
 type App struct {
 	sync.RWMutex
-	Config    *Config
-	Writer    *writer.Writer
-	Uploader  *uploader.Uploader
-	UDP       receiver.Receiver
-	TCP       receiver.Receiver
-	Pickle    receiver.Receiver
-	Collector *Collector // (!!!) Should be re-created on every change config/modules
-	writeChan chan *RowBinary.WriteBuffer
-	exit      chan bool
-	logger    zap.Logger
+	Config         *Config
+	Writer         *writer.Writer
+	Uploader       *uploader.Uploader
+	UDP            receiver.Receiver
+	TCP            receiver.Receiver
+	Pickle         receiver.Receiver
+	Collector      *Collector // (!!!) Should be re-created on every change config/modules
+	writeChan      chan *RowBinary.WriteBuffer
+	exit           chan bool
+	ConfigFilename string
 }
 
 // New App instance
-func New(cfg *Config, logger zap.Logger) (*App, error) {
+func New(configFilename string) *App {
 	app := &App{
-		exit:   make(chan bool),
-		logger: logger,
+		exit:           make(chan bool),
+		ConfigFilename: configFilename,
 	}
 
-	if err := app.configure(cfg); err != nil {
-		return nil, err
-	}
-	return app, nil
+	return app
 }
 
 // configure loads config from config file, schemas.conf, aggregation.conf
-func (app *App) configure(cfg *Config) error {
+func (app *App) configure() error {
+	cfg, err := ReadConfig(app.ConfigFilename)
+	if err != nil {
+		return err
+	}
+
 	// carbon-cache prefix
 	if hostname, err := os.Hostname(); err == nil {
 		hostname = strings.Replace(hostname, ".", "_", -1)
@@ -74,6 +77,14 @@ func (app *App) configure(cfg *Config) error {
 	return nil
 }
 
+// ParseConfig loads config from config file
+func (app *App) ParseConfig() error {
+	app.Lock()
+	defer app.Unlock()
+
+	return app.configure()
+}
+
 // // ReloadConfig reloads some settings from config
 // func (app *App) ReloadConfig() error {
 // 	app.Lock()
@@ -98,50 +109,54 @@ func (app *App) configure(cfg *Config) error {
 
 // Stop all socket listeners
 func (app *App) stopListeners() {
+	logger := zapwriter.Logger("app")
+
 	if app.TCP != nil {
 		app.TCP.Stop()
 		app.TCP = nil
-		app.logger.Debug("finished", zap.String("module", "tcp"))
+		logger.Debug("finished", zap.String("module", "tcp"))
 	}
 
 	if app.Pickle != nil {
 		app.Pickle.Stop()
 		app.Pickle = nil
-		app.logger.Debug("finished", zap.String("module", "pickle"))
+		logger.Debug("finished", zap.String("module", "pickle"))
 	}
 
 	if app.UDP != nil {
 		app.UDP.Stop()
 		app.UDP = nil
-		app.logger.Debug("finished", zap.String("module", "udp"))
+		logger.Debug("finished", zap.String("module", "udp"))
 	}
 }
 
 func (app *App) stopAll() {
+	logger := zapwriter.Logger("app")
+
 	app.stopListeners()
 
 	if app.Collector != nil {
 		app.Collector.Stop()
 		app.Collector = nil
-		app.logger.Debug("finished", zap.String("module", "collector"))
+		logger.Debug("finished", zap.String("module", "collector"))
 	}
 
 	if app.Writer != nil {
 		app.Writer.Stop()
 		app.Writer = nil
-		app.logger.Debug("finished", zap.String("module", "writer"))
+		logger.Debug("finished", zap.String("module", "writer"))
 	}
 
 	if app.Uploader != nil {
 		app.Uploader.Stop()
 		app.Uploader = nil
-		app.logger.Debug("finished", zap.String("module", "uploader"))
+		logger.Debug("finished", zap.String("module", "uploader"))
 	}
 
 	if app.exit != nil {
 		close(app.exit)
 		app.exit = nil
-		app.logger.Debug("close(app.exit)", zap.String("module", "app"))
+		logger.Debug("close(app.exit)", zap.String("module", "app"))
 	}
 }
 
@@ -174,7 +189,6 @@ func (app *App) Start() (err error) {
 		app.writeChan,
 		conf.Data.Path,
 		conf.Data.FileInterval.Value(),
-		app.logger.With(zap.String("module", "writer")),
 	)
 	app.Writer.Start()
 	/* WRITER end */
@@ -215,7 +229,6 @@ func (app *App) Start() (err error) {
 		uploader.TreeTimeout(conf.ClickHouse.TreeTimeout.Value()),
 		uploader.InProgressCallback(app.Writer.IsInProgress),
 		uploader.Threads(app.Config.ClickHouse.Threads),
-		uploader.Logger(app.logger.With(zap.String("module", "uploader"))),
 	)
 	app.Uploader.Start()
 	/* UPLOADER end */
@@ -226,7 +239,6 @@ func (app *App) Start() (err error) {
 			"tcp://"+conf.Tcp.Listen,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
-			receiver.Logger(app.logger.With(zap.String("module", "tcp"))),
 		)
 
 		if err != nil {
@@ -239,7 +251,6 @@ func (app *App) Start() (err error) {
 			"udp://"+conf.Udp.Listen,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
-			receiver.Logger(app.logger.With(zap.String("module", "udp"))),
 		)
 
 		if err != nil {
@@ -252,7 +263,6 @@ func (app *App) Start() (err error) {
 			"pickle://"+conf.Pickle.Listen,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
-			receiver.Logger(app.logger.With(zap.String("module", "pickle"))),
 		)
 
 		if err != nil {

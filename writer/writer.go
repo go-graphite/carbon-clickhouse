@@ -11,7 +11,8 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/stop"
-	"github.com/uber-go/zap"
+	"github.com/lomik/zapwriter"
+	"go.uber.org/zap"
 )
 
 // Writer dumps all received data in prepared for clickhouse format
@@ -25,16 +26,16 @@ type Writer struct {
 	path         string
 	fileInterval time.Duration
 	inProgress   map[string]bool // current writing files
-	logger       zap.Logger
+	logger       *zap.Logger
 }
 
-func New(in chan *RowBinary.WriteBuffer, path string, fileInterval time.Duration, logger zap.Logger) *Writer {
+func New(in chan *RowBinary.WriteBuffer, path string, fileInterval time.Duration) *Writer {
 	return &Writer{
 		inputChan:    in,
 		path:         path,
 		fileInterval: fileInterval,
 		inProgress:   make(map[string]bool),
-		logger:       logger,
+		logger:       zapwriter.Logger("writer"),
 	}
 }
 

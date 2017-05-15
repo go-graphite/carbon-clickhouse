@@ -8,7 +8,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/stop"
-	"github.com/uber-go/zap"
+	"go.uber.org/zap"
 )
 
 // UDP receive metrics from UDP messages
@@ -24,7 +24,7 @@ type UDP struct {
 	parseThreads int
 	parseChan    chan *Buffer
 	writeChan    chan *RowBinary.WriteBuffer
-	logger       zap.Logger
+	logger       *zap.Logger
 }
 
 // Addr returns binded socket address. For bind port 0 in tests

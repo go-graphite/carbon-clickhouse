@@ -7,11 +7,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/uber-go/zap"
+	"go.uber.org/zap"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/days1970"
 	"github.com/lomik/stop"
+	"github.com/lomik/zapwriter"
 )
 
 type statFunc func()
@@ -32,7 +33,7 @@ type Collector struct {
 	metricInterval time.Duration
 	endpoint       string
 	stats          []statFunc
-	logger         zap.Logger
+	logger         *zap.Logger
 	data           chan *Point
 	writeChan      chan *RowBinary.WriteBuffer
 }
@@ -45,7 +46,7 @@ func NewCollector(app *App) *Collector {
 		metricInterval: app.Config.Common.MetricInterval.Value(),
 		endpoint:       app.Config.Common.MetricEndpoint,
 		stats:          make([]statFunc, 0),
-		logger:         app.logger.With(zap.String("module", "collector")),
+		logger:         zapwriter.Logger("stat"),
 		data:           make(chan *Point, 4096),
 		writeChan:      app.writeChan,
 	}

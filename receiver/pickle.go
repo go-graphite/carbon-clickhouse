@@ -12,7 +12,7 @@ import (
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/graphite-pickle/framing"
 	"github.com/lomik/stop"
-	"github.com/uber-go/zap"
+	"go.uber.org/zap"
 )
 
 const maxPickleMessageSize = 67108864
@@ -30,7 +30,7 @@ type Pickle struct {
 	parseThreads int
 	parseChan    chan []byte
 	writeChan    chan *RowBinary.WriteBuffer
-	logger       zap.Logger
+	logger       *zap.Logger
 }
 
 // Addr returns binded socket address. For bind port 0 in tests

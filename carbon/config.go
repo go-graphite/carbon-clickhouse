@@ -3,9 +3,12 @@ package carbon
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/lomik/zapwriter"
 )
 
 const MetricEndpointLocal = "local"
@@ -81,21 +84,16 @@ type dataConfig struct {
 	FileInterval *Duration `toml:"chunk-interval"`
 }
 
-type loggingConfig struct {
-	File  string `toml:"file"`
-	Level string `toml:"level"`
-}
-
 // Config ...
 type Config struct {
-	Common     commonConfig     `toml:"common"`
-	Logging    loggingConfig    `toml:"logging"`
-	ClickHouse clickhouseConfig `toml:"clickhouse"`
-	Data       dataConfig       `toml:"data"`
-	Udp        udpConfig        `toml:"udp"`
-	Tcp        tcpConfig        `toml:"tcp"`
-	Pickle     pickleConfig     `toml:"pickle"`
-	Pprof      pprofConfig      `toml:"pprof"`
+	Common     commonConfig       `toml:"common"`
+	ClickHouse clickhouseConfig   `toml:"clickhouse"`
+	Data       dataConfig         `toml:"data"`
+	Udp        udpConfig          `toml:"udp"`
+	Tcp        tcpConfig          `toml:"tcp"`
+	Pickle     pickleConfig       `toml:"pickle"`
+	Pprof      pprofConfig        `toml:"pprof"`
+	Logging    []zapwriter.Config `toml:"logging"`
 }
 
 // NewConfig ...
@@ -109,10 +107,7 @@ func NewConfig() *Config {
 			MetricEndpoint: MetricEndpointLocal,
 			MaxCPU:         1,
 		},
-		Logging: loggingConfig{
-			File:  "/var/log/carbon-clickhouse/carbon-clickhouse.log",
-			Level: "info",
-		},
+		Logging: nil,
 		ClickHouse: clickhouseConfig{
 			Url:               "http://localhost:8123/",
 			DataTable:         "graphite",
@@ -156,9 +151,24 @@ func NewConfig() *Config {
 	return cfg
 }
 
+func NewLoggingConfig() zapwriter.Config {
+	cfg := zapwriter.NewConfig()
+	cfg.File = "/var/log/carbon-clickhouse/carbon-clickhouse.log"
+	return cfg
+}
+
 // PrintConfig ...
-func PrintConfig(cfg *Config) error {
+func PrintDefaultConfig() error {
+	cfg := NewConfig()
 	buf := new(bytes.Buffer)
+
+	if cfg.Logging == nil {
+		cfg.Logging = make([]zapwriter.Config, 0)
+	}
+
+	if len(cfg.Logging) == 0 {
+		cfg.Logging = append(cfg.Logging, NewLoggingConfig())
+	}
 
 	encoder := toml.NewEncoder(buf)
 	encoder.Indent = ""
@@ -171,19 +181,43 @@ func PrintConfig(cfg *Config) error {
 	return nil
 }
 
-// ParseConfig ...
-func ParseConfig(filename string, cfg *Config) error {
+// ReadConfig ...
+func ReadConfig(filename string) (*Config, error) {
+	var err error
+
+	cfg := NewConfig()
 	if filename != "" {
-		if _, err := toml.DecodeFile(filename, cfg); err != nil {
-			return err
+		b, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		body := string(b)
+
+		// @TODO: fix for config starts with [logging]
+		body = strings.Replace(body, "\n[logging]\n", "\n[[logging]]\n", -1)
+
+		if _, err := toml.Decode(body, cfg); err != nil {
+			return nil, err
 		}
 	}
 
-	var err error
-	cfg.ClickHouse.TreeDate, err = time.ParseInLocation("2006-01-02", cfg.ClickHouse.TreeDateString, time.Local)
-	if err != nil {
-		return err
+	if cfg.Logging == nil {
+		cfg.Logging = make([]zapwriter.Config, 0)
 	}
 
-	return nil
+	if len(cfg.Logging) == 0 {
+		cfg.Logging = append(cfg.Logging, NewLoggingConfig())
+	}
+
+	if err := zapwriter.CheckConfig(cfg.Logging, nil); err != nil {
+		return nil, err
+	}
+
+	cfg.ClickHouse.TreeDate, err = time.ParseInLocation("2006-01-02", cfg.ClickHouse.TreeDateString, time.Local)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }

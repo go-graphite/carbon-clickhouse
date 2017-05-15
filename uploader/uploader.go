@@ -15,7 +15,8 @@ import (
 	"time"
 
 	"github.com/lomik/stop"
-	"github.com/uber-go/zap"
+	"github.com/lomik/zapwriter"
+	"go.uber.org/zap"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 )
@@ -88,12 +89,6 @@ func Threads(t int) Option {
 	}
 }
 
-func Logger(logger zap.Logger) Option {
-	return func(u *Uploader) {
-		u.logger = logger
-	}
-}
-
 // Uploader upload files from local directory to clickhouse
 type Uploader struct {
 	stop.Struct
@@ -117,7 +112,7 @@ type Uploader struct {
 	queue              chan string
 	inQueue            map[string]bool // current uploading files
 	treeExists         CMap            // store known keys and don't load it to clickhouse tree
-	logger             zap.Logger
+	logger             *zap.Logger
 }
 
 func New(options ...Option) *Uploader {
@@ -135,7 +130,7 @@ func New(options ...Option) *Uploader {
 		inQueue:            make(map[string]bool),
 		threads:            1,
 		treeExists:         NewCMap(),
-		logger:             zap.New(zap.NullEncoder()),
+		logger:             zapwriter.Logger("uploader"),
 	}
 
 	for _, o := range options {
@@ -288,14 +283,14 @@ func (u *Uploader) upload(exit chan struct{}, filename string) (err error) {
 	defer func() {
 		if err != nil {
 			atomic.AddUint32(&u.stat.errors, 1)
-			logger.Error("upload failed",
+			logger.Error("handle failed",
 				zap.Error(err),
-				zap.String("time", time.Now().Sub(startTime).String()),
+				zap.Duration("time", time.Now().Sub(startTime)),
 			)
 		} else {
 			atomic.AddUint32(&u.stat.uploaded, 1)
-			logger.Info("upload success",
-				zap.String("time", time.Now().Sub(startTime).String()),
+			logger.Info("handle success",
+				zap.Duration("time", time.Now().Sub(startTime)),
 			)
 		}
 	}()

@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/uber-go/zap"
+	"github.com/lomik/zapwriter"
 )
 
 type Receiver interface {
@@ -48,22 +48,6 @@ func ParseThreads(threads int) Option {
 	}
 }
 
-// Logger creates option for New contructor
-func Logger(logger zap.Logger) Option {
-	return func(r Receiver) error {
-		if t, ok := r.(*TCP); ok {
-			t.logger = logger
-		}
-		if t, ok := r.(*Pickle); ok {
-			t.logger = logger
-		}
-		if t, ok := r.(*UDP); ok {
-			t.logger = logger
-		}
-		return nil
-	}
-}
-
 // New creates udp, tcp, pickle receiver
 func New(dsn string, opts ...Option) (Receiver, error) {
 	u, err := url.Parse(dsn)
@@ -79,7 +63,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 
 		r := &TCP{
 			parseChan: make(chan *Buffer),
-			logger:    zap.New(zap.NullEncoder()),
+			logger:    zapwriter.Logger("tcp"),
 		}
 
 		for _, optApply := range opts {
@@ -101,7 +85,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 
 		r := &Pickle{
 			parseChan: make(chan []byte),
-			logger:    zap.New(zap.NullEncoder()),
+			logger:    zapwriter.Logger("pickle"),
 		}
 
 		for _, optApply := range opts {
@@ -123,7 +107,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 
 		r := &UDP{
 			parseChan: make(chan *Buffer),
-			logger:    zap.New(zap.NullEncoder()),
+			logger:    zapwriter.Logger("udp"),
 		}
 
 		for _, optApply := range opts {
