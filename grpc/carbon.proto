@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+message Metric {
+	bytes name = 1;
+	repeated uint32 timestamps = 2;
+	repeated double values = 3;
+}
+
+message Message {
+	repeated Metric data = 1;
+}
+
+service Carbon {
+	// Store parses request, sends them to internal queue and returns response.
+	// Data may be lost during server restart.
+	rpc Store(Message) returns (google.protobuf.Empty) {}
+
+	// StoreSync returns response only after data has written to drive.
+	rpc StoreSync(Message) returns (google.protobuf.Empty) {}
+}

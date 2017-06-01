@@ -29,6 +29,9 @@ func GetWriteBuffer() *WriteBuffer {
 func GetWriterBufferWithConfirm(wg *sync.WaitGroup, errorChan chan error) *WriteBuffer {
 	b := GetWriteBuffer()
 	b.wg = wg
+	if wg != nil {
+		wg.Add(1)
+	}
 	b.errorChan = errorChan
 	return b
 }

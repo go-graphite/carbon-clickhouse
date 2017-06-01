@@ -74,6 +74,11 @@ type pickleConfig struct {
 	Enabled bool   `toml:"enabled"`
 }
 
+type grpcConfig struct {
+	Listen  string `toml:"listen"`
+	Enabled bool   `toml:"enabled"`
+}
+
 type pprofConfig struct {
 	Listen  string `toml:"listen"`
 	Enabled bool   `toml:"enabled"`
@@ -92,6 +97,7 @@ type Config struct {
 	Udp        udpConfig          `toml:"udp"`
 	Tcp        tcpConfig          `toml:"tcp"`
 	Pickle     pickleConfig       `toml:"pickle"`
+	Grpc       grpcConfig         `toml:"grpc"`
 	Pprof      pprofConfig        `toml:"pprof"`
 	Logging    []zapwriter.Config `toml:"logging"`
 }
@@ -141,6 +147,10 @@ func NewConfig() *Config {
 		Pickle: pickleConfig{
 			Listen:  ":2004",
 			Enabled: true,
+		},
+		Grpc: grpcConfig{
+			Listen:  ":2005",
+			Enabled: false,
 		},
 		Pprof: pprofConfig{
 			Listen:  "localhost:7007",
