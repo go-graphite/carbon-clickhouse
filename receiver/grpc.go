@@ -91,46 +91,38 @@ func (g *GRPC) Listen(addr *net.TCPAddr) error {
 	})
 }
 
-func (g *GRPC) doStore(ctx context.Context, in *pb.Message, confirmRequired bool) error {
+func (g *GRPC) doStore(ctx context.Context, in *pb.Payload, confirmRequired bool) error {
 	// validate
 	if in == nil {
 		return nil
 	}
 
-	if in.Data == nil {
+	if in.Metrics == nil {
 		return nil
 	}
 
 	pointsCount := uint32(0)
 
-	for i := 0; i < len(in.Data); i++ {
-		m := in.Data[i]
+	for i := 0; i < len(in.Metrics); i++ {
+		m := in.Metrics[i]
 
 		if m == nil {
 			return errors.New("metric is empty")
 		}
 
-		if m.Name == nil || len(m.Name) == 0 {
+		if len(m.Metric) == 0 {
 			return errors.New("name is empty")
 		}
 
-		if len(m.Name) > 16384 {
+		if len(m.Metric) > 16384 {
 			return errors.New("name too long")
 		}
 
-		if m.Timestamps == nil || len(m.Timestamps) == 0 {
-			return errors.New("timestamps is empty")
+		if m.Points == nil || len(m.Points) == 0 {
+			return errors.New("points is empty")
 		}
 
-		if m.Values == nil || len(m.Values) == 0 {
-			return errors.New("values is empty")
-		}
-
-		if len(m.Values) != len(m.Timestamps) {
-			return errors.New("len(values) != len(timestamps)")
-		}
-
-		pointsCount += uint32(len(m.Values))
+		pointsCount += uint32(len(m.Points))
 	}
 
 	// save to buffers
@@ -156,11 +148,11 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Message, confirmRequired bool
 	})
 
 	wb := RowBinary.GetWriterBufferWithConfirm(wg, errorChan)
-	for i := 0; i < len(in.Data); i++ {
-		m := in.Data[i]
+	for i := 0; i < len(in.Metrics); i++ {
+		m := in.Metrics[i]
 
-		for j := 0; j < len(m.Values); j++ {
-			if !wb.CanWriteGraphitePoint(len(m.Name)) {
+		for j := 0; j < len(m.Points); j++ {
+			if !wb.CanWriteGraphitePoint(len(m.Metric)) {
 				select {
 				case g.writeChan <- wb:
 					// pass
@@ -171,10 +163,10 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Message, confirmRequired bool
 				wb = RowBinary.GetWriterBufferWithConfirm(wg, errorChan)
 			}
 
-			wb.WriteBytes(m.Name)
-			wb.WriteFloat64(m.Values[j])
-			wb.WriteUint32(m.Timestamps[j])
-			wb.WriteUint16(days.TimestampWithNow(m.Timestamps[j], now))
+			wb.WriteBytes([]byte(m.Metric))
+			wb.WriteFloat64(m.Points[j].Value)
+			wb.WriteUint32(m.Points[j].Timestamp)
+			wb.WriteUint16(days.TimestampWithNow(m.Points[j].Timestamp, now))
 			wb.Write(version)
 		}
 	}
@@ -203,7 +195,7 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Message, confirmRequired bool
 	return nil
 }
 
-func (g *GRPC) Store(ctx context.Context, in *pb.Message) (*empty.Empty, error) {
+func (g *GRPC) Store(ctx context.Context, in *pb.Payload) (*empty.Empty, error) {
 	err := g.doStore(ctx, in, false)
 	if err != nil {
 		return nil, err
@@ -212,7 +204,7 @@ func (g *GRPC) Store(ctx context.Context, in *pb.Message) (*empty.Empty, error) 
 	return &empty.Empty{}, nil
 }
 
-func (g *GRPC) StoreSync(ctx context.Context, in *pb.Message) (*empty.Empty, error) {
+func (g *GRPC) StoreSync(ctx context.Context, in *pb.Payload) (*empty.Empty, error) {
 	err := g.doStore(ctx, in, true)
 	if err != nil {
 		return nil, err

@@ -9,8 +9,9 @@ It is generated from these files:
 	carbon.proto
 
 It has these top-level messages:
+	Point
 	Metric
-	Message
+	Payload
 */
 package carbon
 
@@ -35,57 +36,74 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type Point struct {
+	Timestamp uint32  `protobuf:"varint,1,opt,name=timestamp" json:"timestamp,omitempty"`
+	Value     float64 `protobuf:"fixed64,2,opt,name=value" json:"value,omitempty"`
+}
+
+func (m *Point) Reset()                    { *m = Point{} }
+func (m *Point) String() string            { return proto.CompactTextString(m) }
+func (*Point) ProtoMessage()               {}
+func (*Point) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+func (m *Point) GetTimestamp() uint32 {
+	if m != nil {
+		return m.Timestamp
+	}
+	return 0
+}
+
+func (m *Point) GetValue() float64 {
+	if m != nil {
+		return m.Value
+	}
+	return 0
+}
+
 type Metric struct {
-	Name       []byte    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Timestamps []uint32  `protobuf:"varint,2,rep,packed,name=timestamps" json:"timestamps,omitempty"`
-	Values     []float64 `protobuf:"fixed64,3,rep,packed,name=values" json:"values,omitempty"`
+	Metric string   `protobuf:"bytes,1,opt,name=metric" json:"metric,omitempty"`
+	Points []*Point `protobuf:"bytes,2,rep,name=points" json:"points,omitempty"`
 }
 
 func (m *Metric) Reset()                    { *m = Metric{} }
 func (m *Metric) String() string            { return proto.CompactTextString(m) }
 func (*Metric) ProtoMessage()               {}
-func (*Metric) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*Metric) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-func (m *Metric) GetName() []byte {
+func (m *Metric) GetMetric() string {
 	if m != nil {
-		return m.Name
+		return m.Metric
+	}
+	return ""
+}
+
+func (m *Metric) GetPoints() []*Point {
+	if m != nil {
+		return m.Points
 	}
 	return nil
 }
 
-func (m *Metric) GetTimestamps() []uint32 {
-	if m != nil {
-		return m.Timestamps
-	}
-	return nil
+type Payload struct {
+	Metrics []*Metric `protobuf:"bytes,1,rep,name=metrics" json:"metrics,omitempty"`
 }
 
-func (m *Metric) GetValues() []float64 {
+func (m *Payload) Reset()                    { *m = Payload{} }
+func (m *Payload) String() string            { return proto.CompactTextString(m) }
+func (*Payload) ProtoMessage()               {}
+func (*Payload) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *Payload) GetMetrics() []*Metric {
 	if m != nil {
-		return m.Values
-	}
-	return nil
-}
-
-type Message struct {
-	Data []*Metric `protobuf:"bytes,1,rep,name=data" json:"data,omitempty"`
-}
-
-func (m *Message) Reset()                    { *m = Message{} }
-func (m *Message) String() string            { return proto.CompactTextString(m) }
-func (*Message) ProtoMessage()               {}
-func (*Message) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
-
-func (m *Message) GetData() []*Metric {
-	if m != nil {
-		return m.Data
+		return m.Metrics
 	}
 	return nil
 }
 
 func init() {
+	proto.RegisterType((*Point)(nil), "Point")
 	proto.RegisterType((*Metric)(nil), "Metric")
-	proto.RegisterType((*Message)(nil), "Message")
+	proto.RegisterType((*Payload)(nil), "Payload")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -101,9 +119,9 @@ const _ = grpc.SupportPackageIsVersion4
 type CarbonClient interface {
 	// Store parses request, sends them to internal queue and returns response.
 	// Data may be lost during server restart.
-	Store(ctx context.Context, in *Message, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
+	Store(ctx context.Context, in *Payload, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
 	// StoreSync returns response only after data has written to drive.
-	StoreSync(ctx context.Context, in *Message, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
+	StoreSync(ctx context.Context, in *Payload, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
 }
 
 type carbonClient struct {
@@ -114,7 +132,7 @@ func NewCarbonClient(cc *grpc.ClientConn) CarbonClient {
 	return &carbonClient{cc}
 }
 
-func (c *carbonClient) Store(ctx context.Context, in *Message, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
+func (c *carbonClient) Store(ctx context.Context, in *Payload, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
 	out := new(google_protobuf.Empty)
 	err := grpc.Invoke(ctx, "/Carbon/Store", in, out, c.cc, opts...)
 	if err != nil {
@@ -123,7 +141,7 @@ func (c *carbonClient) Store(ctx context.Context, in *Message, opts ...grpc.Call
 	return out, nil
 }
 
-func (c *carbonClient) StoreSync(ctx context.Context, in *Message, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
+func (c *carbonClient) StoreSync(ctx context.Context, in *Payload, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
 	out := new(google_protobuf.Empty)
 	err := grpc.Invoke(ctx, "/Carbon/StoreSync", in, out, c.cc, opts...)
 	if err != nil {
@@ -137,9 +155,9 @@ func (c *carbonClient) StoreSync(ctx context.Context, in *Message, opts ...grpc.
 type CarbonServer interface {
 	// Store parses request, sends them to internal queue and returns response.
 	// Data may be lost during server restart.
-	Store(context.Context, *Message) (*google_protobuf.Empty, error)
+	Store(context.Context, *Payload) (*google_protobuf.Empty, error)
 	// StoreSync returns response only after data has written to drive.
-	StoreSync(context.Context, *Message) (*google_protobuf.Empty, error)
+	StoreSync(context.Context, *Payload) (*google_protobuf.Empty, error)
 }
 
 func RegisterCarbonServer(s *grpc.Server, srv CarbonServer) {
@@ -147,7 +165,7 @@ func RegisterCarbonServer(s *grpc.Server, srv CarbonServer) {
 }
 
 func _Carbon_Store_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Message)
+	in := new(Payload)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -159,13 +177,13 @@ func _Carbon_Store_Handler(srv interface{}, ctx context.Context, dec func(interf
 		FullMethod: "/Carbon/Store",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CarbonServer).Store(ctx, req.(*Message))
+		return srv.(CarbonServer).Store(ctx, req.(*Payload))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Carbon_StoreSync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Message)
+	in := new(Payload)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -177,7 +195,7 @@ func _Carbon_StoreSync_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: "/Carbon/StoreSync",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CarbonServer).StoreSync(ctx, req.(*Message))
+		return srv.(CarbonServer).StoreSync(ctx, req.(*Payload))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -202,19 +220,20 @@ var _Carbon_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("carbon.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 212 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x8e, 0xc1, 0x4a, 0x03, 0x31,
-	0x10, 0x86, 0x8d, 0xa9, 0xa9, 0x8e, 0xf5, 0x32, 0x87, 0x12, 0x5a, 0x90, 0xb0, 0x07, 0x09, 0x08,
-	0x59, 0xa8, 0x8f, 0x20, 0x1e, 0x7b, 0x49, 0x7d, 0x81, 0xec, 0x3a, 0x5d, 0x0a, 0xcd, 0x66, 0x49,
-	0x52, 0x61, 0xdf, 0x5e, 0xcc, 0xae, 0xe0, 0xb1, 0xb7, 0xf9, 0xbf, 0x99, 0x9f, 0xf9, 0x60, 0xd5,
-	0xba, 0xd8, 0x84, 0xde, 0x0c, 0x31, 0xe4, 0xb0, 0xd9, 0x76, 0x21, 0x74, 0x67, 0xaa, 0x4b, 0x6a,
-	0x2e, 0xc7, 0x9a, 0xfc, 0x90, 0xc7, 0x69, 0x59, 0x7d, 0x82, 0xd8, 0x53, 0x8e, 0xa7, 0x16, 0x11,
-	0x16, 0xbd, 0xf3, 0x24, 0x99, 0x62, 0x7a, 0x65, 0xcb, 0x8c, 0xcf, 0x00, 0xf9, 0xe4, 0x29, 0x65,
-	0xe7, 0x87, 0x24, 0x6f, 0x15, 0xd7, 0x4f, 0xf6, 0x1f, 0xc1, 0x35, 0x88, 0x6f, 0x77, 0xbe, 0x50,
-	0x92, 0x5c, 0x71, 0xcd, 0xec, 0x9c, 0xaa, 0x17, 0x58, 0xee, 0x29, 0x25, 0xd7, 0x11, 0x6e, 0x61,
-	0xf1, 0xe5, 0xb2, 0x93, 0x4c, 0x71, 0xfd, 0xb8, 0x5b, 0x9a, 0xe9, 0x9b, 0x2d, 0x70, 0x77, 0x04,
-	0xf1, 0x5e, 0x54, 0xf1, 0x15, 0xee, 0x0e, 0x39, 0x44, 0xc2, 0x7b, 0x33, 0x37, 0x37, 0x6b, 0x33,
-	0x89, 0x9b, 0x3f, 0x71, 0xf3, 0xf1, 0x2b, 0x5e, 0xdd, 0x60, 0x0d, 0x0f, 0xe5, 0xf8, 0x30, 0xf6,
-	0xed, 0x35, 0x85, 0x46, 0x14, 0xf2, 0xf6, 0x13, 0x00, 0x00, 0xff, 0xff, 0x28, 0xf0, 0x90, 0x0a,
-	0x19, 0x01, 0x00, 0x00,
+	// 231 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x8f, 0xc1, 0x4a, 0xc4, 0x30,
+	0x10, 0x86, 0xcd, 0x4a, 0x53, 0x3b, 0xea, 0x65, 0x90, 0xa5, 0xac, 0x22, 0xb5, 0xa7, 0x82, 0x92,
+	0xc2, 0x7a, 0xf4, 0x22, 0x88, 0x47, 0x61, 0xc9, 0x3e, 0x41, 0x5a, 0xb3, 0x4b, 0xa1, 0xed, 0x94,
+	0x34, 0x2b, 0xf4, 0xed, 0x65, 0x27, 0x2d, 0x5e, 0xbd, 0xe5, 0xff, 0x33, 0xdf, 0x0c, 0x1f, 0xdc,
+	0xd4, 0xc6, 0x55, 0xd4, 0xab, 0xc1, 0x91, 0xa7, 0xcd, 0xfd, 0x91, 0xe8, 0xd8, 0xda, 0x92, 0x53,
+	0x75, 0x3a, 0x94, 0xb6, 0x1b, 0xfc, 0x14, 0x3e, 0xf3, 0x37, 0x88, 0x76, 0xd4, 0xf4, 0x1e, 0x1f,
+	0x20, 0xf1, 0x4d, 0x67, 0x47, 0x6f, 0xba, 0x21, 0x15, 0x99, 0x28, 0x6e, 0xf5, 0x5f, 0x81, 0x77,
+	0x10, 0xfd, 0x98, 0xf6, 0x64, 0xd3, 0x55, 0x26, 0x0a, 0xa1, 0x43, 0xc8, 0xdf, 0x41, 0x7e, 0x59,
+	0xef, 0x9a, 0x1a, 0xd7, 0x20, 0x3b, 0x7e, 0x31, 0x9a, 0xe8, 0x39, 0xe1, 0x23, 0xc8, 0xe1, 0xbc,
+	0x7e, 0x4c, 0x57, 0xd9, 0x65, 0x71, 0xbd, 0x95, 0x8a, 0xaf, 0xe9, 0xb9, 0xcd, 0x5f, 0x20, 0xde,
+	0x99, 0xa9, 0x25, 0xf3, 0x8d, 0x4f, 0x10, 0x07, 0x68, 0x4c, 0x05, 0xcf, 0xc6, 0x2a, 0x2c, 0xd7,
+	0x4b, 0xbf, 0x3d, 0x80, 0xfc, 0x60, 0x33, 0x7c, 0x86, 0x68, 0xef, 0xc9, 0x59, 0xbc, 0x52, 0x33,
+	0xbf, 0x59, 0xab, 0xe0, 0xa9, 0x16, 0x4f, 0xf5, 0x79, 0xf6, 0xcc, 0x2f, 0xb0, 0x84, 0x84, 0x87,
+	0xf7, 0x53, 0x5f, 0xff, 0x07, 0xa8, 0x24, 0x37, 0xaf, 0xbf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x12,
+	0x64, 0x6e, 0x55, 0x48, 0x01, 0x00, 0x00,
 }
