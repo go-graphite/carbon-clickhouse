@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-var WriteBufferPool = sync.Pool{
+var writeBufferPool = sync.Pool{
 	New: func() interface{} {
 		return &WriteBuffer{}
 	},
@@ -16,16 +16,46 @@ var WriteBufferPool = sync.Pool{
 const WriteBufferSize = 524288
 
 type WriteBuffer struct {
-	Used int
-	Body [WriteBufferSize]byte
+	Used      int
+	Body      [WriteBufferSize]byte
+	wg        *sync.WaitGroup
+	errorChan chan error
 }
 
 func GetWriteBuffer() *WriteBuffer {
-	return WriteBufferPool.Get().(*WriteBuffer).Reset()
+	return writeBufferPool.Get().(*WriteBuffer).Reset()
+}
+
+func GetWriterBufferWithConfirm(wg *sync.WaitGroup, errorChan chan error) *WriteBuffer {
+	b := GetWriteBuffer()
+	b.wg = wg
+	if wg != nil {
+		wg.Add(1)
+	}
+	b.errorChan = errorChan
+	return b
+}
+
+func (wb *WriteBuffer) ConfirmRequired() bool {
+	return wb.wg != nil
+}
+
+func (wb *WriteBuffer) Fail(err error) {
+	select {
+	case wb.errorChan <- err:
+	default:
+	}
+	wb.wg.Done()
+}
+
+func (wb *WriteBuffer) Confirm() {
+	wb.wg.Done()
 }
 
 func (wb *WriteBuffer) Reset() *WriteBuffer {
 	wb.Used = 0
+	wb.wg = nil
+	wb.errorChan = nil
 	return wb
 }
 
@@ -38,8 +68,7 @@ func (wb *WriteBuffer) Bytes() []byte {
 }
 
 func (wb *WriteBuffer) Release() {
-	wb.Used = 0
-	WriteBufferPool.Put(wb)
+	writeBufferPool.Put(wb)
 }
 
 func (wb *WriteBuffer) WriteBytes(p []byte) {

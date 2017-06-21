@@ -25,6 +25,7 @@ type App struct {
 	UDP            receiver.Receiver
 	TCP            receiver.Receiver
 	Pickle         receiver.Receiver
+	Grpc           receiver.Receiver
 	Collector      *Collector // (!!!) Should be re-created on every change config/modules
 	writeChan      chan *RowBinary.WriteBuffer
 	exit           chan bool
@@ -127,6 +128,12 @@ func (app *App) stopListeners() {
 		app.UDP.Stop()
 		app.UDP = nil
 		logger.Debug("finished", zap.String("module", "udp"))
+	}
+
+	if app.Grpc != nil {
+		app.Grpc.Stop()
+		app.Pickle = nil
+		logger.Debug("finished", zap.String("module", "grpc"))
 	}
 }
 
@@ -262,6 +269,17 @@ func (app *App) Start() (err error) {
 		app.Pickle, err = receiver.New(
 			"pickle://"+conf.Pickle.Listen,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
+			receiver.WriteChan(app.writeChan),
+		)
+
+		if err != nil {
+			return
+		}
+	}
+
+	if conf.Grpc.Enabled {
+		app.Grpc, err = receiver.New(
+			"grpc://"+conf.Grpc.Listen,
 			receiver.WriteChan(app.writeChan),
 		)
 

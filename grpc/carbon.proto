@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+// https://github.com/graphite-project/carbon/blob/master/lib/carbon/carbon.proto
+
+message Point {
+  uint32 timestamp = 1;
+  double value = 2;
+}
+
+message Metric {
+  string metric = 1;
+  repeated Point points = 2;
+}
+
+message Payload {
+  repeated Metric metrics = 1;
+}
+
+service Carbon {
+	// Store parses request, sends them to internal queue and returns response.
+	// Data may be lost during server restart.
+	rpc Store(Payload) returns (google.protobuf.Empty) {}
+
+	// StoreSync returns response only after data has written to drive.
+	rpc StoreSync(Payload) returns (google.protobuf.Empty) {}
+}

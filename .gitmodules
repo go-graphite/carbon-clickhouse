@@ -46,3 +46,18 @@
 [submodule "vendor/go.uber.org/atomic"]
 	path = vendor/go.uber.org/atomic
 	url = https://github.com/uber-go/atomic
+[submodule "vendor/github.com/golang/protobuf"]
+	path = vendor/github.com/golang/protobuf
+	url = https://github.com/golang/protobuf
+[submodule "vendor/google.golang.org/grpc"]
+	path = vendor/google.golang.org/grpc
+	url = https://github.com/grpc/grpc-go
+[submodule "vendor/golang.org/x/net"]
+	path = vendor/golang.org/x/net
+	url = https://github.com/golang/net
+[submodule "vendor/golang.org/x/text"]
+	path = vendor/golang.org/x/text
+	url = https://github.com/golang/text
+[submodule "vendor/google.golang.org/genproto"]
+	path = vendor/google.golang.org/genproto
+	url = https://github.com/google/go-genproto

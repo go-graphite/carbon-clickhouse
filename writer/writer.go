@@ -120,7 +120,20 @@ func (w *Writer) worker(exit chan struct{}) {
 	for {
 		select {
 		case b := <-w.inputChan:
-			outBuf.Write(b.Body[:b.Used])
+			_, err := outBuf.Write(b.Body[:b.Used])
+			if b.ConfirmRequired() {
+				if err != nil {
+					b.Fail(err)
+				} else {
+					err := outBuf.Flush()
+					if err != nil {
+						b.Fail(err)
+					} else {
+						b.Confirm()
+					}
+				}
+			}
+			// @TODO: log error?
 			atomic.AddUint32(&w.stat.writtenBytes, uint32(b.Used))
 			b.Release()
 		case <-ticker.C:
