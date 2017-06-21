@@ -37,9 +37,9 @@ CREATE TABLE graphite_tree (
 ) ENGINE = ReplacingMergeTree(Date, (Level, Path), 8192, Version);
 ```
 
-[GraphiteMergeTree documentation](https://github.com/yandex/ClickHouse/blob/master/dbms/include/DB/DataStreams/GraphiteRollupSortedBlockInputStream.h)
+[GraphiteMergeTree documentation](https://clickhouse.yandex/docs/en/table_engines/graphitemergetree.html)
 
-You can create Replicated tables. See [ClickHouse documentation](https://clickhouse.yandex/reference_en.html#Data replication)
+You can create Replicated tables. See [ClickHouse documentation](https://clickhouse.yandex/docs/en/table_engines/replication.html)
 
 ## Configuration
 ```
