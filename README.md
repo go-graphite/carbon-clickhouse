@@ -103,6 +103,11 @@ enabled = true
 listen = ":2004"
 enabled = true
 
+# https://github.com/lomik/carbon-clickhouse/blob/master/grpc/carbon.proto
+[grpc]
+listen = ":2005"
+enabled = false
+
 [pprof]
 listen = "localhost:7007"
 enabled = false
