@@ -3,7 +3,6 @@ package receiver
 import (
 	"encoding/binary"
 	"errors"
-	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -67,10 +66,6 @@ func (g *GRPC) Listen(addr *net.TCPAddr) error {
 		// Register reflection service on gRPC server.
 		reflection.Register(s)
 
-		if err := s.Serve(tcpListener); err != nil {
-			log.Fatalf("failed to serve: %v", err)
-		}
-
 		g.Go(func(exit chan struct{}) {
 			<-exit
 			s.Stop()
@@ -80,7 +75,7 @@ func (g *GRPC) Listen(addr *net.TCPAddr) error {
 			defer s.Stop()
 
 			if err := s.Serve(tcpListener); err != nil {
-				g.logger.Error("failed to serve", zap.Error(err))
+				g.logger.Fatal("failed to serve", zap.Error(err))
 			}
 
 		})
