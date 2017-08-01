@@ -135,12 +135,19 @@ func main() {
 
 	go func() {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGUSR1)
+		signal.Notify(c, syscall.SIGUSR1, syscall.SIGUSR2, syscall.SIGHUP)
 
 		for {
-			<-c
-			mainLogger.Info("USR1 received. Clear tree cache")
-			app.ClearTreeExistsCache()
+			s := <-c
+			switch s {
+			case syscall.SIGUSR1:
+				mainLogger.Info("SIGUSR1 received. Clear tree cache")
+				app.ClearTreeExistsCache()
+			case syscall.SIGUSR2:
+				mainLogger.Info("SIGUSR2 received. Ignoring")
+			case syscall.SIGHUP:
+				mainLogger.Info("SIGHUP received. Ignoring")
+			}
 		}
 	}()
 
