@@ -2,55 +2,43 @@ package uploader
 
 import (
 	"bytes"
+	"io"
 	"time"
-	"unsafe"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/days1970"
 )
 
-// https://github.com/golang/go/issues/2632#issuecomment-66061057
-func unsafeString(b []byte) string {
-	return *(*string)(unsafe.Pointer(&b))
-}
-
 type Tree struct {
-	data        *bytes.Buffer
-	dataReverse *bytes.Buffer
-	uniq        map[string]bool
-	uploader    *Uploader
+	*cached
 }
 
-func (tree *Tree) Success() {
-	// copy data from local uniq to global
-	for key, _ := range tree.uniq {
-		tree.uploader.treeExists.Add(key)
-	}
+var _ Uploader = &Tree{}
+var _ UploaderWithReset = &Tree{}
+
+func NewTree(base *Base) *Tree {
+	u := &Tree{}
+	u.cached = newCached(base)
+	u.cached.parser = u.parseFile
+	return u
 }
 
-func (u *Uploader) MakeTree(filename string, withReverse bool) (*Tree, error) {
+func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error) {
 	reader, err := RowBinary.NewReader(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer reader.Close()
 
-	days := (&days1970.Days{}).Timestamp(uint32(u.treeDate.Unix()))
+	days := (&days1970.Days{}).Timestamp(uint32(u.config.TreeDate.Unix()))
 	version := uint32(time.Now().Unix())
 
-	tree := &Tree{
-		data:        bytes.NewBuffer(nil),
-		dataReverse: bytes.NewBuffer(nil),
-		uniq:        make(map[string]bool),
-		uploader:    u,
-	}
-
-	// var key string
-	var level, index, l int
-	// var exists bool
-	var p []byte
+	newSeries := make(map[string]bool)
 
 	wb := RowBinary.GetWriteBuffer()
+
+	var level, index, l int
+	var p []byte
 
 LineLoop:
 	for {
@@ -59,63 +47,48 @@ LineLoop:
 			break
 		}
 
-		if u.treeExists.Exists(unsafeString(name)) {
+		if u.existsCache.Exists(unsafeString(name)) {
 			continue LineLoop
 		}
 
-		if tree.uniq[unsafeString(name)] {
+		if newSeries[unsafeString(name)] {
 			continue LineLoop
 		}
 
-		p = name
-		level = 1
-		for index = bytes.IndexByte(p, '.'); index >= 0; index = bytes.IndexByte(p, '.') {
-			p = p[index+1:]
-			level++
-		}
+		level = pathLevel(name)
 
 		wb.Reset()
 
-		tree.uniq[string(name)] = true
+		newSeries[string(name)] = true
 		wb.WriteUint16(days)
 		wb.WriteUint32(uint32(level))
 		wb.WriteBytes(name)
 		wb.WriteUint32(version)
 
-		// fmt.Println(string(name), level)
-
 		p = name
 		l = level
 		for l--; l > 0; l-- {
 			index = bytes.LastIndexByte(p, '.')
-			if tree.uniq[unsafeString(p[:index+1])] {
+			if newSeries[unsafeString(p[:index+1])] {
 				break
 			}
 
-			tree.uniq[string(p[:index+1])] = true
+			newSeries[string(p[:index+1])] = true
 			wb.WriteUint16(days)
 			wb.WriteUint32(uint32(l))
 			wb.WriteBytes(p[:index+1])
 			wb.WriteUint32(version)
 
-			// fmt.Println(string(p[:index+1]), level)
 			p = p[:index]
 		}
 
-		tree.data.Write(wb.Bytes()) // @TODO: error check?
-
-		if withReverse {
-			wb.Reset()
-
-			wb.WriteUint16(days)
-			wb.WriteUint32(uint32(level))
-			wb.WriteReversePath(name)
-			wb.WriteUint32(version)
-
-			tree.dataReverse.Write(wb.Bytes()) // @TODO: error check?
+		_, err = out.Write(wb.Bytes())
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	wb.Release()
-	return tree, nil
+
+	return newSeries, nil
 }

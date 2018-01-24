@@ -27,21 +27,45 @@ type Writer struct {
 	fileInterval time.Duration
 	inProgress   map[string]bool // current writing files
 	logger       *zap.Logger
+	uploaders    []string
+	onFinish     func(string) error
 }
 
-func New(in chan *RowBinary.WriteBuffer, path string, fileInterval time.Duration) *Writer {
+func New(in chan *RowBinary.WriteBuffer, path string, fileInterval time.Duration, uploaders []string, onFinish func(string) error) *Writer {
+	finishCallback := func(fn string) error {
+		if err := Link(fn, uploaders); err != nil {
+			return err
+		}
+
+		if onFinish != nil {
+			return onFinish(fn)
+		}
+
+		return nil
+	}
+
 	return &Writer{
 		inputChan:    in,
 		path:         path,
 		fileInterval: fileInterval,
 		inProgress:   make(map[string]bool),
 		logger:       zapwriter.Logger("writer"),
+		uploaders:    uploaders,
+		onFinish:     finishCallback,
 	}
 }
 
 func (w *Writer) Start() error {
 	return w.StartFunc(func() error {
+		// link pre-existing files
+		if err := w.LinkAll(); err != nil {
+			return err
+		}
+		if err := w.Cleanup(); err != nil {
+			return err
+		}
 		w.Go(w.worker)
+		w.Go(w.cleaner)
 		return nil
 	})
 }
@@ -83,6 +107,17 @@ func (w *Writer) worker(exit chan struct{}) {
 
 	OpenLoop:
 		for {
+			go func(filename string) {
+				if filename == "" || w.onFinish == nil {
+					return
+				}
+
+				err = w.onFinish(filename)
+				if err != nil {
+					w.logger.Error("onFinish callback failed", zap.String("filename", filename), zap.Error(err))
+				}
+			}(fn)
+
 			// replace fn in inProgress
 			w.Lock()
 			delete(w.inProgress, fn)
@@ -117,6 +152,8 @@ func (w *Writer) worker(exit chan struct{}) {
 	rotate()
 
 	ticker := time.NewTicker(w.fileInterval)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case b := <-w.inputChan:
@@ -140,6 +177,20 @@ func (w *Writer) worker(exit chan struct{}) {
 			rotate()
 		case <-exit:
 			return
+		}
+	}
+}
+
+func (w *Writer) cleaner(exit chan struct{}) {
+	ticker := time.NewTicker(w.fileInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-exit:
+			return
+		case <-ticker.C:
+			w.Cleanup()
 		}
 	}
 }

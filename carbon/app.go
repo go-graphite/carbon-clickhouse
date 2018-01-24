@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -21,7 +22,7 @@ type App struct {
 	sync.RWMutex
 	Config         *Config
 	Writer         *writer.Writer
-	Uploader       *uploader.Uploader
+	Uploaders      map[string]uploader.Uploader
 	UDP            receiver.Receiver
 	TCP            receiver.Receiver
 	Pickle         receiver.Receiver
@@ -86,28 +87,6 @@ func (app *App) ParseConfig() error {
 	return app.configure()
 }
 
-// // ReloadConfig reloads some settings from config
-// func (app *App) ReloadConfig() error {
-// 	app.Lock()
-// 	defer app.Unlock()
-
-// 	var err error
-// 	if err = app.configure(); err != nil {
-// 		return err
-// 	}
-
-// 	// TODO: reload something?
-
-// 	if app.Collector != nil {
-// 		app.Collector.Stop()
-// 		app.Collector = nil
-// 	}
-
-// 	app.Collector = NewCollector(app)
-
-// 	return nil
-// }
-
 // Stop all socket listeners
 func (app *App) stopListeners() {
 	logger := zapwriter.Logger("app")
@@ -154,10 +133,12 @@ func (app *App) stopAll() {
 		logger.Debug("finished", zap.String("module", "writer"))
 	}
 
-	if app.Uploader != nil {
-		app.Uploader.Stop()
-		app.Uploader = nil
-		logger.Debug("finished", zap.String("module", "uploader"))
+	if app.Uploaders != nil {
+		for n, u := range app.Uploaders {
+			u.Stop()
+			logger.Debug("finished", zap.String("module", "uploader"), zap.String("name", n))
+		}
+		app.Uploaders = nil
 	}
 
 	if app.exit != nil {
@@ -192,52 +173,34 @@ func (app *App) Start() (err error) {
 	app.writeChan = make(chan *RowBinary.WriteBuffer)
 
 	/* WRITER start */
+	uploaders := make([]string, 0, len(conf.Upload))
+	for t, _ := range conf.Upload {
+		uploaders = append(uploaders, t)
+	}
+
 	app.Writer = writer.New(
 		app.writeChan,
 		conf.Data.Path,
 		conf.Data.FileInterval.Value(),
+		uploaders,
+		nil,
 	)
 	app.Writer.Start()
 	/* WRITER end */
 
 	/* UPLOADER start */
-	dataTables := conf.ClickHouse.DataTables
-	if dataTables == nil {
-		dataTables = make([]string, 0)
-	}
-
-	if conf.ClickHouse.DataTable != "" {
-		exists := false
-		for i := 0; i < len(dataTables); i++ {
-			if dataTables[i] == conf.ClickHouse.DataTable {
-				exists = true
-			}
+	app.Uploaders = make(map[string]uploader.Uploader)
+	for uploaderName, uploaderConfig := range conf.Upload {
+		uploader, err := uploader.New(filepath.Join(conf.Data.Path, uploaderName), uploaderName, uploaderConfig)
+		if err != nil {
+			return err
 		}
-
-		if !exists {
-			dataTables = append(dataTables, conf.ClickHouse.DataTable)
-		}
+		app.Uploaders[uploaderName] = uploader
 	}
 
-	reverseDataTables := conf.ClickHouse.ReverseDataTables
-	if reverseDataTables == nil {
-		reverseDataTables = make([]string, 0)
+	for _, uploader := range app.Uploaders {
+		uploader.Start()
 	}
-
-	app.Uploader = uploader.New(
-		uploader.Path(conf.Data.Path),
-		uploader.ClickHouse(conf.ClickHouse.Url),
-		uploader.DataTables(dataTables),
-		uploader.ReverseDataTables(reverseDataTables),
-		uploader.DataTimeout(conf.ClickHouse.DataTimeout.Value()),
-		uploader.TreeTable(conf.ClickHouse.TreeTable),
-		uploader.ReverseTreeTable(conf.ClickHouse.ReverseTreeTable),
-		uploader.TreeDate(conf.ClickHouse.TreeDate),
-		uploader.TreeTimeout(conf.ClickHouse.TreeTimeout.Value()),
-		uploader.InProgressCallback(app.Writer.IsInProgress),
-		uploader.Threads(app.Config.ClickHouse.Threads),
-	)
-	app.Uploader.Start()
 	/* UPLOADER end */
 
 	/* RECEIVER start */
@@ -296,14 +259,16 @@ func (app *App) Start() (err error) {
 	return
 }
 
-// ClearTreeExistsCache in Uploader
-func (app *App) ClearTreeExistsCache() {
-	app.Lock()
-	up := app.Uploader
-	app.Unlock()
+// Reset cache in uploaders
+func (app *App) Reset() {
+	logger := zapwriter.Logger("app")
+	logger.Info("HUP received")
 
-	if up != nil {
-		go up.ClearTreeExistsCache()
+	for n, u := range app.Uploaders {
+		if v, ok := u.(uploader.UploaderWithReset); ok {
+			logger.Info("reset cache", zap.String("module", "uploader"), zap.String("name", n))
+			go v.Reset()
+		}
 	}
 }
 
