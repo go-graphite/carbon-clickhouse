@@ -144,7 +144,7 @@ func PrintDefaultConfig() error {
 			URL:       "http://localhost:8123/",
 		},
 		"graphite_tree": &uploader.Config{
-			Type: "series",
+			Type: "tree",
 			Date: "2016-11-01",
 			Timeout: &config.Duration{
 				Duration: time.Minute,
