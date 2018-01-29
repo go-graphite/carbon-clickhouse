@@ -149,6 +149,9 @@ func PrintDefaultConfig() error {
 			Timeout: &config.Duration{
 				Duration: time.Minute,
 			},
+			CacheTTL: &config.Duration{
+				Duration: 12 * time.Hour,
+			},
 			Threads:   1,
 			TableName: "graphite_tree",
 			URL:       "http://localhost:8123/",
