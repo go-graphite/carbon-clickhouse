@@ -16,6 +16,7 @@ import (
 	pb "github.com/lomik/carbon-clickhouse/grpc"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/days1970"
+	"github.com/lomik/carbon-clickhouse/helper/tags"
 	"github.com/lomik/stop"
 	"go.uber.org/zap"
 )
@@ -116,6 +117,12 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Payload, confirmRequired bool
 		if m.Points == nil || len(m.Points) == 0 {
 			return errors.New("points is empty")
 		}
+
+		name, err := tags.Graphite(m.Metric)
+		if err != nil {
+			return err
+		}
+		m.Metric = name
 
 		pointsCount += uint32(len(m.Points))
 	}

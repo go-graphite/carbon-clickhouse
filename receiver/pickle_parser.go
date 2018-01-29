@@ -6,6 +6,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/days1970"
+	"github.com/lomik/carbon-clickhouse/helper/tags"
 	pickle "github.com/lomik/graphite-pickle"
 )
 
@@ -49,6 +50,12 @@ func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBina
 	}
 
 	pickle.ParseMessage(b, func(name string, value float64, timestamp int64) {
+		name, err := tags.Graphite(name)
+		if err != nil {
+			// @TODO: log?
+			return
+		}
+
 		if !wb.CanWriteGraphitePoint(len(name)) {
 			flush()
 			if len(name) > RowBinary.WriteBufferSize-50 {

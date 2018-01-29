@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"time"
@@ -57,6 +58,11 @@ LineLoop:
 		name, err := reader.ReadRecord()
 		if err != nil { // io.EOF or corrupted file
 			break
+		}
+
+		// skip tagged
+		if bytes.IndexByte(name, '?') >= 0 {
+			continue
 		}
 
 		key := fmt.Sprintf("%d:%s", reader.Days(), unsafeString(name))

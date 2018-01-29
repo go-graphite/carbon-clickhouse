@@ -11,6 +11,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/days1970"
+	"github.com/lomik/carbon-clickhouse/helper/tags"
 )
 
 // https://github.com/golang/go/issues/2632#issuecomment-66061057
@@ -77,6 +78,13 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	tsf, err := strconv.ParseFloat(unsafeString(p[i2+1:i3]), 64)
 	if err != nil || math.IsNaN(tsf) {
 		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+	}
+
+	// parse tagged
+	// @TODO: parse as bytes, don't cast to string and back
+	if bytes.IndexByte(p[:i1], ';') >= 0 {
+		name, err := tags.Graphite(unsafeString(p[:i1]))
+		return []byte(name), value, uint32(tsf), err
 	}
 
 	return RemoveDoubleDot(p[:i1]), value, uint32(tsf), nil
