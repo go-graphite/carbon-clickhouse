@@ -68,28 +68,53 @@ file = "/var/log/carbon-clickhouse/carbon-clickhouse.log"
 # Logging error level. Valid values: "debug", "info", "warn" "error"
 level = "info"
 
-[clickhouse]
-# Url to ClickHouse http port. 
-url = "http://localhost:8123/"
-data-table = "graphite"
-# You can define additional data tables
-# data-tables = ["graphite60", "graphite3600"]
-# Set empty value if not need
-tree-table = "graphite_tree"
-# Date for records in graphite_tree table
-tree-date = "2016-11-01"
-# Concurent upload jobs
-threads = 1
-# Upload timeout
-data-timeout = "1m0s"
-tree-timeout = "1m0s"
-
 [data]
 # Folder for buffering received data
 path = "/data/carbon-clickhouse/"
 # Rotate (and upload) file interval.
 # Minimize chunk-interval for minimize lag between point receive and store
 chunk-interval = "1s"
+
+[upload.graphite]
+type = "points"
+table = "graphite"
+threads = 1
+url = "http://localhost:8123/"
+timeout = "1m0s"
+
+[upload.graphite_tree]
+type = "tree"
+table = "graphite_tree"
+date = "2016-11-01"
+threads = 1
+url = "http://localhost:8123/"
+timeout = "1m0s"
+cache-ttl = "12h0m0s"
+
+# # Extra table with daily series list
+#
+# # CREATE TABLE graphite_series (
+# #   Date Date,
+# #   Level UInt32,
+# #   Path String,
+# #   Deleted UInt8,
+# #   Version UInt32
+# # ) ENGINE = ReplacingMergeTree(Date, (Level, Path, Date), 8192, Version);
+# [upload.graphite_series]
+# type = "series"
+# table = "graphite_series"
+# threads = 1
+# url = "http://localhost:8123/"
+# timeout = "1m0s"
+# cache-ttl = "12h0m0s"
+
+# You can define additional upload destinations of any supported type
+# [upload.any_unique_name]
+# type = "points"
+# table = "graphite3600"
+# threads = 1
+# url = "http://localhost:8123/"
+# timeout = "1m0s"
 
 [udp]
 listen = ":2003"

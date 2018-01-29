@@ -1,6 +1,9 @@
 package uploader
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 var shardCount = 1024
 
@@ -11,14 +14,14 @@ type CMap []*CMapShard
 // A "thread" safe string to anything map.
 type CMapShard struct {
 	sync.RWMutex // Read Write mutex, guards access to internal map.
-	items        map[string]bool
+	items        map[string]int64
 }
 
 // Creates a new concurrent map.
 func NewCMap() CMap {
 	m := make(CMap, shardCount)
 	for i := 0; i < shardCount; i++ {
-		m[i] = &CMapShard{items: make(map[string]bool)}
+		m[i] = &CMapShard{items: make(map[string]int64)}
 	}
 	return m
 }
@@ -52,7 +55,7 @@ func (m CMap) Clear() int {
 	for i := 0; i < shardCount; i++ {
 		shard := m[i]
 		shard.Lock()
-		shard.items = make(map[string]bool)
+		shard.items = make(map[string]int64)
 		shard.Unlock()
 	}
 	return count
@@ -76,9 +79,58 @@ func (m CMap) Exists(key string) bool {
 }
 
 // Sets the given value under the specified key.
-func (m CMap) Add(key string) {
+func (m CMap) Add(key string, value int64) {
 	shard := m.GetShard(key)
 	shard.Lock()
-	shard.items[key] = true
+	shard.items[key] = value
 	shard.Unlock()
+}
+
+func (m CMap) Merge(keys map[string]bool, value int64) {
+	for key, _ := range keys {
+		m.Add(key, value)
+	}
+}
+
+func (m CMap) Expire(exit chan struct{}, ttl time.Duration) (int, int64) {
+	deadline := time.Now().Add(-ttl).Unix()
+
+	count := 0
+	min := time.Now().Unix()
+
+	for i := 0; i < shardCount; i++ {
+		select {
+		case <-exit:
+			return count, min
+		default:
+			// pass
+		}
+
+		shard := m[i]
+		shard.Lock()
+		for k, v := range shard.items {
+			if v < deadline {
+				delete(shard.items, k)
+				count++
+			} else if v < min {
+				min = v
+			}
+		}
+		shard.Unlock()
+	}
+	return count, min
+}
+
+func (m CMap) ExpireWorker(exit chan struct{}, ttl time.Duration) {
+	for {
+		interval := time.Minute
+		// @TODO: adaptive interval, based on min value from prev Expire run
+
+		select {
+		case <-exit:
+			return
+		case <-time.After(interval):
+			m.Expire(exit, ttl)
+		}
+	}
 }

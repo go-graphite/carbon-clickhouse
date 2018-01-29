@@ -142,7 +142,7 @@ func main() {
 			switch s {
 			case syscall.SIGUSR1:
 				mainLogger.Info("SIGUSR1 received. Clear tree cache")
-				app.ClearTreeExistsCache()
+				app.Reset()
 			case syscall.SIGUSR2:
 				mainLogger.Info("SIGUSR2 received. Ignoring")
 			case syscall.SIGHUP:

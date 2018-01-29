@@ -8,54 +8,22 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/lomik/carbon-clickhouse/helper/config"
+	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/zapwriter"
 )
 
 const MetricEndpointLocal = "local"
 
-// Duration wrapper time.Duration for TOML
-type Duration struct {
-	time.Duration
-}
-
-var _ toml.TextMarshaler = &Duration{}
-
-// UnmarshalText from TOML
-func (d *Duration) UnmarshalText(text []byte) error {
-	var err error
-	d.Duration, err = time.ParseDuration(string(text))
-	return err
-}
-
-// MarshalText encode text with TOML format
-func (d *Duration) MarshalText() ([]byte, error) {
-	return []byte(d.Duration.String()), nil
-}
-
-// Value return time.Duration value
-func (d *Duration) Value() time.Duration {
-	return d.Duration
-}
-
 type commonConfig struct {
-	MetricPrefix   string    `toml:"metric-prefix"`
-	MetricInterval *Duration `toml:"metric-interval"`
-	MetricEndpoint string    `toml:"metric-endpoint"`
-	MaxCPU         int       `toml:"max-cpu"`
+	MetricPrefix   string           `toml:"metric-prefix"`
+	MetricInterval *config.Duration `toml:"metric-interval"`
+	MetricEndpoint string           `toml:"metric-endpoint"`
+	MaxCPU         int              `toml:"max-cpu"`
 }
 
 type clickhouseConfig struct {
-	Url               string    `toml:"url"`
-	DataTable         string    `toml:"data-table"`
-	DataTables        []string  `toml:"data-tables"`
-	ReverseDataTables []string  `toml:"reverse-data-tables"`
-	DataTimeout       *Duration `toml:"data-timeout"`
-	TreeTable         string    `toml:"tree-table"`
-	ReverseTreeTable  string    `toml:"reverse-tree-table"`
-	TreeDateString    string    `toml:"tree-date"`
-	TreeDate          time.Time `toml:"-"`
-	TreeTimeout       *Duration `toml:"tree-timeout"`
-	Threads           int       `toml:"threads"`
+	Url string `toml:"url"`
 }
 
 type udpConfig struct {
@@ -85,21 +53,21 @@ type pprofConfig struct {
 }
 
 type dataConfig struct {
-	Path         string    `toml:"path"`
-	FileInterval *Duration `toml:"chunk-interval"`
+	Path         string           `toml:"path"`
+	FileInterval *config.Duration `toml:"chunk-interval"`
 }
 
 // Config ...
 type Config struct {
-	Common     commonConfig       `toml:"common"`
-	ClickHouse clickhouseConfig   `toml:"clickhouse"`
-	Data       dataConfig         `toml:"data"`
-	Udp        udpConfig          `toml:"udp"`
-	Tcp        tcpConfig          `toml:"tcp"`
-	Pickle     pickleConfig       `toml:"pickle"`
-	Grpc       grpcConfig         `toml:"grpc"`
-	Pprof      pprofConfig        `toml:"pprof"`
-	Logging    []zapwriter.Config `toml:"logging"`
+	Common  commonConfig                `toml:"common"`
+	Data    dataConfig                  `toml:"data"`
+	Upload  map[string]*uploader.Config `toml:"upload"`
+	Udp     udpConfig                   `toml:"udp"`
+	Tcp     tcpConfig                   `toml:"tcp"`
+	Pickle  pickleConfig                `toml:"pickle"`
+	Grpc    grpcConfig                  `toml:"grpc"`
+	Pprof   pprofConfig                 `toml:"pprof"`
+	Logging []zapwriter.Config          `toml:"logging"`
 }
 
 // NewConfig ...
@@ -107,31 +75,16 @@ func NewConfig() *Config {
 	cfg := &Config{
 		Common: commonConfig{
 			MetricPrefix: "carbon.agents.{host}",
-			MetricInterval: &Duration{
+			MetricInterval: &config.Duration{
 				Duration: time.Minute,
 			},
 			MetricEndpoint: MetricEndpointLocal,
 			MaxCPU:         1,
 		},
 		Logging: nil,
-		ClickHouse: clickhouseConfig{
-			Url:               "http://localhost:8123/",
-			DataTable:         "graphite",
-			DataTables:        []string{},
-			ReverseDataTables: []string{},
-			TreeTable:         "graphite_tree",
-			TreeDateString:    "2016-11-01",
-			DataTimeout: &Duration{
-				Duration: time.Minute,
-			},
-			TreeTimeout: &Duration{
-				Duration: time.Minute,
-			},
-			Threads: 1,
-		},
 		Data: dataConfig{
 			Path: "/data/carbon-clickhouse/",
-			FileInterval: &Duration{
+			FileInterval: &config.Duration{
 				Duration: time.Second,
 			},
 		},
@@ -180,6 +133,31 @@ func PrintDefaultConfig() error {
 		cfg.Logging = append(cfg.Logging, NewLoggingConfig())
 	}
 
+	cfg.Upload = map[string]*uploader.Config{
+		"graphite": &uploader.Config{
+			Type: "points",
+			Timeout: &config.Duration{
+				Duration: time.Minute,
+			},
+			Threads:   1,
+			TableName: "graphite",
+			URL:       "http://localhost:8123/",
+		},
+		"graphite_tree": &uploader.Config{
+			Type: "tree",
+			Date: "2016-11-01",
+			Timeout: &config.Duration{
+				Duration: time.Minute,
+			},
+			CacheTTL: &config.Duration{
+				Duration: 12 * time.Hour,
+			},
+			Threads:   1,
+			TableName: "graphite_tree",
+			URL:       "http://localhost:8123/",
+		},
+	}
+
 	encoder := toml.NewEncoder(buf)
 	encoder.Indent = ""
 
@@ -193,7 +171,7 @@ func PrintDefaultConfig() error {
 
 // ReadConfig ...
 func ReadConfig(filename string) (*Config, error) {
-	var err error
+	// var err error
 
 	cfg := NewConfig()
 	if filename != "" {
@@ -224,9 +202,10 @@ func ReadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 
-	cfg.ClickHouse.TreeDate, err = time.ParseInLocation("2006-01-02", cfg.ClickHouse.TreeDateString, time.Local)
-	if err != nil {
-		return nil, err
+	for _, u := range cfg.Upload {
+		if err := u.Parse(); err != nil {
+			return nil, err
+		}
 	}
 
 	return cfg, nil

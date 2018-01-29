@@ -78,10 +78,6 @@ func NewCollector(app *App) *Collector {
 		}
 	}
 
-	if app.Uploader != nil {
-		c.stats = append(c.stats, moduleCallback("uploader", app.Uploader))
-	}
-
 	if app.Writer != nil {
 		c.stats = append(c.stats, moduleCallback("writer", app.Writer))
 	}
@@ -96,6 +92,10 @@ func NewCollector(app *App) *Collector {
 
 	if app.UDP != nil {
 		c.stats = append(c.stats, moduleCallback("udp", app.UDP))
+	}
+
+	for n, u := range app.Uploaders {
+		c.stats = append(c.stats, moduleCallback(fmt.Sprintf("upload.%s", n), u))
 	}
 
 	var u *url.URL
