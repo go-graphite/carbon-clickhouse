@@ -27,6 +27,7 @@ type App struct {
 	TCP            receiver.Receiver
 	Pickle         receiver.Receiver
 	Grpc           receiver.Receiver
+	Prometheus     receiver.Receiver
 	Collector      *Collector // (!!!) Should be re-created on every change config/modules
 	writeChan      chan *RowBinary.WriteBuffer
 	exit           chan bool
@@ -111,8 +112,14 @@ func (app *App) stopListeners() {
 
 	if app.Grpc != nil {
 		app.Grpc.Stop()
-		app.Pickle = nil
+		app.Grpc = nil
 		logger.Debug("finished", zap.String("module", "grpc"))
+	}
+
+	if app.Prometheus != nil {
+		app.Prometheus.Stop()
+		app.Prometheus = nil
+		logger.Debug("finished", zap.String("module", "prometheus"))
 	}
 }
 
@@ -243,6 +250,17 @@ func (app *App) Start() (err error) {
 	if conf.Grpc.Enabled {
 		app.Grpc, err = receiver.New(
 			"grpc://"+conf.Grpc.Listen,
+			receiver.WriteChan(app.writeChan),
+		)
+
+		if err != nil {
+			return
+		}
+	}
+
+	if conf.Prometheus.Enabled {
+		app.Prometheus, err = receiver.New(
+			"prometheus://"+conf.Prometheus.Listen,
 			receiver.WriteChan(app.writeChan),
 		)
 

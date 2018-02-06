@@ -31,6 +31,9 @@ func WriteChan(ch chan *RowBinary.WriteBuffer) Option {
 		if t, ok := r.(*GRPC); ok {
 			t.writeChan = ch
 		}
+		if t, ok := r.(*PrometheusRemoteWrite); ok {
+			t.writeChan = ch
+		}
 		return nil
 	}
 }
@@ -132,6 +135,27 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 
 		r := &GRPC{
 			logger: zapwriter.Logger("grpc"),
+		}
+
+		for _, optApply := range opts {
+			optApply(r)
+		}
+
+		if err = r.Listen(addr); err != nil {
+			return nil, err
+		}
+
+		return r, err
+	}
+
+	if u.Scheme == "prometheus" {
+		addr, err := net.ResolveTCPAddr("tcp", u.Host)
+		if err != nil {
+			return nil, err
+		}
+
+		r := &PrometheusRemoteWrite{
+			logger: zapwriter.Logger("prometheus"),
 		}
 
 		for _, optApply := range opts {
