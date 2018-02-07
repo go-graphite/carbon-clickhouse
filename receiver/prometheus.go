@@ -112,11 +112,13 @@ func (rcv *PrometheusRemoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		samples := series[i].GetSamples()
 
 		for j := 0; j < len(samples); j++ {
-			value := samples[j].GetValue()
-			if math.IsNaN(value) {
+			if samples[j] == nil {
 				continue
 			}
-			write(metric, value, samples[j].GetTimestamp()/1000)
+			if math.IsNaN(samples[j].Value) {
+				continue
+			}
+			write(metric, samples[j].Value, samples[j].Timestamp/1000)
 		}
 	}
 
