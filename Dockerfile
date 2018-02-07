@@ -4,8 +4,7 @@ WORKDIR /go/src/github.com/lomik/carbon-clickhouse
 
 COPY . .
 
-RUN apk --no-cache add make git
-RUN make submodules
+RUN apk --no-cache add make
 
 RUN make
 

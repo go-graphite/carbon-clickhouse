@@ -9,10 +9,6 @@ VERSION:=$(shell sh -c 'grep "const Version" $(NAME).go  | cut -d\" -f2')
 
 all: $(NAME)
 
-submodules:
-	git submodule sync
-	git submodule update --init --recursive
-
 $(NAME):
 	$(GO) build github.com/lomik/$(NAME)
 

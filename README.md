@@ -9,7 +9,6 @@ Last releases are stable and ready for production use
 # build binary
 git clone https://github.com/lomik/carbon-clickhouse.git
 cd carbon-clickhouse
-make submodules
 make
 ```
 
