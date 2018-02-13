@@ -76,6 +76,15 @@ func (wb *WriteBuffer) WriteBytes(p []byte) {
 	wb.Used += copy(wb.Body[wb.Used:], p)
 }
 
+func (wb *WriteBuffer) WriteString(s string) {
+	wb.Used += binary.PutUvarint(wb.Body[wb.Used:], uint64(len(s)))
+	wb.Used += copy(wb.Body[wb.Used:], []byte(s))
+}
+
+func (wb *WriteBuffer) WriteUVarint(v uint64) {
+	wb.Used += binary.PutUvarint(wb.Body[wb.Used:], v)
+}
+
 func (wb *WriteBuffer) WriteReversePath(p []byte) {
 	wb.Used += binary.PutUvarint(wb.Body[wb.Used:], uint64(len(p)))
 
