@@ -6,13 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 )
 
-func Cleanup(filename string, tables []string) error {
+func Cleanup(filename string, tables []string) (bool, error) {
 	if len(tables) == 0 {
-		return fmt.Errorf("upload destination list is empty")
+		return false, fmt.Errorf("upload destination list is empty")
 	}
 
 	d, fn := filepath.Split(filename)
@@ -22,23 +23,23 @@ func Cleanup(filename string, tables []string) error {
 	for _, t := range tables {
 		if _, err := os.Stat(filepath.Join(d, t, "_"+fn)); os.IsNotExist(err) {
 			// file not finished
-			return nil
+			return false, nil
 		}
 	}
 
 	err = os.Remove(filename)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	for _, t := range tables {
 		err = os.Remove(filepath.Join(d, t, "_"+fn))
 		if err != nil {
-			return err
+			return true, err
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 func (w *Writer) Cleanup() error {
@@ -58,19 +59,32 @@ func (w *Writer) Cleanup() error {
 		return err
 	}
 
-	// remove finished files
+	unhandledList := make([]string, 0, len(flist))
 	for _, f := range flist {
 		if f.IsDir() {
 			continue
 		}
+
 		if !strings.HasPrefix(f.Name(), "default.") {
 			continue
 		}
 
-		if err := Cleanup(filepath.Join(w.path, f.Name()), w.uploaders); err != nil {
+		unhandledList = append(unhandledList, f.Name())
+	}
+
+	unhandledCount := len(unhandledList)
+	// remove finished files
+	for _, fn := range unhandledList {
+		removed, err := Cleanup(filepath.Join(w.path, fn), w.uploaders)
+		if removed {
+			unhandledCount--
+		}
+		if err != nil {
+			atomic.StoreUint32(&w.stat.unhandled, uint32(unhandledCount))
 			return err
 		}
 	}
+	atomic.StoreUint32(&w.stat.unhandled, uint32(unhandledCount))
 
 	// remove broken links
 	for _, t := range w.uploaders {

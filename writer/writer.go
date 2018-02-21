@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/carbon-clickhouse/helper/config"
 	"github.com/lomik/stop"
 	"github.com/lomik/zapwriter"
 	"go.uber.org/zap"
@@ -20,18 +21,20 @@ type Writer struct {
 	stop.Struct
 	sync.RWMutex
 	stat struct {
-		writtenBytes uint32
+		writtenBytes  uint32
+		unhandled     uint32
+		chunkInterval uint32
 	}
 	inputChan    chan *RowBinary.WriteBuffer
 	path         string
-	fileInterval time.Duration
+	autoInterval *config.ChunkAutoInterval
 	inProgress   map[string]bool // current writing files
 	logger       *zap.Logger
 	uploaders    []string
 	onFinish     func(string) error
 }
 
-func New(in chan *RowBinary.WriteBuffer, path string, fileInterval time.Duration, uploaders []string, onFinish func(string) error) *Writer {
+func New(in chan *RowBinary.WriteBuffer, path string, autoInterval *config.ChunkAutoInterval, uploaders []string, onFinish func(string) error) *Writer {
 	finishCallback := func(fn string) error {
 		if err := Link(fn, uploaders); err != nil {
 			return err
@@ -47,7 +50,7 @@ func New(in chan *RowBinary.WriteBuffer, path string, fileInterval time.Duration
 	return &Writer{
 		inputChan:    in,
 		path:         path,
-		fileInterval: fileInterval,
+		autoInterval: autoInterval,
 		inProgress:   make(map[string]bool),
 		logger:       zapwriter.Logger("writer"),
 		uploaders:    uploaders,
@@ -74,6 +77,9 @@ func (w *Writer) Stat(send func(metric string, value float64)) {
 	writtenBytes := atomic.LoadUint32(&w.stat.writtenBytes)
 	atomic.AddUint32(&w.stat.writtenBytes, -writtenBytes)
 	send("writtenBytes", float64(writtenBytes))
+
+	send("unhandled", float64(atomic.LoadUint32(&w.stat.unhandled)))
+	send("chunkInterval_s", float64(atomic.LoadUint32(&w.stat.chunkInterval)))
 }
 
 func (w *Writer) IsInProgress(filename string) bool {
@@ -151,38 +157,77 @@ func (w *Writer) worker(exit chan struct{}) {
 	// open first file
 	rotate()
 
-	ticker := time.NewTicker(w.fileInterval)
-	defer ticker.Stop()
+	tickerC := make(chan struct{}, 1)
+
+	go func() {
+		prevInterval := w.autoInterval.GetDefault()
+		for {
+			u := int(atomic.LoadUint32(&w.stat.unhandled))
+			interval := w.autoInterval.GetInterval(u)
+			if interval != prevInterval {
+				w.logger.Info("chunk interval changed", zap.String("interval", interval.String()))
+				prevInterval = interval
+			}
+			atomic.StoreUint32(&w.stat.chunkInterval, uint32(interval.Seconds()))
+
+			select {
+			case <-exit:
+				return
+			case <-time.After(interval):
+				select {
+				case tickerC <- struct{}{}:
+					// pass
+				case <-exit:
+					return
+				}
+			}
+		}
+	}()
+
+	write := func(b *RowBinary.WriteBuffer) {
+		_, err := outBuf.Write(b.Body[:b.Used])
+		if b.ConfirmRequired() {
+			if err != nil {
+				b.Fail(err)
+			} else {
+				err := outBuf.Flush()
+				if err != nil {
+					b.Fail(err)
+				} else {
+					b.Confirm()
+				}
+			}
+		}
+		// @TODO: log error?
+		atomic.AddUint32(&w.stat.writtenBytes, uint32(b.Used))
+		b.Release()
+	}
 
 	for {
 		select {
 		case b := <-w.inputChan:
-			_, err := outBuf.Write(b.Body[:b.Used])
-			if b.ConfirmRequired() {
-				if err != nil {
-					b.Fail(err)
-				} else {
-					err := outBuf.Flush()
-					if err != nil {
-						b.Fail(err)
-					} else {
-						b.Confirm()
-					}
-				}
-			}
-			// @TODO: log error?
-			atomic.AddUint32(&w.stat.writtenBytes, uint32(b.Used))
-			b.Release()
-		case <-ticker.C:
+			write(b)
+		case <-tickerC:
 			rotate()
 		case <-exit:
 			return
+		default: // outBuf flush if nothing received
+			outBuf.Flush()
+
+			select {
+			case b := <-w.inputChan:
+				write(b)
+			case <-tickerC:
+				rotate()
+			case <-exit:
+				return
+			}
 		}
 	}
 }
 
 func (w *Writer) cleaner(exit chan struct{}) {
-	ticker := time.NewTicker(w.fileInterval)
+	ticker := time.NewTicker(w.autoInterval.GetDefault())
 	defer ticker.Stop()
 
 	for {

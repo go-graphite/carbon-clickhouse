@@ -1,6 +1,8 @@
 package uploader
 
 import (
+	"fmt"
+
 	"github.com/lomik/zapwriter"
 	"go.uber.org/zap"
 )
@@ -44,6 +46,8 @@ func New(path string, name string, config *Config) (Uploader, error) {
 		res = NewSeries(u)
 	case "series-reverse":
 		res = NewSeriesReverse(u)
+	default:
+		return nil, fmt.Errorf("unknown uploader type %#v", c.Type)
 	}
 
 	return res, nil

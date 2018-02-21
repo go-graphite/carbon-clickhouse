@@ -185,10 +185,12 @@ func (app *App) Start() (err error) {
 		uploaders = append(uploaders, t)
 	}
 
+	conf.Data.AutoInterval.SetDefault(conf.Data.FileInterval.Value())
+
 	app.Writer = writer.New(
 		app.writeChan,
 		conf.Data.Path,
-		conf.Data.FileInterval.Value(),
+		conf.Data.AutoInterval,
 		uploaders,
 		nil,
 	)

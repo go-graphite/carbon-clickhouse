@@ -58,8 +58,9 @@ type pprofConfig struct {
 }
 
 type dataConfig struct {
-	Path         string           `toml:"path"`
-	FileInterval *config.Duration `toml:"chunk-interval"`
+	Path         string                    `toml:"path"`
+	FileInterval *config.Duration          `toml:"chunk-interval"`
+	AutoInterval *config.ChunkAutoInterval `toml:"chunk-auto-interval"`
 }
 
 // Config ...
@@ -93,6 +94,7 @@ func NewConfig() *Config {
 			FileInterval: &config.Duration{
 				Duration: time.Second,
 			},
+			AutoInterval: config.NewChunkAutoInterval(),
 		},
 		Udp: udpConfig{
 			Listen:        ":2003",

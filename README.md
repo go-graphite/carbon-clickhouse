@@ -73,6 +73,10 @@ path = "/data/carbon-clickhouse/"
 # Rotate (and upload) file interval.
 # Minimize chunk-interval for minimize lag between point receive and store
 chunk-interval = "1s"
+# Auto-increase chunk interval if the number of unprocessed files is grown
+# Sample, set chunk interval to 10 if unhandled files count >= 5 and set to 60s if unhandled files count >= 20:
+# chunk-auto-interval = "5:10s,20:60s"
+chunk-auto-interval = ""
 
 [upload.graphite]
 type = "points"
