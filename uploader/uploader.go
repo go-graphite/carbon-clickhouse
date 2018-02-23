@@ -46,6 +46,8 @@ func New(path string, name string, config *Config) (Uploader, error) {
 		res = NewSeries(u)
 	case "series-reverse":
 		res = NewSeriesReverse(u)
+	case "tagged":
+		res = NewTagged(u)
 	default:
 		return nil, fmt.Errorf("unknown uploader type %#v", c.Type)
 	}
