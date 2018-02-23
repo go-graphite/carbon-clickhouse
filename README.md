@@ -111,6 +111,24 @@ cache-ttl = "12h0m0s"
 # timeout = "1m0s"
 # cache-ttl = "12h0m0s"
 
+# # Extra table which can be used as index for tagged series
+#
+# # CREATE TABLE graphite_tagged (
+# #   Date Date,
+# #   Tag1 String,
+# #   Path String,
+# #   Tags Array(String),
+# #   Version UInt32,
+# #   Deleted UInt8
+# # ) ENGINE = ReplacingMergeTree(Date, (Tag1, Path, Date), 8192, Version);
+# [upload.graphite_tagged]
+# type = "tagged"
+# table = "graphite_tagged"
+# threads = 1
+# url = "http://localhost:8123/"
+# timeout = "1m0s"
+# cache-ttl = "12h0m0s"
+
 # You can define additional upload destinations of any supported type
 # [upload.any_unique_name]
 # type = "points"
