@@ -94,6 +94,14 @@ url = "http://localhost:8123/"
 timeout = "1m0s"
 cache-ttl = "12h0m0s"
 
+# # You can define additional upload destinations of any supported type:
+# # - points
+# # - tree
+# # - series (is described below)
+# # - tagged (is described below)
+# # - points-reverse (same scheme as points, but path 'a1.b2.c3' stored as 'c3.b2.a1')
+# # - series-reverse (same scheme as series, but path 'a1.b2.c3' stored as 'c3.b2.a1')
+
 # # Extra table with daily series list
 #
 # # CREATE TABLE graphite_series (
@@ -128,14 +136,6 @@ cache-ttl = "12h0m0s"
 # url = "http://localhost:8123/"
 # timeout = "1m0s"
 # cache-ttl = "12h0m0s"
-
-# You can define additional upload destinations of any supported type
-# [upload.any_unique_name]
-# type = "points"
-# table = "graphite3600"
-# threads = 1
-# url = "http://localhost:8123/"
-# timeout = "1m0s"
 
 [udp]
 listen = ":2003"
