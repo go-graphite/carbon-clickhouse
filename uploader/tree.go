@@ -35,10 +35,24 @@ func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error
 
 	newSeries := make(map[string]bool)
 
-	wb := RowBinary.GetWriteBuffer()
-
 	var level, index, l int
 	var p []byte
+
+	writePathLevel := func(p []byte, level int) error {
+		if err := RowBinary.WriteUint16(out, days); err != nil {
+			return err
+		}
+		if err := RowBinary.WriteUint32(out, uint32(level)); err != nil {
+			return err
+		}
+		if err := RowBinary.WriteBytes(out, p); err != nil {
+			return err
+		}
+		if err := RowBinary.WriteUint32(out, version); err != nil {
+			return err
+		}
+		return nil
+	}
 
 LineLoop:
 	for {
@@ -62,13 +76,11 @@ LineLoop:
 
 		level = pathLevel(name)
 
-		wb.Reset()
-
 		newSeries[string(name)] = true
-		wb.WriteUint16(days)
-		wb.WriteUint32(uint32(level))
-		wb.WriteBytes(name)
-		wb.WriteUint32(version)
+
+		if err = writePathLevel(name, level); err != nil {
+			return nil, err
+		}
 
 		p = name
 		l = level
@@ -79,21 +91,14 @@ LineLoop:
 			}
 
 			newSeries[string(p[:index+1])] = true
-			wb.WriteUint16(days)
-			wb.WriteUint32(uint32(l))
-			wb.WriteBytes(p[:index+1])
-			wb.WriteUint32(version)
+
+			if err = writePathLevel(p[:index+1], l); err != nil {
+				return nil, err
+			}
 
 			p = p[:index]
 		}
-
-		_, err = out.Write(wb.Bytes())
-		if err != nil {
-			return nil, err
-		}
 	}
-
-	wb.Release()
 
 	return newSeries, nil
 }
