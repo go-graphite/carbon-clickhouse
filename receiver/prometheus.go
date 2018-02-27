@@ -14,7 +14,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/days1970"
 	"github.com/lomik/carbon-clickhouse/helper/prompb"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
 )
@@ -52,7 +51,6 @@ func (rcv *PrometheusRemoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 
 	wb := RowBinary.GetWriteBuffer()
-	days := &days1970.Days{}
 	now := uint32(time.Now().Unix())
 
 	samplesCount := uint32(0)
@@ -93,7 +91,6 @@ func (rcv *PrometheusRemoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			[]byte(name),
 			value,
 			uint32(timestamp),
-			days.TimestampWithNow(uint32(timestamp), now),
 			now,
 		)
 

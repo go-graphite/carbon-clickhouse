@@ -10,19 +10,15 @@ import (
 	"math"
 	"os"
 	"time"
-
-	"github.com/lomik/carbon-clickhouse/helper/days1970"
 )
 
 // Read all good records from unfinished RowBinary file.
 type Reader struct {
-	now       uint32
 	fd        *os.File
 	reader    *bufio.Reader
 	offset    int
 	size      int
 	eof       bool
-	days      days1970.Days
 	line      [524288]byte
 	isReverse bool
 }
@@ -97,7 +93,7 @@ func (r *Reader) readRecord() ([]byte, error) {
 	}
 	r.size += 18
 
-	if r.Days() != r.days.TimestampWithNow(r.Timestamp(), r.now) {
+	if r.Days() != TimestampToDays(r.Timestamp()) {
 		return nil, errors.New("date and timestamp mismatch")
 	}
 
@@ -158,7 +154,6 @@ func NewReader(filename string) (*Reader, error) {
 	return &Reader{
 		fd:     fd,
 		reader: bufio.NewReader(fd),
-		now:    uint32(time.Now().Unix()),
 	}, nil
 }
 

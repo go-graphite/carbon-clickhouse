@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/days1970"
 )
 
 type Tree struct {
@@ -30,7 +29,7 @@ func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error
 	}
 	defer reader.Close()
 
-	days := (&days1970.Days{}).Timestamp(uint32(u.config.TreeDate.Unix()))
+	days := RowBinary.TimestampToDays(uint32(u.config.TreeDate.Unix()))
 	version := uint32(time.Now().Unix())
 
 	newSeries := make(map[string]bool)

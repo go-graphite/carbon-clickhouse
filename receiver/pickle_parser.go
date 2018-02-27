@@ -5,25 +5,23 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/days1970"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
 	pickle "github.com/lomik/graphite-pickle"
 )
 
 func PickleParser(exit chan struct{}, in chan []byte, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
-	days := &days1970.Days{}
 
 	for {
 		select {
 		case <-exit:
 			return
 		case b := <-in:
-			PickeParseBytes(exit, b, uint32(time.Now().Unix()), out, days, metricsReceived, errors)
+			PickeParseBytes(exit, b, uint32(time.Now().Unix()), out, metricsReceived, errors)
 		}
 	}
 }
 
-func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBinary.WriteBuffer, days *days1970.Days, metricsReceived *uint32, errors *uint32) {
+func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
 	metricCount := uint32(0)
 	wb := RowBinary.GetWriteBuffer()
 
@@ -69,7 +67,6 @@ func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBina
 			[]byte(name),
 			value,
 			uint32(timestamp),
-			days.TimestampWithNow(uint32(timestamp), now),
 			now,
 		)
 

@@ -2,7 +2,6 @@ package receiver
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"math"
 	"strconv"
@@ -10,7 +9,6 @@ import (
 	"unsafe"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/days1970"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
 )
 
@@ -90,13 +88,10 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	return RemoveDoubleDot(p[:i1]), value, uint32(tsf), nil
 }
 
-func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *RowBinary.WriteBuffer, days *days1970.Days, metricsReceived *uint32, errors *uint32) {
+func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
 	offset := 0
 	metricCount := uint32(0)
 	errorCount := uint32(0)
-
-	version := make([]byte, 4)
-	binary.LittleEndian.PutUint32(version, b.Time)
 
 	wb := RowBinary.GetWriteBuffer()
 
@@ -125,11 +120,7 @@ MainLoop:
 		}
 
 		// write result to buffer for clickhouse
-		wb.WriteBytes(name)
-		wb.WriteFloat64(value)
-		wb.WriteUint32(timestamp)
-		wb.WriteUint16(days.TimestampWithNow(timestamp, b.Time))
-		wb.Write(version)
+		wb.WriteGraphitePoint(name, value, timestamp, b.Time)
 		metricCount++
 	}
 
@@ -154,14 +145,12 @@ MainLoop:
 }
 
 func PlainParser(exit chan struct{}, in chan *Buffer, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
-	days := &days1970.Days{}
-
 	for {
 		select {
 		case <-exit:
 			return
 		case b := <-in:
-			PlainParseBuffer(exit, b, out, days, metricsReceived, errors)
+			PlainParseBuffer(exit, b, out, metricsReceived, errors)
 			b.Release()
 		}
 	}

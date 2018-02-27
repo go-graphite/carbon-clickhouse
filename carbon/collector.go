@@ -10,7 +10,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/days1970"
 	"github.com/lomik/stop"
 	"github.com/lomik/zapwriter"
 )
@@ -178,14 +177,13 @@ func (c *Collector) readData(exit chan struct{}) []*Point {
 }
 
 func (c *Collector) local(exit chan struct{}) {
-	days := &days1970.Days{}
-
 	for {
 		points := c.readData(exit)
 		if points == nil || len(points) == 0 {
 			// exit closed
 			return
 		}
+		now := uint32(time.Now().Unix())
 
 		b := RowBinary.GetWriteBuffer()
 
@@ -206,8 +204,7 @@ func (c *Collector) local(exit chan struct{}) {
 				[]byte(p.Metric),
 				p.Value,
 				p.Timestamp,
-				days.Timestamp(p.Timestamp),
-				uint32(time.Now().Unix()),
+				now,
 			)
 		}
 

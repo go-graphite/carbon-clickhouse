@@ -1,7 +1,6 @@
 package receiver
 
 import (
-	"encoding/binary"
 	"errors"
 	"net"
 	"sync"
@@ -15,7 +14,6 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	pb "github.com/lomik/carbon-clickhouse/grpc"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/days1970"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
 	"github.com/lomik/stop"
 	"go.uber.org/zap"
@@ -130,11 +128,6 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Payload, confirmRequired bool
 	// save to buffers
 	now := uint32(time.Now().Unix())
 
-	version := make([]byte, 4)
-	binary.LittleEndian.PutUint32(version, now)
-
-	var days days1970.Days
-
 	var wg *sync.WaitGroup
 	var errorChan chan error
 
@@ -165,11 +158,12 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Payload, confirmRequired bool
 				wb = RowBinary.GetWriterBufferWithConfirm(wg, errorChan)
 			}
 
-			wb.WriteBytes([]byte(m.Metric))
-			wb.WriteFloat64(m.Points[j].Value)
-			wb.WriteUint32(m.Points[j].Timestamp)
-			wb.WriteUint16(days.TimestampWithNow(m.Points[j].Timestamp, now))
-			wb.Write(version)
+			wb.WriteGraphitePoint(
+				[]byte(m.Metric),
+				m.Points[j].Value,
+				m.Points[j].Timestamp,
+				now,
+			)
 		}
 	}
 

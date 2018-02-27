@@ -127,11 +127,11 @@ func (wb *WriteBuffer) Write(p []byte) {
 	wb.Used += copy(wb.Body[wb.Used:], p)
 }
 
-func (wb *WriteBuffer) WriteGraphitePoint(name []byte, value float64, timestamp uint32, days uint16, version uint32) {
+func (wb *WriteBuffer) WriteGraphitePoint(name []byte, value float64, timestamp uint32, version uint32) {
 	wb.WriteBytes(name)
 	wb.WriteFloat64(value)
 	wb.WriteUint32(timestamp)
-	wb.WriteUint16(days)
+	wb.WriteUint16(TimestampToDays(timestamp))
 	wb.WriteUint32(version)
 }
 
