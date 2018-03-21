@@ -57,10 +57,14 @@ func (u *cached) upload(exit chan struct{}, logger *zap.Logger, filename string)
 	uploadResult := make(chan error, 1)
 
 	u.Go(func(exit chan struct{}) {
-		uploadResult <- u.insertRowBinary(
+		err := u.insertRowBinary(
 			u.insertQuery,
 			pipeReader,
 		)
+		uploadResult <- err
+		if err != nil {
+			pipeReader.CloseWithError(err)
+		}
 	})
 
 	newSeries, err := u.parser(filename, writer)
