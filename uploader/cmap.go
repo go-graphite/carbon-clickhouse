@@ -2,6 +2,7 @@ package uploader
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -121,7 +122,7 @@ func (m CMap) Expire(exit chan struct{}, ttl time.Duration) (int, int64) {
 	return count, min
 }
 
-func (m CMap) ExpireWorker(exit chan struct{}, ttl time.Duration) {
+func (m CMap) ExpireWorker(exit chan struct{}, ttl time.Duration, expiredCounter *uint32) {
 	for {
 		interval := time.Minute
 		// @TODO: adaptive interval, based on min value from prev Expire run
@@ -130,7 +131,10 @@ func (m CMap) ExpireWorker(exit chan struct{}, ttl time.Duration) {
 		case <-exit:
 			return
 		case <-time.After(interval):
-			m.Expire(exit, ttl)
+			cnt, _ := m.Expire(exit, ttl)
+			if expiredCounter != nil {
+				atomic.AddUint32(expiredCounter, uint32(cnt))
+			}
 		}
 	}
 }

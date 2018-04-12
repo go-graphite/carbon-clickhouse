@@ -2,6 +2,7 @@ package carbon
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -200,11 +201,20 @@ func (app *App) Start() (err error) {
 	/* UPLOADER start */
 	app.Uploaders = make(map[string]uploader.Uploader)
 	for uploaderName, uploaderConfig := range conf.Upload {
-		uploader, err := uploader.New(filepath.Join(conf.Data.Path, uploaderName), uploaderName, uploaderConfig)
+		up, err := uploader.New(filepath.Join(conf.Data.Path, uploaderName), uploaderName, uploaderConfig)
 		if err != nil {
 			return err
 		}
-		app.Uploaders[uploaderName] = uploader
+		app.Uploaders[uploaderName] = up
+
+		// debug cache dump
+		if dumper, ok := up.(uploader.DebugCacheDumper); ok {
+			func(uploaderName string, d uploader.DebugCacheDumper) {
+				http.HandleFunc(fmt.Sprintf("/debug/upload/%s/cache/", uploaderName), func(w http.ResponseWriter, r *http.Request) {
+					d.CacheDump(w)
+				})
+			}(uploaderName, dumper)
+		}
 	}
 
 	for _, uploader := range app.Uploaders {

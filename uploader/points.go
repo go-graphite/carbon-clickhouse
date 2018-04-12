@@ -2,9 +2,10 @@ package uploader
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"strings"
+
+	"go.uber.org/zap"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 )
@@ -41,7 +42,7 @@ func (u *Points) upload(exit chan struct{}, logger *zap.Logger, filename string)
 	)
 
 	if err != nil {
-		if strings.Index(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") >= 0 {
+		if strings.Contains(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") {
 			logger.Warn("file corrupted, try to recover")
 
 			var reader *RowBinary.Reader

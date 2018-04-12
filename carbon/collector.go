@@ -179,7 +179,7 @@ func (c *Collector) readData(exit chan struct{}) []*Point {
 func (c *Collector) local(exit chan struct{}) {
 	for {
 		points := c.readData(exit)
-		if points == nil || len(points) == 0 {
+		if len(points) == 0 {
 			// exit closed
 			return
 		}

@@ -155,12 +155,12 @@ func (u *Base) uploadWorker(exit chan struct{}) {
 				atomic.AddUint32(&u.stat.errors, 1)
 				logger.Error("handle failed",
 					zap.Error(err),
-					zap.Duration("time", time.Now().Sub(startTime)),
+					zap.Duration("time", time.Since(startTime)),
 				)
 			} else {
 				atomic.AddUint32(&u.stat.uploaded, 1)
 				logger.Info("handle success",
-					zap.Duration("time", time.Now().Sub(startTime)),
+					zap.Duration("time", time.Since(startTime)),
 				)
 			}
 
