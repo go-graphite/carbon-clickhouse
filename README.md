@@ -154,6 +154,10 @@ enabled = true
 listen = ":2005"
 enabled = false
 
+[prometheus]
+listen = ":2006"
+enabled = false
+
 [pprof]
 listen = "localhost:7007"
 enabled = false
