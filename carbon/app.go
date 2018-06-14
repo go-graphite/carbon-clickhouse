@@ -21,18 +21,19 @@ import (
 
 type App struct {
 	sync.RWMutex
-	Config         *Config
-	Writer         *writer.Writer
-	Uploaders      map[string]uploader.Uploader
-	UDP            receiver.Receiver
-	TCP            receiver.Receiver
-	Pickle         receiver.Receiver
-	Grpc           receiver.Receiver
-	Prometheus     receiver.Receiver
-	Collector      *Collector // (!!!) Should be re-created on every change config/modules
-	writeChan      chan *RowBinary.WriteBuffer
-	exit           chan bool
-	ConfigFilename string
+	Config           *Config
+	Writer           *writer.Writer
+	Uploaders        map[string]uploader.Uploader
+	UDP              receiver.Receiver
+	TCP              receiver.Receiver
+	Pickle           receiver.Receiver
+	Grpc             receiver.Receiver
+	Prometheus       receiver.Receiver
+	TelegrafHttpJson receiver.Receiver
+	Collector        *Collector // (!!!) Should be re-created on every change config/modules
+	writeChan        chan *RowBinary.WriteBuffer
+	exit             chan bool
+	ConfigFilename   string
 }
 
 // New App instance
@@ -121,6 +122,12 @@ func (app *App) stopListeners() {
 		app.Prometheus.Stop()
 		app.Prometheus = nil
 		logger.Debug("finished", zap.String("module", "prometheus"))
+	}
+
+	if app.TelegrafHttpJson != nil {
+		app.TelegrafHttpJson.Stop()
+		app.TelegrafHttpJson = nil
+		logger.Debug("finished", zap.String("module", "telegraf_http_json"))
 	}
 }
 
@@ -273,6 +280,17 @@ func (app *App) Start() (err error) {
 	if conf.Prometheus.Enabled {
 		app.Prometheus, err = receiver.New(
 			"prometheus://"+conf.Prometheus.Listen,
+			receiver.WriteChan(app.writeChan),
+		)
+
+		if err != nil {
+			return
+		}
+	}
+
+	if conf.TelegrafHttpJson.Enabled {
+		app.TelegrafHttpJson, err = receiver.New(
+			"telegraf+http+json://"+conf.TelegrafHttpJson.Listen,
 			receiver.WriteChan(app.writeChan),
 		)
 

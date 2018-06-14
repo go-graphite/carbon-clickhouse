@@ -34,6 +34,9 @@ func WriteChan(ch chan *RowBinary.WriteBuffer) Option {
 		if t, ok := r.(*PrometheusRemoteWrite); ok {
 			t.writeChan = ch
 		}
+		if t, ok := r.(*TelegrafHttpJson); ok {
+			t.writeChan = ch
+		}
 		return nil
 	}
 }
@@ -156,6 +159,27 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 
 		r := &PrometheusRemoteWrite{
 			logger: zapwriter.Logger("prometheus"),
+		}
+
+		for _, optApply := range opts {
+			optApply(r)
+		}
+
+		if err = r.Listen(addr); err != nil {
+			return nil, err
+		}
+
+		return r, err
+	}
+
+	if u.Scheme == "telegraf+http+json" {
+		addr, err := net.ResolveTCPAddr("tcp", u.Host)
+		if err != nil {
+			return nil, err
+		}
+
+		r := &TelegrafHttpJson{
+			logger: zapwriter.Logger("telegraf_http_json"),
 		}
 
 		for _, optApply := range opts {
