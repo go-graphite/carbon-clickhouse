@@ -6,11 +6,9 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/days1970"
 )
 
 func BenchmarkPlainParseBuffer(b *testing.B) {
-	days := &days1970.Days{}
 	out := make(chan *RowBinary.WriteBuffer, 1)
 
 	c1 := uint32(0)
@@ -36,11 +34,11 @@ func BenchmarkPlainParseBuffer(b *testing.B) {
 
 	var wb *RowBinary.WriteBuffer
 	for i := 0; i < b.N; i += 100 {
-		PlainParseBuffer(nil, buf, out, days, &c1, &c2)
+		PlainParseBuffer(nil, buf, out, &c1, &c2)
 		wb = <-out
 		wb.Release()
 
-		PlainParseBuffer(nil, buf2, out, days, &c1, &c2)
+		PlainParseBuffer(nil, buf2, out, &c1, &c2)
 		wb = <-out
 		wb.Release()
 	}

@@ -158,6 +158,10 @@ enabled = false
 listen = ":2006"
 enabled = false
 
+[telegraf_http_json]
+listen = ":2007"
+enabled = false
+
 [pprof]
 listen = "localhost:7007"
 enabled = false

@@ -52,6 +52,11 @@ type promConfig struct {
 	Enabled bool   `toml:"enabled"`
 }
 
+type telegrafHttpJsonConfig struct {
+	Listen  string `toml:"listen"`
+	Enabled bool   `toml:"enabled"`
+}
+
 type pprofConfig struct {
 	Listen  string `toml:"listen"`
 	Enabled bool   `toml:"enabled"`
@@ -65,16 +70,17 @@ type dataConfig struct {
 
 // Config ...
 type Config struct {
-	Common     commonConfig                `toml:"common"`
-	Data       dataConfig                  `toml:"data"`
-	Upload     map[string]*uploader.Config `toml:"upload"`
-	Udp        udpConfig                   `toml:"udp"`
-	Tcp        tcpConfig                   `toml:"tcp"`
-	Pickle     pickleConfig                `toml:"pickle"`
-	Grpc       grpcConfig                  `toml:"grpc"`
-	Prometheus promConfig                  `toml:"prometheus"`
-	Pprof      pprofConfig                 `toml:"pprof"`
-	Logging    []zapwriter.Config          `toml:"logging"`
+	Common           commonConfig                `toml:"common"`
+	Data             dataConfig                  `toml:"data"`
+	Upload           map[string]*uploader.Config `toml:"upload"`
+	Udp              udpConfig                   `toml:"udp"`
+	Tcp              tcpConfig                   `toml:"tcp"`
+	Pickle           pickleConfig                `toml:"pickle"`
+	Grpc             grpcConfig                  `toml:"grpc"`
+	Prometheus       promConfig                  `toml:"prometheus"`
+	TelegrafHttpJson telegrafHttpJsonConfig      `toml:"telegraf_http_json"`
+	Pprof            pprofConfig                 `toml:"pprof"`
+	Logging          []zapwriter.Config          `toml:"logging"`
 }
 
 // NewConfig ...
@@ -115,6 +121,10 @@ func NewConfig() *Config {
 		},
 		Prometheus: promConfig{
 			Listen:  ":2006",
+			Enabled: false,
+		},
+		TelegrafHttpJson: telegrafHttpJsonConfig{
+			Listen:  ":2007",
 			Enabled: false,
 		},
 		Pprof: pprofConfig{

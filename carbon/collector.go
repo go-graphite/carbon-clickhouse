@@ -97,6 +97,10 @@ func NewCollector(app *App) *Collector {
 		c.stats = append(c.stats, moduleCallback("prometheus", app.Prometheus))
 	}
 
+	if app.TelegrafHttpJson != nil {
+		c.stats = append(c.stats, moduleCallback("telegraf_http_json", app.TelegrafHttpJson))
+	}
+
 	for n, u := range app.Uploaders {
 		c.stats = append(c.stats, moduleCallback(fmt.Sprintf("upload.%s", n), u))
 	}
