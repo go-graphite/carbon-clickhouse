@@ -1,9 +1,14 @@
 package receiver
 
 import (
+	"bytes"
+	"encoding/json"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
+	"net/url"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -11,6 +16,17 @@ import (
 	"github.com/lomik/stop"
 	"go.uber.org/zap"
 )
+
+type TelegrafHttpMetric struct {
+	Name      string             `json:"name"`
+	Timestamp int64              `json:"timestamp"`
+	Fields    map[string]float64 `json:"fields"`
+	Tags      map[string]string  `json:"tags"`
+}
+
+type TelegrafHttpPayload struct {
+	Metrics []TelegrafHttpMetric `json:"metrics"`
+}
 
 type TelegrafHttpJson struct {
 	stop.Struct
@@ -24,6 +40,39 @@ type TelegrafHttpJson struct {
 	logger    *zap.Logger
 }
 
+func TelegrafEncodeTags(tags map[string]string) string {
+	if len(tags) < 1 {
+		return ""
+	}
+
+	if len(tags) == 1 {
+		var res bytes.Buffer
+		for k, v := range tags {
+			res.WriteString(url.QueryEscape(k))
+			res.WriteByte('=')
+			res.WriteString(url.QueryEscape(v))
+			return res.String()
+		}
+	}
+
+	keys := make([]string, 0, len(tags))
+	for k, _ := range tags {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var res bytes.Buffer
+	for i := 0; i < len(keys); i++ {
+		if i > 1 {
+			res.WriteByte('&')
+		}
+		res.WriteString(url.QueryEscape(keys[i]))
+		res.WriteByte('=')
+		res.WriteString(url.QueryEscape(tags[keys[i]]))
+	}
+	return res.String()
+}
+
 func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -31,7 +80,49 @@ func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rcv.logger.Info("received " + string(body))
+	var data TelegrafHttpPayload
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writer := RowBinary.NewWriter(r.Context(), rcv.writeChan)
+
+	var pathBuf bytes.Buffer
+
+	for i := 0; i < len(data.Metrics); i++ {
+		m := data.Metrics[i]
+		tags := TelegrafEncodeTags(m.Tags)
+
+		for f, v := range m.Fields {
+			pathBuf.Reset()
+			pathBuf.WriteString(url.PathEscape(m.Name))
+
+			if math.IsNaN(v) {
+				continue
+			}
+
+			if f != "value" {
+				pathBuf.WriteByte('_')
+				pathBuf.WriteString(url.PathEscape(f))
+			}
+
+			pathBuf.WriteByte('?')
+			pathBuf.WriteString(tags)
+
+			writer.WritePoint(pathBuf.String(), v, m.Timestamp)
+		}
+	}
+
+	writer.Flush()
+	if samplesCount := writer.PointsWritten(); samplesCount > 0 {
+		atomic.AddUint32(&rcv.stat.samplesReceived, samplesCount)
+	}
+
+	if writeErrors := writer.WriteErrors(); writeErrors > 0 {
+		atomic.AddUint32(&rcv.stat.errors, writeErrors)
+	}
 }
 
 // Addr returns binded socket address. For bind port 0 in tests

@@ -50,52 +50,7 @@ func (rcv *PrometheusRemoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	wb := RowBinary.GetWriteBuffer()
-	now := uint32(time.Now().Unix())
-
-	samplesCount := uint32(0)
-
-	flush := func() {
-		if wb != nil {
-			if wb.Empty() {
-				wb.Release()
-			} else {
-				select {
-				case rcv.writeChan <- wb:
-					// pass
-				case <-r.Context().Done():
-					// pass
-				}
-			}
-			wb = nil
-		}
-	}
-
-	fail := func() {
-		flush()
-		atomic.AddUint32(&rcv.stat.errors, 1)
-	}
-
-	write := func(name string, value float64, timestamp int64) {
-		if !wb.CanWriteGraphitePoint(len(name)) {
-			flush()
-			if len(name) > RowBinary.WriteBufferSize-50 {
-				fail()
-				return
-				// return fmt.Error("metric too long (%d bytes)", len(name))
-			}
-			wb = RowBinary.GetWriteBuffer()
-		}
-
-		wb.WriteGraphitePoint(
-			[]byte(name),
-			value,
-			uint32(timestamp),
-			now,
-		)
-
-		samplesCount++
-	}
+	writer := RowBinary.NewWriter(r.Context(), rcv.writeChan)
 
 	series := req.GetTimeseries()
 	for i := 0; i < len(series); i++ {
@@ -115,14 +70,18 @@ func (rcv *PrometheusRemoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			if math.IsNaN(samples[j].Value) {
 				continue
 			}
-			write(metric, samples[j].Value, samples[j].Timestamp/1000)
+			writer.WritePoint(metric, samples[j].Value, samples[j].Timestamp/1000)
 		}
 	}
 
-	flush()
+	writer.Flush()
 
-	if samplesCount > 0 {
+	if samplesCount := writer.PointsWritten(); samplesCount > 0 {
 		atomic.AddUint32(&rcv.stat.samplesReceived, samplesCount)
+	}
+
+	if writeErrors := writer.WriteErrors(); writeErrors > 0 {
+		atomic.AddUint32(&rcv.stat.errors, writeErrors)
 	}
 }
 
