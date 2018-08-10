@@ -18,10 +18,10 @@ import (
 )
 
 type TelegrafHttpMetric struct {
-	Name      string             `json:"name"`
-	Timestamp int64              `json:"timestamp"`
-	Fields    map[string]float64 `json:"fields"`
-	Tags      map[string]string  `json:"tags"`
+	Name      string                 `json:"name"`
+	Timestamp int64                  `json:"timestamp"`
+	Fields    map[string]interface{} `json:"fields"`
+	Tags      map[string]string      `json:"tags"`
 }
 
 type TelegrafHttpPayload struct {
@@ -95,7 +95,19 @@ func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m := data.Metrics[i]
 		tags := TelegrafEncodeTags(m.Tags)
 
-		for f, v := range m.Fields {
+		for f, vi := range m.Fields {
+			v, ok := vi.(float64)
+			if !ok {
+				vb, ok := vi.(bool)
+				if !ok {
+					continue
+				}
+				if vb {
+					v = 1
+				} else {
+					v = 0
+				}
+			}
 			pathBuf.Reset()
 			pathBuf.WriteString(url.PathEscape(m.Name))
 
