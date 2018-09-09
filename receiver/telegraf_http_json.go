@@ -56,17 +56,24 @@ func TelegrafEncodeTags(tags map[string]string) string {
 	}
 
 	keys := make([]string, 0, len(tags))
-	for k, _ := range tags {
+	for k := range tags {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	var res bytes.Buffer
 	for i := 0; i < len(keys); i++ {
-		if i > 1 {
+		if i > 0 {
 			res.WriteByte('&')
 		}
-		res.WriteString(url.QueryEscape(keys[i]))
+
+		// `name` is reserved for metric, replace it as tag name
+		key := keys[i]
+		if key == "name" {
+			key = "_name"
+		}
+
+		res.WriteString(url.QueryEscape(key))
 		res.WriteByte('=')
 		res.WriteString(url.QueryEscape(tags[keys[i]]))
 	}
