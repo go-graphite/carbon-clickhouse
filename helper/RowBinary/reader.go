@@ -76,7 +76,7 @@ func (r *Reader) readRecord() ([]byte, error) {
 		return nil, errors.New("name truncated")
 	}
 
-	if r.isReverse {
+	if r.isReverse && bytes.IndexByte(r.line[r.size:r.size+n], '?') < 0 {
 		copy(r.line[r.size:], ReverseBytes(r.line[r.size:r.size+n]))
 	}
 
