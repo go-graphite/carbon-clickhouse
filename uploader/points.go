@@ -21,6 +21,16 @@ func NewPoints(base *Base) *Points {
 }
 
 func (u *Points) upload(exit chan struct{}, logger *zap.Logger, filename string) error {
+	if u.config.ZeroTimestamp {
+		reader, err := RowBinary.NewReader(filename)
+		reader.SetZeroVersion(u.config.ZeroTimestamp)
+		if err != nil {
+			return err
+		}
+
+		return u.insertRowBinary(fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.config.TableName), reader)
+	}
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -45,8 +55,7 @@ func (u *Points) upload(exit chan struct{}, logger *zap.Logger, filename string)
 		if strings.Contains(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") {
 			logger.Warn("file corrupted, try to recover")
 
-			var reader *RowBinary.Reader
-			reader, err = RowBinary.NewReader(filename)
+			reader, err := RowBinary.NewReader(filename)
 			if err != nil {
 				return err
 			}

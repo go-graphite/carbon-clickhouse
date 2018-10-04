@@ -14,13 +14,18 @@ import (
 
 // Read all good records from unfinished RowBinary file.
 type Reader struct {
-	fd        *os.File
-	reader    *bufio.Reader
-	offset    int
-	size      int
-	eof       bool
-	line      [524288]byte
-	isReverse bool
+	fd          *os.File
+	reader      *bufio.Reader
+	offset      int
+	size        int
+	eof         bool
+	line        [524288]byte
+	isReverse   bool
+	zeroVersion bool
+}
+
+func (r *Reader) SetZeroVersion(v bool) {
+	r.zeroVersion = v
 }
 
 func (r *Reader) Timestamp() uint32 {
@@ -92,6 +97,13 @@ func (r *Reader) readRecord() ([]byte, error) {
 		return nil, errors.New("record truncated")
 	}
 	r.size += 18
+
+	if r.zeroVersion {
+		r.line[r.size-4] = '\x00'
+		r.line[r.size-3] = '\x00'
+		r.line[r.size-2] = '\x00'
+		r.line[r.size-1] = '\x00'
+	}
 
 	if r.Days() != TimestampToDays(r.Timestamp()) {
 		return nil, errors.New("date and timestamp mismatch")
