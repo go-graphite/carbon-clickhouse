@@ -28,7 +28,7 @@ func (rcv *TCP) Addr() net.Addr {
 }
 
 func (rcv *TCP) Stat(send func(metric string, value float64)) {
-	rcv.Base.stat.Stat(send, "metricsReceived", "errors", "active")
+	rcv.SendStat(send, "metricsReceived", "errors", "active")
 }
 
 func (rcv *TCP) HandleConnection(conn net.Conn) {
