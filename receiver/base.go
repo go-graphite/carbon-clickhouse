@@ -18,12 +18,16 @@ type Base struct {
 		errors             uint64 // atomic
 		active             int64  // atomic
 		incompleteReceived uint64 // atomic
+		futureDropped      uint64 // atomic
+		oldDropped         uint64 // atomic
 	}
-	ctx          context.Context
-	ctxCancel    context.CancelFunc
-	parseThreads int
-	writeChan    chan *RowBinary.WriteBuffer
-	logger       *zap.Logger
+	ctx               context.Context
+	ctxCancel         context.CancelFunc
+	parseThreads      int
+	dropFutureSeconds int
+	dropOldSeconds    int
+	writeChan         chan *RowBinary.WriteBuffer
+	logger            *zap.Logger
 }
 
 func NewBase(logger *zap.Logger) Base {
@@ -40,21 +44,21 @@ func sendInt64Gauge(send func(metric string, value float64), metric string, valu
 	send(metric, float64(atomic.LoadInt64(value)))
 }
 
-func (b *Base) SendStat(send func(metric string, value float64), fields ...string) {
+func (base *Base) SendStat(send func(metric string, value float64), fields ...string) {
 	for _, f := range fields {
 		switch f {
 		case "samplesReceived":
-			sendUint64Counter(send, f, &b.stat.samplesReceived)
+			sendUint64Counter(send, f, &base.stat.samplesReceived)
 		case "messagesReceived":
-			sendUint64Counter(send, f, &b.stat.messagesReceived)
+			sendUint64Counter(send, f, &base.stat.messagesReceived)
 		case "metricsReceived":
-			sendUint64Counter(send, f, &b.stat.metricsReceived)
+			sendUint64Counter(send, f, &base.stat.metricsReceived)
 		case "incompleteReceived":
-			sendUint64Counter(send, f, &b.stat.incompleteReceived)
+			sendUint64Counter(send, f, &base.stat.incompleteReceived)
 		case "errors":
-			sendUint64Counter(send, f, &b.stat.errors)
+			sendUint64Counter(send, f, &base.stat.errors)
 		case "active":
-			sendInt64Gauge(send, f, &b.stat.active)
+			sendInt64Gauge(send, f, &base.stat.active)
 		}
 	}
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
-	"golang.org/x/net/context"
 )
 
 // https://github.com/golang/go/issues/2632#issuecomment-66061057
@@ -89,7 +88,7 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	return RemoveDoubleDot(p[:i1]), value, uint32(tsf), nil
 }
 
-func PlainParseBuffer(ctx context.Context, b *Buffer, out chan *RowBinary.WriteBuffer, metricsReceived *uint64, errors *uint64) {
+func (base *Base) PlainParseBuffer(b *Buffer) {
 	offset := 0
 	metricCount := uint32(0)
 	errorCount := uint32(0)
@@ -126,10 +125,10 @@ MainLoop:
 	}
 
 	if metricCount > 0 {
-		atomic.AddUint64(metricsReceived, uint64(metricCount))
+		atomic.AddUint64(&base.stat.metricsReceived, uint64(metricCount))
 	}
 	if errorCount > 0 {
-		atomic.AddUint64(errors, uint64(errorCount))
+		atomic.AddUint64(&base.stat.errors, uint64(errorCount))
 	}
 
 	if wb.Empty() {
@@ -138,20 +137,20 @@ MainLoop:
 	}
 
 	select {
-	case out <- wb:
+	case base.writeChan <- wb:
 		// pass
-	case <-ctx.Done():
+	case <-base.ctx.Done():
 		return
 	}
 }
 
-func PlainParser(ctx context.Context, in chan *Buffer, out chan *RowBinary.WriteBuffer, metricsReceived *uint64, errors *uint64) {
+func (base *Base) PlainParser(in chan *Buffer) {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-base.ctx.Done():
 			return
 		case b := <-in:
-			PlainParseBuffer(ctx, b, out, metricsReceived, errors)
+			base.PlainParseBuffer(b)
 			b.Release()
 		}
 	}

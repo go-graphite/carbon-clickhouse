@@ -132,13 +132,7 @@ func (rcv *TCP) Listen(addr *net.TCPAddr) error {
 
 		for i := 0; i < rcv.parseThreads; i++ {
 			rcv.Go(func(ctx context.Context) {
-				PlainParser(
-					ctx,
-					rcv.parseChan,
-					rcv.writeChan,
-					&rcv.stat.metricsReceived,
-					&rcv.stat.errors,
-				)
+				rcv.PlainParser(rcv.parseChan)
 			})
 		}
 
