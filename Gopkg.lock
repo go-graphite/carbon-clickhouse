@@ -74,6 +74,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:4e06aecb60d6cefce405bf1f060028cbb77f2d893b4cafbbf03406b5a3ccb86b"
+  name = "github.com/lomik/stop"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "188e98d969bd7491ae161b920247588503cfc4a5"
+
+[[projects]]
+  branch = "master"
   digest = "1:3c7a647abbe8cb3dbdaa859b716286813363fad274cf896f9a3cd9045e7083ef"
   name = "github.com/lomik/zapwriter"
   packages = ["."]
@@ -218,6 +226,7 @@
     "github.com/golang/snappy",
     "github.com/lomik/graphite-pickle",
     "github.com/lomik/graphite-pickle/framing",
+    "github.com/lomik/stop",
     "github.com/lomik/zapwriter",
     "github.com/stretchr/testify/assert",
     "go.uber.org/zap",
