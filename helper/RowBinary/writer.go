@@ -50,6 +50,10 @@ func NewWriter(ctx context.Context, writeChan chan *WriteBuffer) *Writer {
 	}
 }
 
+func (w *Writer) Now() uint32 {
+	return w.now
+}
+
 func (w *Writer) Flush() {
 	if w.wb != nil {
 		if w.wb.Empty() {

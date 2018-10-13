@@ -131,6 +131,10 @@ func (g *GRPC) doStore(requestCtx context.Context, in *pb.Payload, confirmRequir
 		m := in.Metrics[i]
 
 		for j := 0; j < len(m.Points); j++ {
+			if g.isDrop(now, m.Points[j].Timestamp) {
+				continue
+			}
+
 			if !wb.CanWriteGraphitePoint(len(m.Metric)) {
 				select {
 				case g.writeChan <- wb:

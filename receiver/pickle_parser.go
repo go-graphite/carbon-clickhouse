@@ -47,6 +47,10 @@ func (base *Base) PickleParseBytes(b []byte, now uint32) {
 	}
 
 	pickle.ParseMessage(b, func(name string, value float64, timestamp int64) {
+		if base.isDrop(now, uint32(timestamp)) {
+			return
+		}
+
 		name, err := tags.Graphite(name)
 		if err != nil {
 			// @TODO: log?

@@ -93,6 +93,10 @@ func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for i := 0; i < len(data.Metrics); i++ {
 		m := data.Metrics[i]
+		if rcv.isDrop(writer.Now(), uint32(m.Timestamp)) {
+			continue
+		}
+
 		tags := TelegrafEncodeTags(m.Tags)
 
 		for f, vi := range m.Fields {

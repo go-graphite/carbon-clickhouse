@@ -19,13 +19,13 @@ type Base struct {
 		active             int64  // atomic
 		incompleteReceived uint64 // atomic
 		futureDropped      uint64 // atomic
-		oldDropped         uint64 // atomic
+		pastDropped        uint64 // atomic
 	}
 	ctx               context.Context
 	ctxCancel         context.CancelFunc
 	parseThreads      int
-	dropFutureSeconds int
-	dropOldSeconds    int
+	dropFutureSeconds uint32
+	dropPastSeconds   uint32
 	writeChan         chan *RowBinary.WriteBuffer
 	logger            *zap.Logger
 }
@@ -44,6 +44,18 @@ func sendInt64Gauge(send func(metric string, value float64), metric string, valu
 	send(metric, float64(atomic.LoadInt64(value)))
 }
 
+func (base *Base) isDrop(nowTime uint32, metricTime uint32) bool {
+	if base.dropFutureSeconds != 0 && (metricTime > (nowTime + base.dropFutureSeconds)) {
+		atomic.AddUint64(&base.stat.futureDropped, 1)
+		return true
+	}
+	if base.dropPastSeconds != 0 && (nowTime > (metricTime + base.dropPastSeconds)) {
+		atomic.AddUint64(&base.stat.pastDropped, 1)
+		return true
+	}
+	return false
+}
+
 func (base *Base) SendStat(send func(metric string, value float64), fields ...string) {
 	for _, f := range fields {
 		switch f {
@@ -55,6 +67,10 @@ func (base *Base) SendStat(send func(metric string, value float64), fields ...st
 			sendUint64Counter(send, f, &base.stat.metricsReceived)
 		case "incompleteReceived":
 			sendUint64Counter(send, f, &base.stat.incompleteReceived)
+		case "futureDropped":
+			sendUint64Counter(send, f, &base.stat.futureDropped)
+		case "pastDropped":
+			sendUint64Counter(send, f, &base.stat.pastDropped)
 		case "errors":
 			sendUint64Counter(send, f, &base.stat.errors)
 		case "active":

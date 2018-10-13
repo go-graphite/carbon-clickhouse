@@ -119,6 +119,10 @@ MainLoop:
 			continue MainLoop
 		}
 
+		if base.isDrop(b.Time, timestamp) {
+			continue MainLoop
+		}
+
 		// write result to buffer for clickhouse
 		wb.WriteGraphitePoint(name, value, timestamp, b.Time)
 		metricCount++
