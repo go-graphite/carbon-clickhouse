@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/context"
@@ -15,22 +14,13 @@ import (
 	pb "github.com/lomik/carbon-clickhouse/grpc"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
-	"github.com/lomik/stop"
 	"go.uber.org/zap"
 )
 
 // GRPC receive metrics from GRPC connections
 type GRPC struct {
-	stop.Struct
-	stat struct {
-		metricsReceived uint32 // atomic
-		errors          uint32 // atomic
-		active          int32  // atomic
-	}
-	listener     *net.TCPListener
-	parseThreads int
-	writeChan    chan *RowBinary.WriteBuffer
-	logger       *zap.Logger
+	Base
+	listener *net.TCPListener
 }
 
 // Addr returns binded socket address. For bind port 0 in tests
@@ -42,13 +32,7 @@ func (g *GRPC) Addr() net.Addr {
 }
 
 func (g *GRPC) Stat(send func(metric string, value float64)) {
-	metricsReceived := atomic.LoadUint32(&g.stat.metricsReceived)
-	atomic.AddUint32(&g.stat.metricsReceived, -metricsReceived)
-	send("metricsReceived", float64(metricsReceived))
-
-	errors := atomic.LoadUint32(&g.stat.errors)
-	atomic.AddUint32(&g.stat.errors, -errors)
-	send("errors", float64(errors))
+	g.stat.Stat(send, "metricsReceived", "errors")
 }
 
 // Listen bind port. Receive messages and send to out channel
@@ -65,12 +49,12 @@ func (g *GRPC) Listen(addr *net.TCPAddr) error {
 		// Register reflection service on gRPC server.
 		reflection.Register(s)
 
-		g.Go(func(exit chan struct{}) {
-			<-exit
+		g.Go(func(ctx context.Context) {
+			<-ctx.Done()
 			s.Stop()
 		})
 
-		g.Go(func(exit chan struct{}) {
+		g.Go(func(ctx context.Context) {
 			defer s.Stop()
 
 			if err := s.Serve(tcpListener); err != nil {
@@ -85,7 +69,7 @@ func (g *GRPC) Listen(addr *net.TCPAddr) error {
 	})
 }
 
-func (g *GRPC) doStore(ctx context.Context, in *pb.Payload, confirmRequired bool) error {
+func (g *GRPC) doStore(requestCtx context.Context, in *pb.Payload, confirmRequired bool) error {
 	// validate
 	if in == nil {
 		return nil
@@ -136,10 +120,10 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Payload, confirmRequired bool
 		errorChan = make(chan error, 1)
 	}
 
-	var exit chan struct{}
+	var receverCtx context.Context
 	// hack for get private exit channel
-	g.WithExit(func(e chan struct{}) {
-		exit = e
+	g.WithCtx(func(c context.Context) {
+		receverCtx = c
 	})
 
 	wb := RowBinary.GetWriterBufferWithConfirm(wg, errorChan)
@@ -151,8 +135,10 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Payload, confirmRequired bool
 				select {
 				case g.writeChan <- wb:
 					// pass
-				case <-exit:
+				case <-receverCtx.Done():
 					return errors.New("receiver stopped")
+				case <-requestCtx.Done():
+					return errors.New("request canceled")
 				}
 
 				wb = RowBinary.GetWriterBufferWithConfirm(wg, errorChan)
@@ -173,8 +159,10 @@ func (g *GRPC) doStore(ctx context.Context, in *pb.Payload, confirmRequired bool
 		select {
 		case g.writeChan <- wb:
 			// pass
-		case <-exit:
+		case <-receverCtx.Done():
 			return errors.New("receiver stopped")
+		case <-requestCtx.Done():
+			return errors.New("request canceled")
 		}
 	}
 

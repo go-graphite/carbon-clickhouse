@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"context"
 	"io/ioutil"
 	"math"
 	"net"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
-	"github.com/lomik/stop"
 	"go.uber.org/zap"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -19,16 +19,8 @@ import (
 )
 
 type PrometheusRemoteWrite struct {
-	stop.Struct
-	stat struct {
-		samplesReceived uint32 // atomic
-		errors          uint32 // atomic
-		active          int32  // atomic
-	}
-	listener     *net.TCPListener
-	parseThreads int
-	writeChan    chan *RowBinary.WriteBuffer
-	logger       *zap.Logger
+	Base
+	listener *net.TCPListener
 }
 
 func (rcv *PrometheusRemoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -77,11 +69,11 @@ func (rcv *PrometheusRemoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	writer.Flush()
 
 	if samplesCount := writer.PointsWritten(); samplesCount > 0 {
-		atomic.AddUint32(&rcv.stat.samplesReceived, samplesCount)
+		atomic.AddUint64(&rcv.stat.samplesReceived, uint64(samplesCount))
 	}
 
 	if writeErrors := writer.WriteErrors(); writeErrors > 0 {
-		atomic.AddUint32(&rcv.stat.errors, writeErrors)
+		atomic.AddUint64(&rcv.stat.errors, uint64(writeErrors))
 	}
 }
 
@@ -94,13 +86,7 @@ func (rcv *PrometheusRemoteWrite) Addr() net.Addr {
 }
 
 func (rcv *PrometheusRemoteWrite) Stat(send func(metric string, value float64)) {
-	samplesReceived := atomic.LoadUint32(&rcv.stat.samplesReceived)
-	atomic.AddUint32(&rcv.stat.samplesReceived, -samplesReceived)
-	send("samplesReceived", float64(samplesReceived))
-
-	errors := atomic.LoadUint32(&rcv.stat.errors)
-	atomic.AddUint32(&rcv.stat.errors, -errors)
-	send("errors", float64(errors))
+	rcv.stat.Stat(send, "samplesReceived", "errors")
 }
 
 // Listen bind port. Receive messages and send to out channel
@@ -119,12 +105,12 @@ func (rcv *PrometheusRemoteWrite) Listen(addr *net.TCPAddr) error {
 			MaxHeaderBytes: 1 << 20,
 		}
 
-		rcv.Go(func(exit chan struct{}) {
-			<-exit
+		rcv.Go(func(ctx context.Context) {
+			<-ctx.Done()
 			tcpListener.Close()
 		})
 
-		rcv.Go(func(exit chan struct{}) {
+		rcv.Go(func(ctx context.Context) {
 			if err := s.Serve(tcpListener); err != nil {
 				rcv.logger.Fatal("failed to serve", zap.Error(err))
 			}

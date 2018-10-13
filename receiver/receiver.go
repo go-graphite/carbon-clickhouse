@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/zapwriter"
@@ -14,27 +15,12 @@ type Receiver interface {
 	Stop()
 }
 
-type Option func(Receiver) error
+type Option func(interface{}) error
 
 // WriteChan creates option for New contructor
 func WriteChan(ch chan *RowBinary.WriteBuffer) Option {
-	return func(r Receiver) error {
-		if t, ok := r.(*TCP); ok {
-			t.writeChan = ch
-		}
-		if t, ok := r.(*Pickle); ok {
-			t.writeChan = ch
-		}
-		if t, ok := r.(*UDP); ok {
-			t.writeChan = ch
-		}
-		if t, ok := r.(*GRPC); ok {
-			t.writeChan = ch
-		}
-		if t, ok := r.(*PrometheusRemoteWrite); ok {
-			t.writeChan = ch
-		}
-		if t, ok := r.(*TelegrafHttpJson); ok {
+	return func(r interface{}) error {
+		if t, ok := r.(*Base); ok {
 			t.writeChan = ch
 		}
 		return nil
@@ -43,14 +29,8 @@ func WriteChan(ch chan *RowBinary.WriteBuffer) Option {
 
 // ParseThreads creates option for New contructor
 func ParseThreads(threads int) Option {
-	return func(r Receiver) error {
-		if t, ok := r.(*TCP); ok {
-			t.parseThreads = threads
-		}
-		if t, ok := r.(*Pickle); ok {
-			t.parseThreads = threads
-		}
-		if t, ok := r.(*UDP); ok {
+	return func(r interface{}) error {
+		if t, ok := r.(*Base); ok {
 			t.parseThreads = threads
 		}
 		return nil
@@ -64,6 +44,12 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		return nil, err
 	}
 
+	base := NewBase(zapwriter.Logger(strings.Replace(u.Scheme, "+", "_", -1)))
+
+	for _, optApply := range opts {
+		optApply(&base)
+	}
+
 	if u.Scheme == "tcp" {
 		addr, err := net.ResolveTCPAddr("tcp", u.Host)
 		if err != nil {
@@ -71,12 +57,8 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &TCP{
+			Base:      base,
 			parseChan: make(chan *Buffer),
-			logger:    zapwriter.Logger("tcp"),
-		}
-
-		for _, optApply := range opts {
-			optApply(r)
 		}
 
 		if err = r.Listen(addr); err != nil {
@@ -93,12 +75,8 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &Pickle{
+			Base:      base,
 			parseChan: make(chan []byte),
-			logger:    zapwriter.Logger("pickle"),
-		}
-
-		for _, optApply := range opts {
-			optApply(r)
 		}
 
 		if err = r.Listen(addr); err != nil {
@@ -115,12 +93,8 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &UDP{
+			Base:      base,
 			parseChan: make(chan *Buffer),
-			logger:    zapwriter.Logger("udp"),
-		}
-
-		for _, optApply := range opts {
-			optApply(r)
 		}
 
 		if err = r.Listen(addr); err != nil {
@@ -137,11 +111,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &GRPC{
-			logger: zapwriter.Logger("grpc"),
-		}
-
-		for _, optApply := range opts {
-			optApply(r)
+			Base: base,
 		}
 
 		if err = r.Listen(addr); err != nil {
@@ -158,11 +128,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &PrometheusRemoteWrite{
-			logger: zapwriter.Logger("prometheus"),
-		}
-
-		for _, optApply := range opts {
-			optApply(r)
+			Base: base,
 		}
 
 		if err = r.Listen(addr); err != nil {
@@ -179,11 +145,7 @@ func New(dsn string, opts ...Option) (Receiver, error) {
 		}
 
 		r := &TelegrafHttpJson{
-			logger: zapwriter.Logger("telegraf_http_json"),
-		}
-
-		for _, optApply := range opts {
-			optApply(r)
+			Base: base,
 		}
 
 		if err = r.Listen(addr); err != nil {

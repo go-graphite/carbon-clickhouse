@@ -11,8 +11,8 @@ import (
 func BenchmarkPlainParseBuffer(b *testing.B) {
 	out := make(chan *RowBinary.WriteBuffer, 1)
 
-	c1 := uint32(0)
-	c2 := uint32(0)
+	c1 := uint64(0)
+	c2 := uint64(0)
 
 	now := time.Now().Unix()
 
