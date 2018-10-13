@@ -81,7 +81,7 @@ func (rcv *UDP) Listen(addr *net.UDPAddr) error {
 
 		for i := 0; i < rcv.parseThreads; i++ {
 			rcv.Go(func(ctx context.Context) {
-				rcv.PlainParser(rcv.parseChan)
+				rcv.PlainParser(ctx, rcv.parseChan)
 			})
 		}
 

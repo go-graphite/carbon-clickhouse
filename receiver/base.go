@@ -6,7 +6,6 @@ import (
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/stop"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 type Base struct {
@@ -21,8 +20,6 @@ type Base struct {
 		futureDropped      uint64 // atomic
 		pastDropped        uint64 // atomic
 	}
-	ctx               context.Context
-	ctxCancel         context.CancelFunc
 	parseThreads      int
 	dropFutureSeconds uint32
 	dropPastSeconds   uint32

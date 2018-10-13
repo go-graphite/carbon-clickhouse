@@ -2,6 +2,7 @@ package receiver
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"strconv"
@@ -88,7 +89,7 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	return RemoveDoubleDot(p[:i1]), value, uint32(tsf), nil
 }
 
-func (base *Base) PlainParseBuffer(b *Buffer) {
+func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer) {
 	offset := 0
 	metricCount := uint32(0)
 	errorCount := uint32(0)
@@ -143,18 +144,18 @@ MainLoop:
 	select {
 	case base.writeChan <- wb:
 		// pass
-	case <-base.ctx.Done():
+	case <-ctx.Done():
 		return
 	}
 }
 
-func (base *Base) PlainParser(in chan *Buffer) {
+func (base *Base) PlainParser(ctx context.Context, in chan *Buffer) {
 	for {
 		select {
-		case <-base.ctx.Done():
+		case <-ctx.Done():
 			return
 		case b := <-in:
-			base.PlainParseBuffer(b)
+			base.PlainParseBuffer(ctx, b)
 			b.Release()
 		}
 	}

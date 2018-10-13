@@ -121,7 +121,7 @@ func (rcv *Pickle) Listen(addr *net.TCPAddr) error {
 
 		for i := 0; i < rcv.parseThreads; i++ {
 			rcv.Go(func(ctx context.Context) {
-				rcv.PickleParser(rcv.parseChan)
+				rcv.PickleParser(ctx, rcv.parseChan)
 			})
 		}
 

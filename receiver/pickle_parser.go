@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"context"
 	"sync/atomic"
 	"time"
 
@@ -9,18 +10,18 @@ import (
 	pickle "github.com/lomik/graphite-pickle"
 )
 
-func (base *Base) PickleParser(in chan []byte) {
+func (base *Base) PickleParser(ctx context.Context, in chan []byte) {
 	for {
 		select {
-		case <-base.ctx.Done():
+		case <-ctx.Done():
 			return
 		case b := <-in:
-			base.PickleParseBytes(b, uint32(time.Now().Unix()))
+			base.PickleParseBytes(ctx, b, uint32(time.Now().Unix()))
 		}
 	}
 }
 
-func (base *Base) PickleParseBytes(b []byte, now uint32) {
+func (base *Base) PickleParseBytes(ctx context.Context, b []byte, now uint32) {
 	metricCount := uint32(0)
 	wb := RowBinary.GetWriteBuffer()
 
@@ -32,7 +33,7 @@ func (base *Base) PickleParseBytes(b []byte, now uint32) {
 				select {
 				case base.writeChan <- wb:
 					// pass
-				case <-base.ctx.Done():
+				case <-ctx.Done():
 					// pass
 				}
 			}
