@@ -143,27 +143,41 @@ cache-ttl = "12h0m0s"
 [udp]
 listen = ":2003"
 enabled = true
+# drop received point if timestamp > now + value. 0 - don't drop anything
+drop-future = "0s"
+# drop received point if timestamp < now - value. 0 - don't drop anything
+drop-past = "0s"
 
 [tcp]
 listen = ":2003"
 enabled = true
+drop-future = "0s"
+drop-past = "0s"
 
 [pickle]
 listen = ":2004"
 enabled = true
+drop-future = "0s"
+drop-past = "0s"
 
 # https://github.com/lomik/carbon-clickhouse/blob/master/grpc/carbon.proto
 [grpc]
 listen = ":2005"
 enabled = false
+drop-future = "0s"
+drop-past = "0s"
 
 [prometheus]
 listen = ":2006"
 enabled = false
+drop-future = "0s"
+drop-past = "0s"
 
 [telegraf_http_json]
 listen = ":2007"
 enabled = false
+drop-future = "0s"
+drop-past = "0s"
 
 [pprof]
 listen = "localhost:7007"

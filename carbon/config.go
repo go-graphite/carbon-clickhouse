@@ -27,34 +27,46 @@ type clickhouseConfig struct {
 }
 
 type udpConfig struct {
-	Listen        string `toml:"listen"`
-	Enabled       bool   `toml:"enabled"`
-	LogIncomplete bool   `toml:"log-incomplete"`
+	Listen        string           `toml:"listen"`
+	Enabled       bool             `toml:"enabled"`
+	LogIncomplete bool             `toml:"log-incomplete"`
+	DropFuture    *config.Duration `toml:"drop-future"`
+	DropPast      *config.Duration `toml:"drop-past"`
 }
 
 type tcpConfig struct {
-	Listen  string `toml:"listen"`
-	Enabled bool   `toml:"enabled"`
+	Listen     string           `toml:"listen"`
+	Enabled    bool             `toml:"enabled"`
+	DropFuture *config.Duration `toml:"drop-future"`
+	DropPast   *config.Duration `toml:"drop-past"`
 }
 
 type pickleConfig struct {
-	Listen  string `toml:"listen"`
-	Enabled bool   `toml:"enabled"`
+	Listen     string           `toml:"listen"`
+	Enabled    bool             `toml:"enabled"`
+	DropFuture *config.Duration `toml:"drop-future"`
+	DropPast   *config.Duration `toml:"drop-past"`
 }
 
 type grpcConfig struct {
-	Listen  string `toml:"listen"`
-	Enabled bool   `toml:"enabled"`
+	Listen     string           `toml:"listen"`
+	Enabled    bool             `toml:"enabled"`
+	DropFuture *config.Duration `toml:"drop-future"`
+	DropPast   *config.Duration `toml:"drop-past"`
 }
 
 type promConfig struct {
-	Listen  string `toml:"listen"`
-	Enabled bool   `toml:"enabled"`
+	Listen     string           `toml:"listen"`
+	Enabled    bool             `toml:"enabled"`
+	DropFuture *config.Duration `toml:"drop-future"`
+	DropPast   *config.Duration `toml:"drop-past"`
 }
 
 type telegrafHttpJsonConfig struct {
-	Listen  string `toml:"listen"`
-	Enabled bool   `toml:"enabled"`
+	Listen     string           `toml:"listen"`
+	Enabled    bool             `toml:"enabled"`
+	DropFuture *config.Duration `toml:"drop-future"`
+	DropPast   *config.Duration `toml:"drop-past"`
 }
 
 type pprofConfig struct {
@@ -106,26 +118,38 @@ func NewConfig() *Config {
 			Listen:        ":2003",
 			Enabled:       true,
 			LogIncomplete: false,
+			DropFuture:    &config.Duration{},
+			DropPast:      &config.Duration{},
 		},
 		Tcp: tcpConfig{
-			Listen:  ":2003",
-			Enabled: true,
+			Listen:     ":2003",
+			Enabled:    true,
+			DropFuture: &config.Duration{},
+			DropPast:   &config.Duration{},
 		},
 		Pickle: pickleConfig{
-			Listen:  ":2004",
-			Enabled: true,
+			Listen:     ":2004",
+			Enabled:    true,
+			DropFuture: &config.Duration{},
+			DropPast:   &config.Duration{},
 		},
 		Grpc: grpcConfig{
-			Listen:  ":2005",
-			Enabled: false,
+			Listen:     ":2005",
+			Enabled:    false,
+			DropFuture: &config.Duration{},
+			DropPast:   &config.Duration{},
 		},
 		Prometheus: promConfig{
-			Listen:  ":2006",
-			Enabled: false,
+			Listen:     ":2006",
+			Enabled:    false,
+			DropFuture: &config.Duration{},
+			DropPast:   &config.Duration{},
 		},
 		TelegrafHttpJson: telegrafHttpJsonConfig{
-			Listen:  ":2007",
-			Enabled: false,
+			Listen:     ":2007",
+			Enabled:    false,
+			DropFuture: &config.Duration{},
+			DropPast:   &config.Duration{},
 		},
 		Pprof: pprofConfig{
 			Listen:  "localhost:7007",

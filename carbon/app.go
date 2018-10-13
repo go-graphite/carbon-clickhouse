@@ -235,6 +235,8 @@ func (app *App) Start() (err error) {
 			"tcp://"+conf.Tcp.Listen,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
+			receiver.DropFuture(uint32(conf.Tcp.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.Tcp.DropPast.Value().Seconds())),
 		)
 
 		if err != nil {
@@ -247,6 +249,8 @@ func (app *App) Start() (err error) {
 			"udp://"+conf.Udp.Listen,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
+			receiver.DropFuture(uint32(conf.Udp.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.Udp.DropPast.Value().Seconds())),
 		)
 
 		if err != nil {
@@ -259,6 +263,8 @@ func (app *App) Start() (err error) {
 			"pickle://"+conf.Pickle.Listen,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
+			receiver.DropFuture(uint32(conf.Pickle.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.Pickle.DropPast.Value().Seconds())),
 		)
 
 		if err != nil {
@@ -270,6 +276,8 @@ func (app *App) Start() (err error) {
 		app.Grpc, err = receiver.New(
 			"grpc://"+conf.Grpc.Listen,
 			receiver.WriteChan(app.writeChan),
+			receiver.DropFuture(uint32(conf.Grpc.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.Grpc.DropPast.Value().Seconds())),
 		)
 
 		if err != nil {
@@ -281,6 +289,8 @@ func (app *App) Start() (err error) {
 		app.Prometheus, err = receiver.New(
 			"prometheus://"+conf.Prometheus.Listen,
 			receiver.WriteChan(app.writeChan),
+			receiver.DropFuture(uint32(conf.Prometheus.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.Prometheus.DropPast.Value().Seconds())),
 		)
 
 		if err != nil {
@@ -292,6 +302,8 @@ func (app *App) Start() (err error) {
 		app.TelegrafHttpJson, err = receiver.New(
 			"telegraf+http+json://"+conf.TelegrafHttpJson.Listen,
 			receiver.WriteChan(app.writeChan),
+			receiver.DropFuture(uint32(conf.TelegrafHttpJson.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.TelegrafHttpJson.DropPast.Value().Seconds())),
 		)
 
 		if err != nil {

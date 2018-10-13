@@ -37,6 +37,26 @@ func ParseThreads(threads int) Option {
 	}
 }
 
+// DropFuture creates option for New contructor
+func DropFuture(seconds uint32) Option {
+	return func(r interface{}) error {
+		if t, ok := r.(*Base); ok {
+			t.dropFutureSeconds = seconds
+		}
+		return nil
+	}
+}
+
+// DropPast creates option for New contructor
+func DropPast(seconds uint32) Option {
+	return func(r interface{}) error {
+		if t, ok := r.(*Base); ok {
+			t.dropPastSeconds = seconds
+		}
+		return nil
+	}
+}
+
 // New creates udp, tcp, pickle receiver
 func New(dsn string, opts ...Option) (Receiver, error) {
 	u, err := url.Parse(dsn)

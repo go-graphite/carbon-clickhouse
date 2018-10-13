@@ -7,9 +7,9 @@ export GOPATH := $(CURDIR)/_vendor
 TEMPDIR:=$(shell mktemp -d)
 VERSION:=$(shell sh -c 'grep "const Version" $(NAME).go  | cut -d\" -f2')
 
-all: $(NAME)
+all: build
 
-$(NAME):
+build:
 	$(GO) build github.com/lomik/$(NAME)
 
 gox-build:
