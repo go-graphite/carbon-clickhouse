@@ -47,10 +47,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/lomik/stop"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/lomik/zapwriter"
 
 [[constraint]]
