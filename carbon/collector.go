@@ -2,6 +2,7 @@ package carbon
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -10,7 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/stop"
+	"github.com/lomik/carbon-clickhouse/helper/stop"
 	"github.com/lomik/zapwriter"
 )
 
@@ -129,19 +130,19 @@ func NewCollector(app *App) *Collector {
 	if c.endpoint == MetricEndpointLocal {
 		c.Go(c.local)
 	} else {
-		c.Go(func(exit chan struct{}) {
-			c.remote(exit, u)
+		c.Go(func(ctx context.Context) {
+			c.remote(ctx, u)
 		})
 	}
 
 	// collector worker
-	c.Go(func(exit chan struct{}) {
+	c.Go(func(ctx context.Context) {
 		ticker := time.NewTicker(c.metricInterval)
 		defer ticker.Stop()
 
 		for {
 			select {
-			case <-exit:
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
 				c.collect()
@@ -152,13 +153,13 @@ func NewCollector(app *App) *Collector {
 	return c
 }
 
-func (c *Collector) readData(exit chan struct{}) []*Point {
+func (c *Collector) readData(ctx context.Context) []*Point {
 	result := make([]*Point, 0)
 
 	for {
 		// wait for first point
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return result
 		case p := <-c.data:
 			result = append(result, p)
@@ -166,7 +167,7 @@ func (c *Collector) readData(exit chan struct{}) []*Point {
 			// read all
 			for {
 				select {
-				case <-exit:
+				case <-ctx.Done():
 					return result
 				case p := <-c.data:
 					result = append(result, p)
@@ -180,9 +181,9 @@ func (c *Collector) readData(exit chan struct{}) []*Point {
 	return result
 }
 
-func (c *Collector) local(exit chan struct{}) {
+func (c *Collector) local(ctx context.Context) {
 	for {
-		points := c.readData(exit)
+		points := c.readData(ctx)
 		if len(points) == 0 {
 			// exit closed
 			return
@@ -195,7 +196,7 @@ func (c *Collector) local(exit chan struct{}) {
 			if !b.CanWriteGraphitePoint(len(p.Metric)) {
 				// buffer is full
 				select {
-				case <-exit:
+				case <-ctx.Done():
 					return
 				case c.writeChan <- b:
 					// pass
@@ -213,7 +214,7 @@ func (c *Collector) local(exit chan struct{}) {
 		}
 
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return
 		case c.writeChan <- b:
 			// pass
@@ -221,9 +222,9 @@ func (c *Collector) local(exit chan struct{}) {
 	}
 }
 
-func (c *Collector) chunked(exit chan struct{}, chunkSize int, callback func([]byte)) {
+func (c *Collector) chunked(ctx context.Context, chunkSize int, callback func([]byte)) {
 	for {
-		points := c.readData(exit)
+		points := c.readData(ctx)
 		if points == nil || len(points) == 0 {
 			// exit closed
 			return
@@ -246,14 +247,14 @@ func (c *Collector) chunked(exit chan struct{}, chunkSize int, callback func([]b
 	}
 }
 
-func (c *Collector) remote(exit chan struct{}, u *url.URL) {
+func (c *Collector) remote(ctx context.Context, u *url.URL) {
 
 	chunkSize := 32768
 	if u.Scheme == "udp" {
 		chunkSize = 1000 // nc limitation (1024 for udp) and mtu friendly
 	}
 
-	c.chunked(exit, chunkSize, func(chunk []byte) {
+	c.chunked(ctx, chunkSize, func(chunk []byte) {
 
 		var conn net.Conn
 		var err error
@@ -271,7 +272,7 @@ func (c *Collector) remote(exit chan struct{}, u *url.URL) {
 
 			// check exit
 			select {
-			case <-exit:
+			case <-ctx.Done():
 				break SendLoop
 			default:
 				// pass
