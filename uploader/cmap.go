@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -93,7 +94,7 @@ func (m CMap) Merge(keys map[string]bool, value int64) {
 	}
 }
 
-func (m CMap) Expire(exit chan struct{}, ttl time.Duration) (int, int64) {
+func (m CMap) Expire(ctx context.Context, ttl time.Duration) (int, int64) {
 	deadline := time.Now().Add(-ttl).Unix()
 
 	count := 0
@@ -101,7 +102,7 @@ func (m CMap) Expire(exit chan struct{}, ttl time.Duration) (int, int64) {
 
 	for i := 0; i < shardCount; i++ {
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return count, min
 		default:
 			// pass
@@ -122,16 +123,16 @@ func (m CMap) Expire(exit chan struct{}, ttl time.Duration) (int, int64) {
 	return count, min
 }
 
-func (m CMap) ExpireWorker(exit chan struct{}, ttl time.Duration, expiredCounter *uint32) {
+func (m CMap) ExpireWorker(ctx context.Context, ttl time.Duration, expiredCounter *uint32) {
 	for {
 		interval := time.Minute
 		// @TODO: adaptive interval, based on min value from prev Expire run
 
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return
 		case <-time.After(interval):
-			cnt, _ := m.Expire(exit, ttl)
+			cnt, _ := m.Expire(ctx, ttl)
 			if expiredCounter != nil {
 				atomic.AddUint32(expiredCounter, uint32(cnt))
 			}

@@ -2,6 +2,7 @@ package uploader
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"sync/atomic"
@@ -47,8 +48,8 @@ func (u *cached) Start() error {
 	}
 
 	if u.config.CacheTTL.Value() != 0 {
-		u.Go(func(exit chan struct{}) {
-			u.existsCache.ExpireWorker(exit, u.config.CacheTTL.Value(), &u.expired)
+		u.Go(func(ctx context.Context) {
+			u.existsCache.ExpireWorker(ctx, u.config.CacheTTL.Value(), &u.expired)
 		})
 	}
 
@@ -59,14 +60,14 @@ func (u *cached) Reset() {
 	u.existsCache.Clear()
 }
 
-func (u *cached) upload(exit chan struct{}, logger *zap.Logger, filename string) error {
+func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string) error {
 	pipeReader, pipeWriter := io.Pipe()
 	writer := bufio.NewWriter(pipeWriter)
 	startTime := time.Now()
 
 	uploadResult := make(chan error, 1)
 
-	u.Go(func(exit chan struct{}) {
+	u.Go(func(ctx context.Context) {
 		err := u.insertRowBinary(
 			u.insertQuery,
 			pipeReader,
@@ -88,7 +89,7 @@ func (u *cached) upload(exit chan struct{}, logger *zap.Logger, filename string)
 	select {
 	case uploadErr = <-uploadResult:
 		// pass
-	case <-exit:
+	case <-ctx.Done():
 		return fmt.Errorf("upload aborted")
 	}
 
