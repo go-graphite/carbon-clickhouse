@@ -15,12 +15,12 @@ func (base *Base) PickleParser(in chan []byte) {
 		case <-base.ctx.Done():
 			return
 		case b := <-in:
-			base.PickeParseBytes(b, uint32(time.Now().Unix()))
+			base.PickleParseBytes(b, uint32(time.Now().Unix()))
 		}
 	}
 }
 
-func (base *Base) PickeParseBytes(b []byte, now uint32) {
+func (base *Base) PickleParseBytes(b []byte, now uint32) {
 	metricCount := uint32(0)
 	wb := RowBinary.GetWriteBuffer()
 
