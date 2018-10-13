@@ -7,22 +7,20 @@ import (
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
 	pickle "github.com/lomik/graphite-pickle"
-	"golang.org/x/net/context"
 )
 
-func PickleParser(ctx context.Context, in chan []byte, out chan *RowBinary.WriteBuffer, metricsReceived *uint64, errors *uint64) {
-
+func (base *Base) PickleParser(in chan []byte) {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-base.ctx.Done():
 			return
 		case b := <-in:
-			PickeParseBytes(ctx, b, uint32(time.Now().Unix()), out, metricsReceived, errors)
+			base.PickeParseBytes(b, uint32(time.Now().Unix()))
 		}
 	}
 }
 
-func PickeParseBytes(ctx context.Context, b []byte, now uint32, out chan *RowBinary.WriteBuffer, metricsReceived *uint64, errors *uint64) {
+func (base *Base) PickeParseBytes(b []byte, now uint32) {
 	metricCount := uint32(0)
 	wb := RowBinary.GetWriteBuffer()
 
@@ -32,9 +30,9 @@ func PickeParseBytes(ctx context.Context, b []byte, now uint32, out chan *RowBin
 				wb.Release()
 			} else {
 				select {
-				case out <- wb:
+				case base.writeChan <- wb:
 					// pass
-				case <-ctx.Done():
+				case <-base.ctx.Done():
 					// pass
 				}
 			}
@@ -45,7 +43,7 @@ func PickeParseBytes(ctx context.Context, b []byte, now uint32, out chan *RowBin
 	fail := func() {
 		// @TODO: log
 		flush()
-		atomic.AddUint64(errors, 1)
+		atomic.AddUint64(&base.stat.errors, 1)
 	}
 
 	pickle.ParseMessage(b, func(name string, value float64, timestamp int64) {
@@ -76,6 +74,6 @@ func PickeParseBytes(ctx context.Context, b []byte, now uint32, out chan *RowBin
 
 	flush()
 	if metricCount > 0 {
-		atomic.AddUint64(metricsReceived, uint64(metricCount))
+		atomic.AddUint64(&base.stat.metricsReceived, uint64(metricCount))
 	}
 }
