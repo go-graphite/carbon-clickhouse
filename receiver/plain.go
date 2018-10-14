@@ -2,6 +2,7 @@ package receiver
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"strconv"
@@ -88,7 +89,7 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 	return RemoveDoubleDot(p[:i1]), value, uint32(tsf), nil
 }
 
-func PlainParseBuffer(exit chan struct{}, b *Buffer, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
+func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer) {
 	offset := 0
 	metricCount := uint32(0)
 	errorCount := uint32(0)
@@ -119,16 +120,20 @@ MainLoop:
 			continue MainLoop
 		}
 
+		if base.isDrop(b.Time, timestamp) {
+			continue MainLoop
+		}
+
 		// write result to buffer for clickhouse
 		wb.WriteGraphitePoint(name, value, timestamp, b.Time)
 		metricCount++
 	}
 
 	if metricCount > 0 {
-		atomic.AddUint32(metricsReceived, metricCount)
+		atomic.AddUint64(&base.stat.metricsReceived, uint64(metricCount))
 	}
 	if errorCount > 0 {
-		atomic.AddUint32(errors, errorCount)
+		atomic.AddUint64(&base.stat.errors, uint64(errorCount))
 	}
 
 	if wb.Empty() {
@@ -137,20 +142,20 @@ MainLoop:
 	}
 
 	select {
-	case out <- wb:
+	case base.writeChan <- wb:
 		// pass
-	case <-exit:
+	case <-ctx.Done():
 		return
 	}
 }
 
-func PlainParser(exit chan struct{}, in chan *Buffer, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
+func (base *Base) PlainParser(ctx context.Context, in chan *Buffer) {
 	for {
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return
 		case b := <-in:
-			PlainParseBuffer(exit, b, out, metricsReceived, errors)
+			base.PlainParseBuffer(ctx, b)
 			b.Release()
 		}
 	}

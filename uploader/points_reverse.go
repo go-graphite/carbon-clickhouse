@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"context"
 	"fmt"
 
 	"go.uber.org/zap"
@@ -18,7 +19,7 @@ func NewPointsReverse(base *Base) *PointsReverse {
 	return u
 }
 
-func (u *PointsReverse) upload(exit chan struct{}, logger *zap.Logger, filename string) error {
+func (u *PointsReverse) upload(ctx context.Context, logger *zap.Logger, filename string) error {
 	reader, err := RowBinary.NewReverseReader(filename)
 	reader.SetZeroVersion(u.config.ZeroTimestamp)
 	if err != nil {

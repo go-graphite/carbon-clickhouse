@@ -2,29 +2,19 @@ package receiver
 
 import (
 	"bytes"
+	"context"
 	"net"
 	"strings"
 	"sync/atomic"
 
-	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/stop"
 	"go.uber.org/zap"
 )
 
 // UDP receive metrics from UDP messages
 type UDP struct {
-	stop.Struct
-	stat struct {
-		metricsReceived    uint32 // atomic
-		errors             uint32 // atomic
-		incompleteReceived uint32 // atomic
-	}
-	name         string // name for store metrics
-	conn         *net.UDPConn
-	parseThreads int
-	parseChan    chan *Buffer
-	writeChan    chan *RowBinary.WriteBuffer
-	logger       *zap.Logger
+	Base
+	conn      *net.UDPConn
+	parseChan chan *Buffer
 }
 
 // Addr returns binded socket address. For bind port 0 in tests
@@ -36,20 +26,10 @@ func (rcv *UDP) Addr() net.Addr {
 }
 
 func (rcv *UDP) Stat(send func(metric string, value float64)) {
-	metricsReceived := atomic.LoadUint32(&rcv.stat.metricsReceived)
-	atomic.AddUint32(&rcv.stat.metricsReceived, -metricsReceived)
-	send("metricsReceived", float64(metricsReceived))
-
-	errors := atomic.LoadUint32(&rcv.stat.errors)
-	atomic.AddUint32(&rcv.stat.errors, -errors)
-	send("errors", float64(errors))
-
-	incompleteReceived := atomic.LoadUint32(&rcv.stat.incompleteReceived)
-	atomic.AddUint32(&rcv.stat.incompleteReceived, -incompleteReceived)
-	send("incompleteReceived", float64(incompleteReceived))
+	rcv.SendStat(send, "metricsReceived", "errors", "incompleteReceived", "futureDropped", "pastDropped")
 }
 
-func (rcv *UDP) receiveWorker(exit chan struct{}) {
+func (rcv *UDP) receiveWorker(ctx context.Context) {
 	defer rcv.conn.Close()
 
 	buffer := GetBuffer()
@@ -62,7 +42,7 @@ ReceiveLoop:
 			if strings.Contains(err.Error(), "use of closed network connection") {
 				break ReceiveLoop
 			}
-			atomic.AddUint32(&rcv.stat.errors, 1)
+			atomic.AddUint64(&rcv.stat.errors, 1)
 			rcv.logger.Error("ReadFromUDP failed", zap.Error(err), zap.String("peer", peer.String()))
 			continue ReceiveLoop
 		}
@@ -94,20 +74,14 @@ func (rcv *UDP) Listen(addr *net.UDPAddr) error {
 			return err
 		}
 
-		rcv.Go(func(exit chan struct{}) {
-			<-exit
+		rcv.Go(func(ctx context.Context) {
+			<-ctx.Done()
 			rcv.conn.Close()
 		})
 
 		for i := 0; i < rcv.parseThreads; i++ {
-			rcv.Go(func(exit chan struct{}) {
-				PlainParser(
-					exit,
-					rcv.parseChan,
-					rcv.writeChan,
-					&rcv.stat.metricsReceived,
-					&rcv.stat.errors,
-				)
+			rcv.Go(func(ctx context.Context) {
+				rcv.PlainParser(ctx, rcv.parseChan)
 			})
 		}
 

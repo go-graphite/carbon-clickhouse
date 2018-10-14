@@ -2,6 +2,7 @@ package receiver
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"math"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/stop"
 	"go.uber.org/zap"
 )
 
@@ -29,15 +29,8 @@ type TelegrafHttpPayload struct {
 }
 
 type TelegrafHttpJson struct {
-	stop.Struct
-	stat struct {
-		samplesReceived uint32 // atomic
-		errors          uint32 // atomic
-		active          int32  // atomic
-	}
-	listener  *net.TCPListener
-	writeChan chan *RowBinary.WriteBuffer
-	logger    *zap.Logger
+	Base
+	listener *net.TCPListener
 }
 
 func TelegrafEncodeTags(tags map[string]string) string {
@@ -100,6 +93,10 @@ func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for i := 0; i < len(data.Metrics); i++ {
 		m := data.Metrics[i]
+		if rcv.isDrop(writer.Now(), uint32(m.Timestamp)) {
+			continue
+		}
+
 		tags := TelegrafEncodeTags(m.Tags)
 
 		for f, vi := range m.Fields {
@@ -136,11 +133,11 @@ func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	writer.Flush()
 	if samplesCount := writer.PointsWritten(); samplesCount > 0 {
-		atomic.AddUint32(&rcv.stat.samplesReceived, samplesCount)
+		atomic.AddUint64(&rcv.stat.samplesReceived, uint64(samplesCount))
 	}
 
 	if writeErrors := writer.WriteErrors(); writeErrors > 0 {
-		atomic.AddUint32(&rcv.stat.errors, writeErrors)
+		atomic.AddUint64(&rcv.stat.errors, uint64(writeErrors))
 	}
 }
 
@@ -153,13 +150,7 @@ func (rcv *TelegrafHttpJson) Addr() net.Addr {
 }
 
 func (rcv *TelegrafHttpJson) Stat(send func(metric string, value float64)) {
-	samplesReceived := atomic.LoadUint32(&rcv.stat.samplesReceived)
-	atomic.AddUint32(&rcv.stat.samplesReceived, -samplesReceived)
-	send("samplesReceived", float64(samplesReceived))
-
-	errors := atomic.LoadUint32(&rcv.stat.errors)
-	atomic.AddUint32(&rcv.stat.errors, -errors)
-	send("errors", float64(errors))
+	rcv.SendStat(send, "samplesReceived", "errors")
 }
 
 // Listen bind port. Receive messages and send to out channel
@@ -178,12 +169,12 @@ func (rcv *TelegrafHttpJson) Listen(addr *net.TCPAddr) error {
 			MaxHeaderBytes: 1 << 20,
 		}
 
-		rcv.Go(func(exit chan struct{}) {
-			<-exit
+		rcv.Go(func(ctx context.Context) {
+			<-ctx.Done()
 			tcpListener.Close()
 		})
 
-		rcv.Go(func(exit chan struct{}) {
+		rcv.Go(func(ctx context.Context) {
 			if err := s.Serve(tcpListener); err != nil {
 				rcv.logger.Fatal("failed to serve", zap.Error(err))
 			}

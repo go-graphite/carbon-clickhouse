@@ -47,10 +47,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/lomik/stop"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/lomik/zapwriter"
 
 [[constraint]]
@@ -72,3 +68,7 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/lomik/stop"

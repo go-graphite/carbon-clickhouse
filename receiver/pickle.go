@@ -9,28 +9,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/graphite-pickle/framing"
-	"github.com/lomik/stop"
 	"go.uber.org/zap"
+	"golang.org/x/net/context"
 )
 
 const maxPickleMessageSize = 67108864
 
 // Pickle receive metrics from TCP connections
 type Pickle struct {
-	stop.Struct
-	stat struct {
-		messagesReceived uint32 // atomic
-		metricsReceived  uint32 // atomic
-		errors           uint32 // atomic
-		active           int32  // atomic
-	}
-	listener     *net.TCPListener
-	parseThreads int
-	parseChan    chan []byte
-	writeChan    chan *RowBinary.WriteBuffer
-	logger       *zap.Logger
+	Base
+	listener  *net.TCPListener
+	parseChan chan []byte
 }
 
 // Addr returns binded socket address. For bind port 0 in tests
@@ -42,19 +32,7 @@ func (rcv *Pickle) Addr() net.Addr {
 }
 
 func (rcv *Pickle) Stat(send func(metric string, value float64)) {
-	metricsReceived := atomic.LoadUint32(&rcv.stat.metricsReceived)
-	atomic.AddUint32(&rcv.stat.metricsReceived, -metricsReceived)
-	send("metricsReceived", float64(metricsReceived))
-
-	messagesReceived := atomic.LoadUint32(&rcv.stat.messagesReceived)
-	atomic.AddUint32(&rcv.stat.messagesReceived, -messagesReceived)
-	send("messagesReceived", float64(messagesReceived))
-
-	errors := atomic.LoadUint32(&rcv.stat.errors)
-	atomic.AddUint32(&rcv.stat.errors, -errors)
-	send("errors", float64(errors))
-
-	send("active", float64(atomic.LoadInt32(&rcv.stat.active)))
+	rcv.SendStat(send, "metricsReceived", "messagesReceived", "errors", "active", "futureDropped", "pastDropped")
 }
 
 func (rcv *Pickle) HandleConnection(conn net.Conn) {
@@ -65,19 +43,19 @@ func (rcv *Pickle) HandleConnection(conn net.Conn) {
 		}
 	}()
 
-	atomic.AddInt32(&rcv.stat.active, 1)
-	defer atomic.AddInt32(&rcv.stat.active, -1)
+	atomic.AddInt64(&rcv.stat.active, 1)
+	defer atomic.AddInt64(&rcv.stat.active, -1)
 
 	defer conn.Close()
 
 	finished := make(chan bool)
 	defer close(finished)
 
-	rcv.Go(func(exit chan struct{}) {
+	rcv.Go(func(ctx context.Context) {
 		select {
 		case <-finished:
 			return
-		case <-exit:
+		case <-ctx.Done():
 			conn.Close()
 			return
 		}
@@ -89,12 +67,12 @@ func (rcv *Pickle) HandleConnection(conn net.Conn) {
 		conn.SetReadDeadline(time.Now().Add(2 * time.Minute))
 		data, err := framedConn.ReadFrame()
 		if err == framing.ErrPrefixLength {
-			atomic.AddUint32(&rcv.stat.errors, 1)
+			atomic.AddUint64(&rcv.stat.errors, 1)
 			rcv.logger.Warn("bad message size")
 			return
 		} else if err != nil {
 			if err != io.EOF {
-				atomic.AddUint32(&rcv.stat.errors, 1)
+				atomic.AddUint64(&rcv.stat.errors, 1)
 				rcv.logger.Warn("can't read message body", zap.Error(err))
 			}
 			return
@@ -113,14 +91,14 @@ func (rcv *Pickle) Listen(addr *net.TCPAddr) error {
 			return err
 		}
 
-		rcv.Go(func(exit chan struct{}) {
-			<-exit
+		rcv.Go(func(ctx context.Context) {
+			<-ctx.Done()
 			tcpListener.Close()
 		})
 
 		handler := rcv.HandleConnection
 
-		rcv.Go(func(exit chan struct{}) {
+		rcv.Go(func(ctx context.Context) {
 			defer tcpListener.Close()
 
 			for {
@@ -134,7 +112,7 @@ func (rcv *Pickle) Listen(addr *net.TCPAddr) error {
 					continue
 				}
 
-				rcv.Go(func(exit chan struct{}) {
+				rcv.Go(func(ctx context.Context) {
 					handler(conn)
 				})
 			}
@@ -142,14 +120,8 @@ func (rcv *Pickle) Listen(addr *net.TCPAddr) error {
 		})
 
 		for i := 0; i < rcv.parseThreads; i++ {
-			rcv.Go(func(exit chan struct{}) {
-				PickleParser(
-					exit,
-					rcv.parseChan,
-					rcv.writeChan,
-					&rcv.stat.metricsReceived,
-					&rcv.stat.errors,
-				)
+			rcv.Go(func(ctx context.Context) {
+				rcv.PickleParser(ctx, rcv.parseChan)
 			})
 		}
 

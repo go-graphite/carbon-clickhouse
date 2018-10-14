@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lomik/stop"
+	"github.com/lomik/carbon-clickhouse/helper/stop"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +28,7 @@ type Base struct {
 	queue   chan string
 	inQueue map[string]bool
 	logger  *zap.Logger
-	handler func(exit chan struct{}, logger *zap.Logger, filename string) error // upload single file
+	handler func(ctx context.Context, logger *zap.Logger, filename string) error // upload single file
 
 	stat struct {
 		uploaded  uint32
@@ -48,7 +49,7 @@ func (u *Base) Stat(send func(metric string, value float64)) {
 	send("unhandled", float64(atomic.LoadUint32(&u.stat.unhandled)))
 }
 
-func (u *Base) scanDir(exit chan struct{}) {
+func (u *Base) scanDir(ctx context.Context) {
 	flist, err := ioutil.ReadDir(u.path)
 	if err != nil {
 		u.logger.Error("ReadDir failed", zap.Error(err))
@@ -88,22 +89,22 @@ func (u *Base) scanDir(exit chan struct{}) {
 		select {
 		case u.queue <- fn:
 			// pass
-		case <-exit:
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (u *Base) watchWorker(exit chan struct{}) {
+func (u *Base) watchWorker(ctx context.Context) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			u.scanDir(exit)
+			u.scanDir(ctx)
 		}
 	}
 }
@@ -130,8 +131,8 @@ func (u *Base) Start() error {
 		u.Go(u.watchWorker)
 
 		for i := 0; i < u.config.Threads; i++ {
-			u.Go(func(exit chan struct{}) {
-				u.uploadWorker(exit)
+			u.Go(func(ctx context.Context) {
+				u.uploadWorker(ctx)
 			})
 		}
 
@@ -139,17 +140,17 @@ func (u *Base) Start() error {
 	})
 }
 
-func (u *Base) uploadWorker(exit chan struct{}) {
+func (u *Base) uploadWorker(ctx context.Context) {
 	for {
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return
 		case filename := <-u.queue:
 			startTime := time.Now()
 			logger := u.logger.With(zap.String("filename", filename))
 			logger.Info("start handle")
 
-			err := u.handler(exit, logger, filename)
+			err := u.handler(ctx, logger, filename)
 
 			if err != nil {
 				atomic.AddUint32(&u.stat.errors, 1)

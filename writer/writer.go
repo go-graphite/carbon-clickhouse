@@ -2,6 +2,7 @@ package writer
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/config"
-	"github.com/lomik/stop"
+	"github.com/lomik/carbon-clickhouse/helper/stop"
 	"github.com/lomik/zapwriter"
 	"go.uber.org/zap"
 )
@@ -89,7 +90,7 @@ func (w *Writer) IsInProgress(filename string) bool {
 	return v
 }
 
-func (w *Writer) worker(exit chan struct{}) {
+func (w *Writer) worker(ctx context.Context) {
 	var out *os.File
 	var outBuf *bufio.Writer
 	var fn string // current filename
@@ -138,7 +139,7 @@ func (w *Writer) worker(exit chan struct{}) {
 
 				// check exit channel
 				select {
-				case <-exit:
+				case <-ctx.Done():
 					break OpenLoop
 				default:
 				}
@@ -171,13 +172,13 @@ func (w *Writer) worker(exit chan struct{}) {
 			atomic.StoreUint32(&w.stat.chunkInterval, uint32(interval.Seconds()))
 
 			select {
-			case <-exit:
+			case <-ctx.Done():
 				return
 			case <-time.After(interval):
 				select {
 				case tickerC <- struct{}{}:
 					// pass
-				case <-exit:
+				case <-ctx.Done():
 					return
 				}
 			}
@@ -209,7 +210,7 @@ func (w *Writer) worker(exit chan struct{}) {
 			write(b)
 		case <-tickerC:
 			rotate()
-		case <-exit:
+		case <-ctx.Done():
 			return
 		default: // outBuf flush if nothing received
 			outBuf.Flush()
@@ -219,20 +220,20 @@ func (w *Writer) worker(exit chan struct{}) {
 				write(b)
 			case <-tickerC:
 				rotate()
-			case <-exit:
+			case <-ctx.Done():
 				return
 			}
 		}
 	}
 }
 
-func (w *Writer) cleaner(exit chan struct{}) {
+func (w *Writer) cleaner(ctx context.Context) {
 	ticker := time.NewTicker(w.autoInterval.GetDefault())
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			w.Cleanup()

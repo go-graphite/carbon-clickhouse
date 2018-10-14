@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -20,7 +21,7 @@ func NewPoints(base *Base) *Points {
 	return u
 }
 
-func (u *Points) upload(exit chan struct{}, logger *zap.Logger, filename string) error {
+func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string) error {
 	if u.config.ZeroTimestamp {
 		reader, err := RowBinary.NewReader(filename)
 		reader.SetZeroVersion(u.config.ZeroTimestamp)

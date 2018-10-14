@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"context"
 	"sync/atomic"
 	"time"
 
@@ -9,19 +10,18 @@ import (
 	pickle "github.com/lomik/graphite-pickle"
 )
 
-func PickleParser(exit chan struct{}, in chan []byte, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
-
+func (base *Base) PickleParser(ctx context.Context, in chan []byte) {
 	for {
 		select {
-		case <-exit:
+		case <-ctx.Done():
 			return
 		case b := <-in:
-			PickeParseBytes(exit, b, uint32(time.Now().Unix()), out, metricsReceived, errors)
+			base.PickleParseBytes(ctx, b, uint32(time.Now().Unix()))
 		}
 	}
 }
 
-func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBinary.WriteBuffer, metricsReceived *uint32, errors *uint32) {
+func (base *Base) PickleParseBytes(ctx context.Context, b []byte, now uint32) {
 	metricCount := uint32(0)
 	wb := RowBinary.GetWriteBuffer()
 
@@ -31,9 +31,9 @@ func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBina
 				wb.Release()
 			} else {
 				select {
-				case out <- wb:
+				case base.writeChan <- wb:
 					// pass
-				case <-exit:
+				case <-ctx.Done():
 					// pass
 				}
 			}
@@ -44,10 +44,14 @@ func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBina
 	fail := func() {
 		// @TODO: log
 		flush()
-		atomic.AddUint32(errors, 1)
+		atomic.AddUint64(&base.stat.errors, 1)
 	}
 
 	pickle.ParseMessage(b, func(name string, value float64, timestamp int64) {
+		if base.isDrop(now, uint32(timestamp)) {
+			return
+		}
+
 		name, err := tags.Graphite(name)
 		if err != nil {
 			// @TODO: log?
@@ -75,6 +79,6 @@ func PickeParseBytes(exit chan struct{}, b []byte, now uint32, out chan *RowBina
 
 	flush()
 	if metricCount > 0 {
-		atomic.AddUint32(metricsReceived, metricCount)
+		atomic.AddUint64(&base.stat.metricsReceived, uint64(metricCount))
 	}
 }
