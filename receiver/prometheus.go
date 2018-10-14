@@ -90,7 +90,7 @@ func (rcv *PrometheusRemoteWrite) Addr() net.Addr {
 }
 
 func (rcv *PrometheusRemoteWrite) Stat(send func(metric string, value float64)) {
-	rcv.SendStat(send, "samplesReceived", "errors")
+	rcv.SendStat(send, "samplesReceived", "errors", "futureDropped", "pastDropped")
 }
 
 // Listen bind port. Receive messages and send to out channel

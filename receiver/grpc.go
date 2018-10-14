@@ -32,7 +32,7 @@ func (g *GRPC) Addr() net.Addr {
 }
 
 func (g *GRPC) Stat(send func(metric string, value float64)) {
-	g.SendStat(send, "metricsReceived", "errors")
+	g.SendStat(send, "metricsReceived", "errors", "futureDropped", "pastDropped")
 }
 
 // Listen bind port. Receive messages and send to out channel
