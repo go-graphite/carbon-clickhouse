@@ -242,6 +242,8 @@ func (app *App) Start() (err error) {
 		if err != nil {
 			return
 		}
+
+		http.HandleFunc("/debug/receive/tcp/dropped/", app.TCP.DroppedHandler)
 	}
 
 	if conf.Udp.Enabled {
@@ -256,6 +258,8 @@ func (app *App) Start() (err error) {
 		if err != nil {
 			return
 		}
+
+		http.HandleFunc("/debug/receive/udp/dropped/", app.UDP.DroppedHandler)
 	}
 
 	if conf.Pickle.Enabled {
@@ -270,6 +274,8 @@ func (app *App) Start() (err error) {
 		if err != nil {
 			return
 		}
+
+		http.HandleFunc("/debug/receive/pickle/dropped/", app.Pickle.DroppedHandler)
 	}
 
 	if conf.Grpc.Enabled {
@@ -283,6 +289,8 @@ func (app *App) Start() (err error) {
 		if err != nil {
 			return
 		}
+
+		http.HandleFunc("/debug/receive/grpc/dropped/", app.Grpc.DroppedHandler)
 	}
 
 	if conf.Prometheus.Enabled {
@@ -296,6 +304,8 @@ func (app *App) Start() (err error) {
 		if err != nil {
 			return
 		}
+
+		http.HandleFunc("/debug/receive/prometheus/dropped/", app.Prometheus.DroppedHandler)
 	}
 
 	if conf.TelegrafHttpJson.Enabled {
@@ -309,6 +319,8 @@ func (app *App) Start() (err error) {
 		if err != nil {
 			return
 		}
+
+		http.HandleFunc("/debug/receive/telegraf_http_json/dropped/", app.TelegrafHttpJson.DroppedHandler)
 	}
 	/* RECEIVER end */
 

@@ -1,12 +1,18 @@
 package receiver
 
 import (
+	"fmt"
+	"net/http"
+	"sort"
+	"sync"
 	"sync/atomic"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/stop"
 	"go.uber.org/zap"
 )
+
+const droppedListSize = 1000
 
 type Base struct {
 	stop.Struct
@@ -20,6 +26,9 @@ type Base struct {
 		futureDropped      uint64 // atomic
 		pastDropped        uint64 // atomic
 	}
+	droppedList       [droppedListSize]string
+	droppedListNext   int
+	droppedListMu     sync.Mutex
 	parseThreads      int
 	dropFutureSeconds uint32
 	dropPastSeconds   uint32
@@ -51,6 +60,46 @@ func (base *Base) isDrop(nowTime uint32, metricTime uint32) bool {
 		return true
 	}
 	return false
+}
+
+func (base *Base) DroppedHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+
+	n := make([]string, droppedListSize)
+	base.droppedListMu.Lock()
+	copy(n, base.droppedList[:])
+	base.droppedListMu.Unlock()
+	sort.Strings(n)
+	for i := 0; i < len(n); i++ {
+		if n[i] != "" {
+			fmt.Fprintln(w, n[i])
+		}
+	}
+}
+
+func (base *Base) saveDropped(name string, nowTime uint32, metricTime uint32, value float64) {
+	s := fmt.Sprintf("rcv:%d\tname:%s\ttimestamp:%d\tvalue:%#v", nowTime, name, metricTime, value)
+
+	base.droppedListMu.Lock()
+	base.droppedList[base.droppedListNext%droppedListSize] = s
+	base.droppedListNext++
+	base.droppedListMu.Unlock()
+}
+
+func (base *Base) isDropString(name string, nowTime uint32, metricTime uint32, value float64) bool {
+	if !base.isDrop(nowTime, metricTime) {
+		return false
+	}
+	base.saveDropped(name, nowTime, metricTime, value)
+	return true
+}
+
+func (base *Base) isDropBytes(name []byte, nowTime uint32, metricTime uint32, value float64) bool {
+	if !base.isDrop(nowTime, metricTime) {
+		return false
+	}
+	base.saveDropped(string(name), nowTime, metricTime, value)
+	return true
 }
 
 func (base *Base) SendStat(send func(metric string, value float64), fields ...string) {

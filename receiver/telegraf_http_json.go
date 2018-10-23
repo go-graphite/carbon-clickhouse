@@ -91,11 +91,9 @@ func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var pathBuf bytes.Buffer
 
+metricsLoop:
 	for i := 0; i < len(data.Metrics); i++ {
 		m := data.Metrics[i]
-		if rcv.isDrop(writer.Now(), uint32(m.Timestamp)) {
-			continue
-		}
 
 		tags := TelegrafEncodeTags(m.Tags)
 
@@ -127,7 +125,11 @@ func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			pathBuf.WriteByte('?')
 			pathBuf.WriteString(tags)
 
-			writer.WritePoint(pathBuf.String(), v, m.Timestamp)
+			name := pathBuf.String()
+			if rcv.isDropString(name, writer.Now(), uint32(m.Timestamp), v) {
+				continue metricsLoop
+			}
+			writer.WritePoint(name, v, m.Timestamp)
 		}
 	}
 

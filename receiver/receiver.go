@@ -3,6 +3,7 @@ package receiver
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 
 type Receiver interface {
 	Stat(func(metric string, value float64))
+	DroppedHandler(w http.ResponseWriter, r *http.Request)
 	Stop()
 }
 

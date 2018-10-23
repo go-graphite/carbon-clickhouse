@@ -179,7 +179,16 @@ enabled = false
 drop-future = "0s"
 drop-past = "0s"
 
-[pprof]
+# Golang pprof + some extra locations
+#
+# Last 1000 points dropped by "drop-future" and "drop-past" rules:
+# /debug/receive/tcp/dropped/
+# /debug/receive/udp/dropped/
+# /debug/receive/pickle/dropped/
+# /debug/receive/grpc/dropped/
+# /debug/receive/prometheus/dropped/
+# /debug/receive/telegraf_http_json/dropped/
+[pprof] 
 listen = "localhost:7007"
 enabled = false
 ```

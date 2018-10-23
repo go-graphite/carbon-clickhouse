@@ -131,7 +131,7 @@ func (g *GRPC) doStore(requestCtx context.Context, in *pb.Payload, confirmRequir
 		m := in.Metrics[i]
 
 		for j := 0; j < len(m.Points); j++ {
-			if g.isDrop(now, m.Points[j].Timestamp) {
+			if g.isDropString(m.Metric, now, m.Points[j].Timestamp, m.Points[j].Value) {
 				continue
 			}
 

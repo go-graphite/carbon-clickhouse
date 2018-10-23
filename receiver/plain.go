@@ -120,7 +120,7 @@ MainLoop:
 			continue MainLoop
 		}
 
-		if base.isDrop(b.Time, timestamp) {
+		if base.isDropBytes(name, b.Time, timestamp, value) {
 			continue MainLoop
 		}
 

@@ -62,7 +62,7 @@ func (rcv *PrometheusRemoteWrite) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			if math.IsNaN(samples[j].Value) {
 				continue
 			}
-			if rcv.isDrop(writer.Now(), uint32(samples[j].Timestamp/1000)) {
+			if rcv.isDropString(metric, writer.Now(), uint32(samples[j].Timestamp/1000), samples[j].Value) {
 				continue
 			}
 
