@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -56,6 +57,7 @@ ReceiveLoop:
 
 			if chunkSize > 0 {
 				buffer.Used = chunkSize
+				buffer.Time = uint32(time.Now().Unix())
 				rcv.parseChan <- buffer
 				buffer = GetBuffer()
 			}
