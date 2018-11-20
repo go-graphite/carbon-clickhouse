@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -33,11 +34,11 @@ func BenchmarkPlainParseBuffer(b *testing.B) {
 
 	var wb *RowBinary.WriteBuffer
 	for i := 0; i < b.N; i += 100 {
-		base.PlainParseBuffer(buf)
+		base.PlainParseBuffer(context.Background(), buf)
 		wb = <-out
 		wb.Release()
 
-		base.PlainParseBuffer(buf2)
+		base.PlainParseBuffer(context.Background(), buf2)
 		wb = <-out
 		wb.Release()
 	}
