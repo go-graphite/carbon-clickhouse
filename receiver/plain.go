@@ -49,7 +49,7 @@ func RemoveDoubleDot(p []byte) []byte {
 	return p[:len(p)-shift]
 }
 
-func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
+func PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
 		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
@@ -74,19 +74,26 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
 	}
 
-	tsf, err := strconv.ParseFloat(unsafeString(p[i2+1:i3]), 64)
-	if err != nil || math.IsNaN(tsf) {
-		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+	var timestamp uint32
+
+	if (i3-i2 == 3) && (p[i2+1] == '-') && (p[i2+2] == '1') {
+		timestamp = now
+	} else {
+		tsf, err := strconv.ParseFloat(unsafeString(p[i2+1:i3]), 64)
+		if err != nil || math.IsNaN(tsf) {
+			return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+		}
+		timestamp = uint32(tsf)
 	}
 
 	// parse tagged
 	// @TODO: parse as bytes, don't cast to string and back
 	if bytes.IndexByte(p[:i1], ';') >= 0 {
 		name, err := tags.Graphite(unsafeString(p[:i1]))
-		return []byte(name), value, uint32(tsf), err
+		return []byte(name), value, timestamp, err
 	}
 
-	return RemoveDoubleDot(p[:i1]), value, uint32(tsf), nil
+	return RemoveDoubleDot(p[:i1]), value, timestamp, nil
 }
 
 func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer) {
@@ -109,7 +116,7 @@ MainLoop:
 			continue MainLoop
 		}
 
-		name, value, timestamp, err := PlainParseLine(b.Body[offset : offset+lineEnd+1])
+		name, value, timestamp, err := PlainParseLine(b.Body[offset:offset+lineEnd+1], b.Time)
 		offset += lineEnd + 1
 
 		// @TODO: check required buffer size, get new

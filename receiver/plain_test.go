@@ -65,6 +65,8 @@ func TestRemoveDoubleDot(t *testing.T) {
 }
 
 func TestPlainParseLine(t *testing.T) {
+	now := uint32(time.Now().Unix())
+
 	table := [](struct {
 		b         string
 		name      string
@@ -86,10 +88,11 @@ func TestPlainParseLine(t *testing.T) {
 		{"metric...name 42.15 1422642189\n", "metric.name", 42.15, 1422642189},
 		{"metric.name 42.15 1422642189\r\n", "metric.name", 42.15, 1422642189},
 		{"metric.name;tag=value;k=v 42.15 1422642189\r\n", "metric.name?k=v&tag=value", 42.15, 1422642189},
+		{"metric..name 42.15 -1\n", "metric.name", 42.15, now},
 	}
 
 	for _, p := range table {
-		name, value, timestamp, err := PlainParseLine([]byte(p.b))
+		name, value, timestamp, err := PlainParseLine([]byte(p.b), now)
 		if p.name == "" {
 			// expected error
 			if err == nil {
