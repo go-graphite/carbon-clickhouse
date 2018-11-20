@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"sync/atomic"
+	"time"
 	"unsafe"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -74,19 +76,27 @@ func PlainParseLine(p []byte) ([]byte, float64, uint32, error) {
 		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
 	}
 
-	tsf, err := strconv.ParseFloat(unsafeString(p[i2+1:i3]), 64)
-	if err != nil || math.IsNaN(tsf) {
-		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+	timestamp := uint32(0)
+	timestampRaw := unsafeString(p[i2+1 : i3])
+	if strings.TrimSpace(timestampRaw) == "-1" {
+		timestamp = uint32(time.Now().Unix())
+	} else {
+		tsf, err := strconv.ParseFloat(timestampRaw, 64)
+		if err != nil || math.IsNaN(tsf) {
+			return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+		}
+
+		timestamp = uint32(tsf)
 	}
 
 	// parse tagged
 	// @TODO: parse as bytes, don't cast to string and back
 	if bytes.IndexByte(p[:i1], ';') >= 0 {
 		name, err := tags.Graphite(unsafeString(p[:i1]))
-		return []byte(name), value, uint32(tsf), err
+		return []byte(name), value, timestamp, err
 	}
 
-	return RemoveDoubleDot(p[:i1]), value, uint32(tsf), nil
+	return RemoveDoubleDot(p[:i1]), value, timestamp, nil
 }
 
 func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer) {

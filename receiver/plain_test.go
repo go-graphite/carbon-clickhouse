@@ -107,3 +107,11 @@ func TestPlainParseLine(t *testing.T) {
 		}
 	}
 }
+
+func TestPlainParseLineTimestampAsMinusOne(t *testing.T) {
+	str := "metric.name 42 -1"
+	_, _, timestamp, _ := PlainParseLine([]byte(str))
+	if timestamp == 4294967295 {
+		t.Fatalf("%d == %d", timestamp, 4294967295)
+	}
+}
