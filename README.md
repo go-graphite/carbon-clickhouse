@@ -87,6 +87,8 @@ table = "graphite"
 threads = 1
 url = "http://localhost:8123/"
 timeout = "1m0s"
+# save zero value to Timestamp column (for point and posts-reverse tables)
+zero-timestamp = false 
 
 [upload.graphite_tree]
 type = "tree"
