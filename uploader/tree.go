@@ -29,7 +29,6 @@ func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error
 	}
 	defer reader.Close()
 
-	days := RowBinary.TimestampToDays(uint32(u.config.TreeDate.Unix()))
 	version := uint32(time.Now().Unix())
 
 	newSeries := make(map[string]bool)
@@ -38,9 +37,6 @@ func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error
 	var p []byte
 
 	writePathLevel := func(p []byte, level int) error {
-		if err := RowBinary.WriteUint16(out, days); err != nil {
-			return err
-		}
 		if err := RowBinary.WriteUint32(out, uint32(level)); err != nil {
 			return err
 		}

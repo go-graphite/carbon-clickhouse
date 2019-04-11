@@ -19,24 +19,53 @@ make
 
 1. Add `graphite_rollup` section to config.xml. Sample [here](https://clickhouse.yandex/docs/en/operations/table_engines/graphitemergetree/). You can use [carbon-schema-to-clickhouse](https://github.com/bzed/carbon-schema-to-clickhouse) for generate rollup xml from graphite [storage-schemas.conf](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf).
 
-2. Create tables
+2. Create tables.
+Be aware that in these examples the tables are partitioned by day.
+If you want old Clickhouse behaviour with monthly partitions then change toYYYYMMDD to toYYYYMM everywhere.
+
 ```sql
 CREATE TABLE graphite ( 
   Path String,  
   Value Float64,  
   Time UInt32,  
   Date Date,  
-  Timestamp UInt32
-) ENGINE = GraphiteMergeTree(Date, (Path, Time), 8192, 'graphite_rollup');
- 
+  Version UInt32
+) ENGINE = GraphiteMergeTree('graphite_rollup')
+PARTITION BY toYYYYMMDD(Date)
+ORDER BY (Path, Time);
+
 -- optional table for faster metric search
 CREATE TABLE graphite_tree (
+  Level UInt32,
+  Path String,
+  Deleted UInt8,
+  Version UInt32
+) ENGINE = ReplacingMergeTree(Version)
+PARTITION BY (Level)
+ORDER BY (Level, Path);
+
+-- optional table for daily series (see config file)
+CREATE TABLE graphite_series (
   Date Date,
   Level UInt32,
   Path String,
   Deleted UInt8,
   Version UInt32
-) ENGINE = ReplacingMergeTree(Date, (Level, Path), 8192, Version);
+) ENGINE = ReplacingMergeTree(Version)
+PARTITION BY toYYYYMMDD(Date)
+ORDER BY (Level, Path, Date);
+
+-- optional table for storing Graphite tags
+CREATE TABLE graphite_tagged (
+  Date Date,
+  Tag1 String,
+  Path String,
+  Tags Array(String),
+  Version UInt32,
+  Deleted UInt8
+) ENGINE = ReplacingMergeTree(Version)
+PARTITION BY toYYYYMMDD(Date)
+ORDER BY (Tag1, Path, Date);
 ```
 
 [GraphiteMergeTree documentation](https://clickhouse.yandex/docs/en/table_engines/graphitemergetree.html)
@@ -108,14 +137,6 @@ cache-ttl = "12h0m0s"
 # # - series-reverse (same scheme as series, but path 'a1.b2.c3' stored as 'c3.b2.a1')
 
 # # Extra table with daily series list
-#
-# # CREATE TABLE graphite_series (
-# #   Date Date,
-# #   Level UInt32,
-# #   Path String,
-# #   Deleted UInt8,
-# #   Version UInt32
-# # ) ENGINE = ReplacingMergeTree(Date, (Level, Path, Date), 8192, Version);
 # [upload.graphite_series]
 # type = "series"
 # table = "graphite_series"
@@ -125,15 +146,6 @@ cache-ttl = "12h0m0s"
 # cache-ttl = "12h0m0s"
 
 # # Extra table which can be used as index for tagged series
-#
-# # CREATE TABLE graphite_tagged (
-# #   Date Date,
-# #   Tag1 String,
-# #   Path String,
-# #   Tags Array(String),
-# #   Version UInt32,
-# #   Deleted UInt8
-# # ) ENGINE = ReplacingMergeTree(Date, (Tag1, Path, Date), 8192, Version);
 # [upload.graphite_tagged]
 # type = "tagged"
 # table = "graphite_tagged"
