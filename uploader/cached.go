@@ -19,7 +19,6 @@ type cached struct {
 	*Base
 	existsCache CMap // store known keys and don't load it to clickhouse tree
 	parser      func(filename string, out io.Writer) (map[string]bool, error)
-	insertQuery string
 	expired     uint32 // atomic counter
 }
 
@@ -27,7 +26,7 @@ func newCached(base *Base) *cached {
 	u := &cached{Base: base}
 	u.Base.handler = u.upload
 	u.existsCache = NewCMap()
-	u.insertQuery = fmt.Sprintf("%s (Date, Level, Path, Version)", u.config.TableName)
+	u.query = fmt.Sprintf("%s (Date, Level, Path, Version)", u.config.TableName)
 	return u
 }
 
@@ -69,7 +68,7 @@ func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string
 
 	u.Go(func(ctx context.Context) {
 		err := u.insertRowBinary(
-			u.insertQuery,
+			u.query,
 			pipeReader,
 		)
 		uploadResult <- err

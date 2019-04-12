@@ -18,6 +18,7 @@ type Points struct {
 func NewPoints(base *Base) *Points {
 	u := &Points{Base: base}
 	u.Base.handler = u.upload
+	u.query = fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.config.TableName)
 	return u
 }
 
@@ -29,7 +30,7 @@ func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string
 			return err
 		}
 
-		return u.insertRowBinary(fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.config.TableName), reader)
+		return u.insertRowBinary(u.query, reader)
 	}
 
 	file, err := os.Open(filename)
@@ -47,10 +48,7 @@ func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string
 		logger.Info("file is empty")
 		return nil
 	}
-	err = u.insertRowBinary(
-		fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.config.TableName),
-		file,
-	)
+	err = u.insertRowBinary(u.query, file)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") {
@@ -62,10 +60,7 @@ func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string
 			}
 
 			// try slow read method with skip bad records
-			err = u.insertRowBinary(
-				fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.config.TableName),
-				reader,
-			)
+			err = u.insertRowBinary(u.query, reader)
 			if err != nil {
 				return err
 			}

@@ -21,7 +21,7 @@ func NewTagged(base *Base) *Tagged {
 	u := &Tagged{}
 	u.cached = newCached(base)
 	u.cached.parser = u.parseFile
-	u.insertQuery = fmt.Sprintf("%s (Date, Tag1, Path, Tags, Version)", u.config.TableName)
+	u.query = fmt.Sprintf("%s (Date, Tag1, Path, Tags, Version)", u.config.TableName)
 	return u
 }
 

@@ -29,6 +29,7 @@ type Base struct {
 	inQueue map[string]bool
 	logger  *zap.Logger
 	handler func(ctx context.Context, logger *zap.Logger, filename string) error // upload single file
+	query   string
 
 	stat struct {
 		uploaded  uint32
