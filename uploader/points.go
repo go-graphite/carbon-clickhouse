@@ -18,7 +18,7 @@ type Points struct {
 func NewPoints(base *Base) *Points {
 	u := &Points{Base: base}
 	u.Base.handler = u.upload
-	u.query = fmt.Sprintf("%s (Path, Value, Time, Date, Version)", u.config.TableName)
+	u.query = fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.config.TableName)
 	return u
 }
 

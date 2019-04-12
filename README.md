@@ -29,7 +29,7 @@ CREATE TABLE graphite (
   Value Float64,  
   Time UInt32,  
   Date Date,  
-  Version UInt32
+  Timestamp UInt32
 ) ENGINE = GraphiteMergeTree('graphite_rollup')
 PARTITION BY toYYYYMMDD(Date)
 ORDER BY (Path, Time);
