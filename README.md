@@ -119,7 +119,6 @@ zero-timestamp = false
 [upload.graphite_tree]
 type = "tree"
 table = "graphite_tree"
-date = "2016-11-01"
 threads = 1
 url = "http://localhost:8123/"
 timeout = "1m0s"
