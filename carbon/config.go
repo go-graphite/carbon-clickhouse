@@ -191,7 +191,6 @@ func PrintDefaultConfig() error {
 		},
 		"graphite_tree": &uploader.Config{
 			Type: "tree",
-			Date: "2016-11-01",
 			Timeout: &config.Duration{
 				Duration: time.Minute,
 			},

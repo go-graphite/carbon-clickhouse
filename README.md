@@ -38,7 +38,6 @@ ORDER BY (Path, Time);
 CREATE TABLE graphite_tree (
   Level UInt32,
   Path String,
-  Deleted UInt8,
   Version UInt32
 ) ENGINE = ReplacingMergeTree(Version)
 PARTITION BY (Level)
@@ -49,7 +48,6 @@ CREATE TABLE graphite_series (
   Date Date,
   Level UInt32,
   Path String,
-  Deleted UInt8,
   Version UInt32
 ) ENGINE = ReplacingMergeTree(Version)
 PARTITION BY toYYYYMMDD(Date)
@@ -62,7 +60,6 @@ CREATE TABLE graphite_tagged (
   Path String,
   Tags Array(String),
   Version UInt32,
-  Deleted UInt8
 ) ENGINE = ReplacingMergeTree(Version)
 PARTITION BY toYYYYMMDD(Date)
 ORDER BY (Tag1, Path, Date);

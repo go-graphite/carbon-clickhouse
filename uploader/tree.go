@@ -2,6 +2,7 @@ package uploader
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"time"
 
@@ -19,6 +20,8 @@ func NewTree(base *Base) *Tree {
 	u := &Tree{}
 	u.cached = newCached(base)
 	u.cached.parser = u.parseFile
+	// Tree table does not have Date column anymore, so override query here
+	u.query = fmt.Sprintf("%s (Level, Path, Version)", u.config.TableName)
 	return u
 }
 
