@@ -58,7 +58,7 @@ func main() {
 	}
 
 	if *cat != "" {
-		reader, err := RowBinary.NewReader(*cat, config.CompAlgoNone, 0)
+		reader, err := RowBinary.NewReader(*cat, config.CompAlgoNone)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -83,7 +83,7 @@ func main() {
 	}
 
 	if *bincat != "" {
-		reader, err := RowBinary.NewReader(*bincat, config.CompAlgoNone, 0)
+		reader, err := RowBinary.NewReader(*bincat, config.CompAlgoNone)
 		if err != nil {
 			log.Fatal(err)
 		}

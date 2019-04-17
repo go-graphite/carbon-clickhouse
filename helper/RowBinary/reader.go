@@ -160,7 +160,7 @@ func (r *Reader) Read(p []byte) (int, error) {
 	}
 }
 
-func NewReader(filename string, compAlgo config.CompAlgo, compLevel int) (*Reader, error) {
+func NewReader(filename string, compAlgo config.CompAlgo) (*Reader, error) {
 	fd, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -181,8 +181,8 @@ func NewReader(filename string, compAlgo config.CompAlgo, compLevel int) (*Reade
 	}, nil
 }
 
-func NewReverseReader(filename string, compAlgo config.CompAlgo, compLevel int) (*Reader, error) {
-	reader, err := NewReader(filename, compAlgo, compLevel)
+func NewReverseReader(filename string, compAlgo config.CompAlgo) (*Reader, error) {
+	reader, err := NewReader(filename, compAlgo)
 	if err == nil {
 		reader.isReverse = true
 	}

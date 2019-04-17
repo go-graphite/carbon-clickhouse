@@ -24,7 +24,7 @@ func NewPoints(base *Base) *Points {
 
 func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string) error {
 	newReader := func() (*RowBinary.Reader, error) {
-		return RowBinary.NewReader(filename, u.config.CompAlgo, u.config.CompLevel)
+		return RowBinary.NewReader(filename, u.config.CompAlgo)
 	}
 
 	if u.config.ZeroTimestamp {
