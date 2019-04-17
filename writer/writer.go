@@ -19,6 +19,12 @@ import (
 	"go.uber.org/zap"
 )
 
+type compWriter interface {
+	Write([]byte) (int, error)
+	Flush() error
+	Close() error
+}
+
 // Writer dumps all received data in prepared for clickhouse format
 type Writer struct {
 	stop.Struct
@@ -109,6 +115,7 @@ func (w *Writer) IsInProgress(filename string) bool {
 
 func (w *Writer) worker(ctx context.Context) {
 	var out *os.File
+	var cwr compWriter
 	var outBuf *bufio.Writer
 	var fn string // current filename
 
@@ -122,8 +129,16 @@ func (w *Writer) worker(ctx context.Context) {
 	rotate := func() {
 		if out != nil {
 			outBuf.Flush()
+
+			if cwr != nil {
+				cwr.Flush()
+				cwr.Close()
+			}
+
 			out.Close()
+
 			out = nil
+			cwr = nil
 			outBuf = nil
 		}
 
@@ -174,6 +189,7 @@ func (w *Writer) worker(ctx context.Context) {
 			case config.CompAlgoLZ4:
 				lz4w := lz4.NewWriter(out)
 				lz4w.Header = w.lz4Header
+				cwr = lz4w
 				wr = lz4w
 			}
 
