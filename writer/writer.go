@@ -74,7 +74,7 @@ func New(in chan *RowBinary.WriteBuffer, path string, autoInterval *config.Chunk
 	switch compAlgo {
 	case config.CompAlgoLZ4:
 		wr.lz4Header = lz4.Header{
-			Size:             64 * 1024,
+			Size:             1024,
 			CompressionLevel: compLevel,
 		}
 	}

@@ -172,11 +172,6 @@ func NewReader(filename string, compAlgo config.CompAlgo, compLevel int) (*Reade
 		rdr = fd
 	case config.CompAlgoLZ4:
 		lz4r := lz4.NewReader(fd)
-		lz4r.Header = lz4.Header{
-			Size:             64 * 1024,
-			CompressionLevel: compLevel,
-		}
-
 		rdr = lz4r
 	}
 
