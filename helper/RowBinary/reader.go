@@ -177,6 +177,8 @@ func NewReader(filename string, compAlgo config.CompAlgo, compLevel int) (*Reade
 			Size:             1024 * 1024,
 			CompressionLevel: compLevel,
 		}
+
+		rdr = lz4r
 	}
 
 	return &Reader{
