@@ -74,7 +74,7 @@ func New(in chan *RowBinary.WriteBuffer, path string, autoInterval *config.Chunk
 	switch compAlgo {
 	case config.CompAlgoLZ4:
 		wr.lz4Header = lz4.Header{
-			Size:             1024,
+			Size:             128,
 			CompressionLevel: compLevel,
 		}
 	}
@@ -119,8 +119,18 @@ func (w *Writer) worker(ctx context.Context) {
 	var outBuf *bufio.Writer
 	var fn string // current filename
 
+	cwrClose := func() {
+		if cwr != nil {
+			if err := cwr.Close(); err != nil {
+				w.logger.Error("CompWriter close failed", zap.Error(err))
+			}
+		}
+	}
+
 	defer func() {
 		if out != nil {
+			outBuf.Flush()
+			cwrClose()
 			out.Close()
 		}
 	}()
@@ -129,12 +139,7 @@ func (w *Writer) worker(ctx context.Context) {
 	rotate := func() {
 		if out != nil {
 			outBuf.Flush()
-
-			if cwr != nil {
-				cwr.Flush()
-				cwr.Close()
-			}
-
+			cwrClose()
 			out.Close()
 
 			out = nil
@@ -257,6 +262,12 @@ func (w *Writer) worker(ctx context.Context) {
 			return
 		default: // outBuf flush if nothing received
 			outBuf.Flush()
+
+			if cwr != nil {
+				if err := cwr.Flush(); err != nil {
+					w.logger.Error("CompWriter Flush() failed", zap.Error(err))
+				}
+			}
 
 			select {
 			case b := <-w.inputChan:
