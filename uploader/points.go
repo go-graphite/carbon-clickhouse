@@ -23,8 +23,12 @@ func NewPoints(base *Base) *Points {
 }
 
 func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string) error {
+	newReader := func() (*RowBinary.Reader, error) {
+		return RowBinary.NewReader(filename, u.config.CompAlgo, u.config.CompLevel)
+	}
+
 	if u.config.ZeroTimestamp {
-		reader, err := RowBinary.NewReader(filename)
+		reader, err := newReader()
 		reader.SetZeroVersion(u.config.ZeroTimestamp)
 		if err != nil {
 			return err
@@ -54,7 +58,7 @@ func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string
 		if strings.Contains(err.Error(), "Code: 33, e.displayText() = DB::Exception: Cannot read all data") {
 			logger.Warn("file corrupted, try to recover")
 
-			reader, err := RowBinary.NewReader(filename)
+			reader, err := newReader()
 			if err != nil {
 				return err
 			}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/carbon"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/carbon-clickhouse/helper/config"
 	"github.com/lomik/zapwriter"
 	"go.uber.org/zap"
 
@@ -57,7 +58,7 @@ func main() {
 	}
 
 	if *cat != "" {
-		reader, err := RowBinary.NewReader(*cat)
+		reader, err := RowBinary.NewReader(*cat, config.CompAlgoNone, 0)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -82,7 +83,7 @@ func main() {
 	}
 
 	if *bincat != "" {
-		reader, err := RowBinary.NewReader(*bincat)
+		reader, err := RowBinary.NewReader(*bincat, config.CompAlgoNone, 0)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -35,9 +35,9 @@ func (u *Series) parseFile(filename string, out io.Writer) (map[string]bool, err
 	var err error
 
 	if u.isReverse {
-		reader, err = RowBinary.NewReverseReader(filename)
+		reader, err = RowBinary.NewReverseReader(filename, u.config.CompAlgo, u.config.CompLevel)
 	} else {
-		reader, err = RowBinary.NewReader(filename)
+		reader, err = RowBinary.NewReader(filename, u.config.CompAlgo, u.config.CompLevel)
 	}
 
 	if err != nil {

@@ -10,6 +10,9 @@ import (
 	"math"
 	"os"
 	"time"
+
+	"github.com/lomik/carbon-clickhouse/helper/config"
+	"github.com/pierrec/lz4"
 )
 
 // Read all good records from unfinished RowBinary file.
@@ -157,20 +160,33 @@ func (r *Reader) Read(p []byte) (int, error) {
 	}
 }
 
-func NewReader(filename string) (*Reader, error) {
+func NewReader(filename string, compAlgo config.CompAlgo, compLevel int) (*Reader, error) {
 	fd, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
+	var rdr io.Reader
+	switch compAlgo {
+	case config.CompAlgoNone:
+		rdr = fd
+	case config.CompAlgoLZ4:
+		lz4r := lz4.NewReader(fd)
+		lz4r.Header = lz4.Header{
+			BlockChecksum:    true,
+			Size:             1024 * 1024,
+			CompressionLevel: compLevel,
+		}
+	}
+
 	return &Reader{
 		fd:     fd,
-		reader: bufio.NewReader(fd),
+		reader: bufio.NewReader(rdr),
 	}, nil
 }
 
-func NewReverseReader(filename string) (*Reader, error) {
-	reader, err := NewReader(filename)
+func NewReverseReader(filename string, compAlgo config.CompAlgo, compLevel int) (*Reader, error) {
+	reader, err := NewReader(filename, compAlgo, compLevel)
 	if err == nil {
 		reader.isReverse = true
 	}

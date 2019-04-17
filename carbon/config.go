@@ -13,7 +13,9 @@ import (
 	"github.com/lomik/zapwriter"
 )
 
-const MetricEndpointLocal = "local"
+const (
+	MetricEndpointLocal = "local"
+)
 
 type commonConfig struct {
 	MetricPrefix   string           `toml:"metric-prefix"`
@@ -78,6 +80,8 @@ type dataConfig struct {
 	Path         string                    `toml:"path"`
 	FileInterval *config.Duration          `toml:"chunk-interval"`
 	AutoInterval *config.ChunkAutoInterval `toml:"chunk-auto-interval"`
+	CompAlgo     *config.Compression       `toml:"compression"`
+	CompLevel    int                       `toml:"compression_level"`
 }
 
 // Config ...
@@ -113,6 +117,8 @@ func NewConfig() *Config {
 				Duration: time.Second,
 			},
 			AutoInterval: config.NewChunkAutoInterval(),
+			CompAlgo:     &config.Compression{CompAlgo: config.CompAlgoNone},
+			CompLevel:    1,
 		},
 		Udp: udpConfig{
 			Listen:        ":2003",
@@ -251,6 +257,9 @@ func ReadConfig(filename string) (*Config, error) {
 		if err := u.Parse(); err != nil {
 			return nil, err
 		}
+
+		u.CompAlgo = cfg.Data.CompAlgo.CompAlgo
+		u.CompLevel = cfg.Data.CompLevel
 	}
 
 	return cfg, nil

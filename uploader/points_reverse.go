@@ -21,11 +21,11 @@ func NewPointsReverse(base *Base) *PointsReverse {
 }
 
 func (u *PointsReverse) upload(ctx context.Context, logger *zap.Logger, filename string) error {
-	reader, err := RowBinary.NewReverseReader(filename)
+	reader, err := RowBinary.NewReverseReader(filename, u.config.CompAlgo, u.config.CompLevel)
 	if err != nil {
 		return err
 	}
-	
+
 	reader.SetZeroVersion(u.config.ZeroTimestamp)
 	return u.insertRowBinary(u.query, reader)
 }
