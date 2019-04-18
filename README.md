@@ -107,6 +107,15 @@ chunk-interval = "1s"
 # chunk-auto-interval = "5:10s,20:60s"
 chunk-auto-interval = ""
 
+# Compression algorithm to use when storing temporary files.
+# Might be useful to reduce space usage when Clickhouse is unavailable for an extended period of time.
+# Currently supported: none, lz4
+compression = "none"
+
+# Compression level to use.
+# For "lz4" 0 means use normal LZ4, >=1 use LZ4HC with this depth (the higher - the better compression, but slower)
+compression-level = 0
+
 [upload.graphite]
 type = "points"
 table = "graphite"

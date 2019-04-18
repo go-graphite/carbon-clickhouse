@@ -81,7 +81,7 @@ type dataConfig struct {
 	FileInterval *config.Duration          `toml:"chunk-interval"`
 	AutoInterval *config.ChunkAutoInterval `toml:"chunk-auto-interval"`
 	CompAlgo     *config.Compression       `toml:"compression"`
-	CompLevel    int                       `toml:"compression_level"`
+	CompLevel    int                       `toml:"compression-level"`
 }
 
 // Config ...
