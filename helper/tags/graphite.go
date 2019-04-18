@@ -95,15 +95,16 @@ func Graphite(config TagConfig, s string) (string, error) {
 type TemplateDesc struct {
 	Filter    *regexp.Regexp
 	Template  []string
-	ExtraTags string
+	ExtraTags map[string]string
 }
 
 type TagConfig struct {
-	Enabled       bool           `toml:"enabled"`
-	Separator     string         `toml:"separator"`
-	Tags          []string       `toml:"tags"`
-	Templates     []string       `toml:"templates"`
-	TemplateDescs []TemplateDesc `toml:"-"`
+	Enabled       bool              `toml:"enabled"`
+	Separator     string            `toml:"separator"`
+	Tags          []string          `toml:"tags"`
+	TagMap        map[string]string `toml:"-"`
+	Templates     []string          `toml:"templates"`
+	TemplateDescs []TemplateDesc    `toml:"-"`
 }
 
 func DisabledTagConfig() TagConfig {
@@ -129,6 +130,9 @@ func makeRegexp(filter string) *regexp.Regexp {
 }
 
 func (cfg *TagConfig) Configure() error {
+	cfg.TagMap = make(map[string]string)
+	makeTagMap(cfg.TagMap, cfg.Tags)
+
 	for _, s := range cfg.Templates {
 		descs := strings.Split(s, " ")
 		if len(descs) > 3 {
@@ -156,10 +160,23 @@ func (cfg *TagConfig) Configure() error {
 		newDesc := TemplateDesc{}
 		newDesc.Filter = makeRegexp(filter)
 		newDesc.Template = strings.Split(template, ".")
-		newDesc.ExtraTags = strings.Replace(tags, ",", ";", -1)
+		tagPairs := strings.Split(tags, ",")
+		newDesc.ExtraTags = make(map[string]string)
+		makeTagMap(newDesc.ExtraTags, tagPairs)
+
 		cfg.TemplateDescs = append(cfg.TemplateDescs, newDesc)
 	}
 	return nil
+}
+
+func makeTagMap(tagMap map[string]string, tags []string) {
+	if len(tags) == 0 || tags[0] == "" {
+		return
+	}
+	for _, tag := range tags {
+		keyValue := strings.Split(tag, "=")
+		tagMap[keyValue[0]] = keyValue[1]
+	}
 }
 
 func (cfg *TagConfig) toGraphiteTagged(s string) (string, error) {
@@ -167,6 +184,15 @@ func (cfg *TagConfig) toGraphiteTagged(s string) (string, error) {
 		if !desc.Filter.Match([]byte(s)) {
 			continue
 		}
+
+		tagMap := make(map[string]string)
+		for k, v := range cfg.TagMap {
+			tagMap[k] = v
+		}
+		for k, v := range desc.ExtraTags {
+			tagMap[k] = v
+		}
+
 		names := strings.Split(s, ".")
 		measurement := ""
 		tags := ""
@@ -182,7 +208,7 @@ func (cfg *TagConfig) toGraphiteTagged(s string) (string, error) {
 				measurement += strings.Join(names[i:], cfg.Separator)
 				break Metric
 			default:
-				tags += ";" + desc.Template[i] + "=" + name
+				tagMap[desc.Template[i]] = name
 			}
 		}
 
@@ -190,9 +216,11 @@ func (cfg *TagConfig) toGraphiteTagged(s string) (string, error) {
 			measurement = measurement[:len(measurement)-1]
 		}
 
-		tags += ";" + desc.ExtraTags
+		for k, v := range tagMap {
+			tags += ";" + k + "=" + v
+		}
 
-		return measurement + " " + tags, nil
+		return measurement + tags, nil
 	}
 	return "", nil
 }
