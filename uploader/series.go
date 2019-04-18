@@ -17,16 +17,11 @@ type Series struct {
 var _ Uploader = &Series{}
 var _ UploaderWithReset = &Series{}
 
-func NewSeries(base *Base) *Series {
+func NewSeries(base *Base, reverse bool) *Series {
 	u := &Series{}
 	u.cached = newCached(base)
 	u.cached.parser = u.parseFile
-	return u
-}
-
-func NewSeriesReverse(base *Base) *Series {
-	u := NewSeries(base)
-	u.isReverse = true
+	u.isReverse = reverse
 	return u
 }
 
@@ -34,21 +29,14 @@ func (u *Series) parseFile(filename string, out io.Writer) (map[string]bool, err
 	var reader *RowBinary.Reader
 	var err error
 
-	if u.isReverse {
-		reader, err = RowBinary.NewReverseReader(filename)
-	} else {
-		reader, err = RowBinary.NewReader(filename)
-	}
-
+	reader, err = RowBinary.NewReader(filename, u.config.CompAlgo, u.isReverse)
 	if err != nil {
 		return nil, err
 	}
 	defer reader.Close()
 
 	version := uint32(time.Now().Unix())
-
 	newSeries := make(map[string]bool)
-
 	wb := RowBinary.GetWriteBuffer()
 
 	var level int

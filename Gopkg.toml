@@ -65,10 +65,10 @@
   name = "google.golang.org/grpc"
   version = "1.9.2"
 
+[[constraint]]
+  name = "github.com/pierrec/lz4"
+  version = "2.1.2"
+
 [prune]
   go-tests = true
   unused-packages = true
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/lomik/stop"

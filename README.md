@@ -59,7 +59,7 @@ CREATE TABLE graphite_tagged (
   Tag1 String,
   Path String,
   Tags Array(String),
-  Version UInt32,
+  Version UInt32
 ) ENGINE = ReplacingMergeTree(Version)
 PARTITION BY toYYYYMMDD(Date)
 ORDER BY (Tag1, Path, Date);
@@ -106,6 +106,15 @@ chunk-interval = "1s"
 # Sample, set chunk interval to 10 if unhandled files count >= 5 and set to 60s if unhandled files count >= 20:
 # chunk-auto-interval = "5:10s,20:60s"
 chunk-auto-interval = ""
+
+# Compression algorithm to use when storing temporary files.
+# Might be useful to reduce space usage when Clickhouse is unavailable for an extended period of time.
+# Currently supported: none, lz4
+compression = "none"
+
+# Compression level to use.
+# For "lz4" 0 means use normal LZ4, >=1 use LZ4HC with this depth (the higher - the better compression, but slower)
+compression-level = 0
 
 [upload.graphite]
 type = "points"

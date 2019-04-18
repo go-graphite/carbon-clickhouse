@@ -37,15 +37,15 @@ func New(path string, name string, config *Config) (Uploader, error) {
 
 	switch c.Type {
 	case "points":
-		res = NewPoints(u)
+		res = NewPoints(u, false)
 	case "tree":
 		res = NewTree(u)
 	case "points-reverse":
-		res = NewPointsReverse(u)
+		res = NewPoints(u, true)
 	case "series":
-		res = NewSeries(u)
+		res = NewSeries(u, false)
 	case "series-reverse":
-		res = NewSeriesReverse(u)
+		res = NewSeries(u, true)
 	case "tagged":
 		res = NewTagged(u)
 	default:

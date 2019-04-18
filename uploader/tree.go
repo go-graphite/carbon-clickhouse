@@ -26,7 +26,7 @@ func NewTree(base *Base) *Tree {
 }
 
 func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error) {
-	reader, err := RowBinary.NewReader(filename)
+	reader, err := RowBinary.NewReader(filename, u.config.CompAlgo, false)
 	if err != nil {
 		return nil, err
 	}

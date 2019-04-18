@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"sync"
@@ -14,8 +15,15 @@ import (
 	"github.com/lomik/carbon-clickhouse/helper/config"
 	"github.com/lomik/carbon-clickhouse/helper/stop"
 	"github.com/lomik/zapwriter"
+	"github.com/pierrec/lz4"
 	"go.uber.org/zap"
 )
+
+type compWriter interface {
+	Write([]byte) (int, error)
+	Flush() error
+	Close() error
+}
 
 // Writer dumps all received data in prepared for clickhouse format
 type Writer struct {
@@ -29,13 +37,16 @@ type Writer struct {
 	inputChan    chan *RowBinary.WriteBuffer
 	path         string
 	autoInterval *config.ChunkAutoInterval
+	compAlgo     config.CompAlgo
+	compLevel    int
+	lz4Header    lz4.Header
 	inProgress   map[string]bool // current writing files
 	logger       *zap.Logger
 	uploaders    []string
 	onFinish     func(string) error
 }
 
-func New(in chan *RowBinary.WriteBuffer, path string, autoInterval *config.ChunkAutoInterval, uploaders []string, onFinish func(string) error) *Writer {
+func New(in chan *RowBinary.WriteBuffer, path string, autoInterval *config.ChunkAutoInterval, compAlgo config.CompAlgo, compLevel int, uploaders []string, onFinish func(string) error) *Writer {
 	finishCallback := func(fn string) error {
 		if err := Link(fn, uploaders); err != nil {
 			return err
@@ -48,15 +59,27 @@ func New(in chan *RowBinary.WriteBuffer, path string, autoInterval *config.Chunk
 		return nil
 	}
 
-	return &Writer{
+	wr := &Writer{
 		inputChan:    in,
 		path:         path,
 		autoInterval: autoInterval,
+		compAlgo:     compAlgo,
+		compLevel:    compLevel,
 		inProgress:   make(map[string]bool),
 		logger:       zapwriter.Logger("writer"),
 		uploaders:    uploaders,
 		onFinish:     finishCallback,
 	}
+
+	switch compAlgo {
+	case config.CompAlgoLZ4:
+		wr.lz4Header = lz4.Header{
+			Size:             64 * 1024,
+			CompressionLevel: compLevel,
+		}
+	}
+
+	return wr
 }
 
 func (w *Writer) Start() error {
@@ -92,11 +115,22 @@ func (w *Writer) IsInProgress(filename string) bool {
 
 func (w *Writer) worker(ctx context.Context) {
 	var out *os.File
+	var cwr compWriter
 	var outBuf *bufio.Writer
 	var fn string // current filename
 
+	cwrClose := func() {
+		if cwr != nil {
+			if err := cwr.Close(); err != nil {
+				w.logger.Error("CompWriter close failed", zap.Error(err))
+			}
+		}
+	}
+
 	defer func() {
 		if out != nil {
+			outBuf.Flush()
+			cwrClose()
 			out.Close()
 		}
 	}()
@@ -105,8 +139,11 @@ func (w *Writer) worker(ctx context.Context) {
 	rotate := func() {
 		if out != nil {
 			outBuf.Flush()
+			cwrClose()
 			out.Close()
+
 			out = nil
+			cwr = nil
 			outBuf = nil
 		}
 
@@ -150,7 +187,18 @@ func (w *Writer) worker(ctx context.Context) {
 				continue OpenLoop
 			}
 
-			outBuf = bufio.NewWriterSize(out, 1024*1024)
+			var wr io.Writer
+			switch w.compAlgo {
+			case config.CompAlgoNone:
+				wr = out
+			case config.CompAlgoLZ4:
+				lz4w := lz4.NewWriter(out)
+				lz4w.Header = w.lz4Header
+				cwr = lz4w
+				wr = lz4w
+			}
+
+			outBuf = bufio.NewWriterSize(wr, 1024*1024)
 			break OpenLoop
 		}
 	}
@@ -214,6 +262,12 @@ func (w *Writer) worker(ctx context.Context) {
 			return
 		default: // outBuf flush if nothing received
 			outBuf.Flush()
+
+			if cwr != nil {
+				if err := cwr.Flush(); err != nil {
+					w.logger.Error("CompWriter Flush() failed", zap.Error(err))
+				}
+			}
 
 			select {
 			case b := <-w.inputChan:

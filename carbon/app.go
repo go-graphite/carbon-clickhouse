@@ -189,7 +189,7 @@ func (app *App) Start() (err error) {
 
 	/* WRITER start */
 	uploaders := make([]string, 0, len(conf.Upload))
-	for t, _ := range conf.Upload {
+	for t := range conf.Upload {
 		uploaders = append(uploaders, t)
 	}
 
@@ -199,6 +199,8 @@ func (app *App) Start() (err error) {
 		app.writeChan,
 		conf.Data.Path,
 		conf.Data.AutoInterval,
+		conf.Data.CompAlgo.CompAlgo,
+		conf.Data.CompLevel,
 		uploaders,
 		nil,
 	)

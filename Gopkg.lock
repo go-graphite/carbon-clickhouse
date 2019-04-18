@@ -89,6 +89,17 @@
   revision = "d4499a33b5929c4a2e7e169165f594f35b39638c"
 
 [[projects]]
+  digest = "1:cf9272ab0a637cb1ffa40e2b6220108d7016a36b3eb357e4b57aacb7a8f725c0"
+  name = "github.com/pierrec/lz4"
+  packages = [
+    ".",
+    "internal/xxh32",
+  ]
+  pruneopts = "UT"
+  revision = "9419d2361c8ae111073ffe3337ecc364fb590921"
+  version = "v2.1.2"
+
+[[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
@@ -226,8 +237,8 @@
     "github.com/golang/snappy",
     "github.com/lomik/graphite-pickle",
     "github.com/lomik/graphite-pickle/framing",
-    "github.com/lomik/stop",
     "github.com/lomik/zapwriter",
+    "github.com/pierrec/lz4",
     "github.com/stretchr/testify/assert",
     "go.uber.org/zap",
     "golang.org/x/net/context",

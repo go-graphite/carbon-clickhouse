@@ -12,6 +12,8 @@ type Config struct {
 	Threads       int              `toml:"threads"`
 	URL           string           `toml:"url"`
 	CacheTTL      *config.Duration `toml:"cache-ttl"`
+	CompAlgo      config.CompAlgo
+	CompLevel     int
 }
 
 func (cfg *Config) Parse() error {
