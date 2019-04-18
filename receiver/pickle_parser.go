@@ -48,7 +48,7 @@ func (base *Base) PickleParseBytes(ctx context.Context, b []byte, now uint32) {
 	}
 
 	pickle.ParseMessage(b, func(name string, value float64, timestamp int64) {
-		name, err := tags.Graphite(name)
+		name, err := tags.Graphite(base.Tags, name)
 		if err != nil {
 			// @TODO: log?
 			return

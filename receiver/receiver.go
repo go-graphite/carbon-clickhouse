@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/carbon-clickhouse/helper/tags"
 	"github.com/lomik/zapwriter"
 )
 
@@ -60,13 +61,13 @@ func DropPast(seconds uint32) Option {
 }
 
 // New creates udp, tcp, pickle receiver
-func New(dsn string, opts ...Option) (Receiver, error) {
+func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 	u, err := url.Parse(dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	base := NewBase(zapwriter.Logger(strings.Replace(u.Scheme, "+", "_", -1)))
+	base := NewBase(zapwriter.Logger(strings.Replace(u.Scheme, "+", "_", -1)), config)
 
 	for _, optApply := range opts {
 		optApply(&base)

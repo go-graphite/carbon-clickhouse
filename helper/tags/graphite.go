@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -25,7 +26,15 @@ func (a byKey) Less(i, j int) bool {
 	return strings.Compare(a[i][:p1+1], a[j][:p2+1]) < 0
 }
 
-func Graphite(s string) (string, error) {
+func Graphite(config TagConfig, s string) (string, error) {
+	if strings.IndexByte(s, ';') < 0 && config.Enabled {
+		tagged, err := config.toGraphiteTagged(s)
+		if err != nil {
+			return "", err
+		}
+		s = tagged
+	}
+
 	if strings.IndexByte(s, ';') < 0 {
 		return s, nil
 	}
@@ -81,4 +90,109 @@ func Graphite(s string) (string, error) {
 	}
 
 	return res.String(), nil
+}
+
+type TemplateDesc struct {
+	Filter    *regexp.Regexp
+	Template  []string
+	ExtraTags string
+}
+
+type TagConfig struct {
+	Enabled       bool           `toml:"enabled"`
+	Separator     string         `toml:"separator"`
+	Tags          []string       `toml:"tags"`
+	Templates     []string       `toml:"templates"`
+	TemplateDescs []TemplateDesc `toml:"-"`
+}
+
+func DisabledTagConfig() TagConfig {
+	return TagConfig{Enabled: false}
+}
+
+func makeRegexp(filter string) *regexp.Regexp {
+	if filter == "" {
+		return regexp.MustCompile(`[.]^*`)
+	}
+	begin := "^"
+	end := "$"
+	if strings.HasPrefix(filter, "*") {
+		begin = ""
+		filter = filter[1:]
+	}
+	if strings.HasSuffix(filter, "*") {
+		end = ""
+		filter = filter[:len(filter)-1]
+	}
+	newF := begin + strings.Replace(strings.Replace(filter, ".", "\\.", -1), "*", "[^\\.]*", -1) + end
+	return regexp.MustCompile(newF)
+}
+
+func (cfg *TagConfig) Configure() error {
+	for _, s := range cfg.Templates {
+		descs := strings.Split(s, " ")
+		if len(descs) > 3 {
+			return fmt.Errorf("wrong template format")
+		}
+		var filter string
+		var template string
+		var tags string
+		if len(descs) == 2 {
+			if strings.Contains(descs[1], "=") {
+				tags = descs[1]
+				template = descs[0]
+			} else {
+				template = descs[1]
+				filter = descs[0]
+			}
+		} else if len(descs) == 3 {
+			filter = descs[0]
+			template = descs[1]
+			tags = descs[2]
+		} else {
+			template = descs[0]
+		}
+
+		newDesc := TemplateDesc{}
+		newDesc.Filter = makeRegexp(filter)
+		newDesc.Template = strings.Split(template, ".")
+		newDesc.ExtraTags = strings.Replace(tags, ",", ";", -1)
+		cfg.TemplateDescs = append(cfg.TemplateDescs, newDesc)
+	}
+	return nil
+}
+
+func (cfg *TagConfig) toGraphiteTagged(s string) (string, error) {
+	for _, desc := range cfg.TemplateDescs {
+		if !desc.Filter.Match([]byte(s)) {
+			continue
+		}
+		names := strings.Split(s, ".")
+		measurement := ""
+		tags := ""
+
+	Metric:
+		for i, name := range names {
+			switch desc.Template[i] {
+			case "":
+				continue
+			case "measurement":
+				measurement += name + cfg.Separator
+			case "measurement*":
+				measurement += strings.Join(names[i:], cfg.Separator)
+				break Metric
+			default:
+				tags += ";" + desc.Template[i] + "=" + name
+			}
+		}
+
+		if bytes.HasSuffix([]byte(measurement), []byte("_")) {
+			measurement = measurement[:len(measurement)-1]
+		}
+
+		tags += ";" + desc.ExtraTags
+
+		return measurement + " " + tags, nil
+	}
+	return "", nil
 }
