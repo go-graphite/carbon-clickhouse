@@ -59,7 +59,7 @@ CREATE TABLE graphite_tagged (
   Tag1 String,
   Path String,
   Tags Array(String),
-  Version UInt32,
+  Version UInt32
 ) ENGINE = ReplacingMergeTree(Version)
 PARTITION BY toYYYYMMDD(Date)
 ORDER BY (Tag1, Path, Date);
