@@ -197,6 +197,11 @@ func (cfg *TagConfig) toGraphiteTagged(s string) (string, error) {
 		measurement := ""
 		tags := ""
 
+		if len(names) != len(desc.Template) && !strings.HasSuffix(desc.Template[len(desc.Template)-1], "*") ||
+			len(names) < len(desc.Template) {
+			continue
+		}
+
 	Metric:
 		for i, name := range names {
 			switch desc.Template[i] {
