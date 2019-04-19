@@ -134,27 +134,34 @@ func (cfg *TagConfig) Configure() error {
 	makeTagMap(cfg.TagMap, cfg.Tags)
 
 	for _, s := range cfg.Templates {
-		descs := strings.Split(s, " ")
-		if len(descs) > 3 {
+		dirtyTokens := strings.Split(s, " ")
+		tokens := dirtyTokens[:0]
+		for _, token := range dirtyTokens {
+			trimmed := strings.TrimSpace(token)
+			if trimmed != "" {
+				tokens = append(tokens, trimmed)
+			}
+		}
+		if len(tokens) > 3 {
 			return fmt.Errorf("wrong template format")
 		}
 		var filter string
 		var template string
 		var tags string
-		if len(descs) == 2 {
-			if strings.Contains(descs[1], "=") {
-				tags = descs[1]
-				template = descs[0]
+		if len(tokens) == 2 {
+			if strings.Contains(tokens[1], "=") {
+				tags = tokens[1]
+				template = tokens[0]
 			} else {
-				template = descs[1]
-				filter = descs[0]
+				template = tokens[1]
+				filter = tokens[0]
 			}
-		} else if len(descs) == 3 {
-			filter = descs[0]
-			template = descs[1]
-			tags = descs[2]
+		} else if len(tokens) == 3 {
+			filter = tokens[0]
+			template = tokens[1]
+			tags = tokens[2]
 		} else {
-			template = descs[0]
+			template = tokens[0]
 		}
 
 		newDesc := TemplateDesc{}
