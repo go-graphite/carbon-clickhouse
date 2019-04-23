@@ -9,8 +9,7 @@ var graphiteTemplateTestTable = []graphiteTestCase{
 	{"some.metric", "metric?tag0=value0&tag1=value1", false},
 	{"aval.bval.cval.app", "app?a=aval&b=bval&c=cval&tag0=value0&tag1=value1", false},
 	{"stats.local.a.b.c.d", "a_b_c_d?host=local&region=us-west&tag0=value0&tag1=new-value1", false},
-	//{"some.metric;k=a;k=_;k2=3;k=0;k=42", "some.metric?k=42&k2=3", false}, // strange order but as in python-carbon
-	//{"some.metric", "some.metric", false},
+	{"multi.tags.aval.m1.m2.m3", "m1_m2_m3?a=aval&tag0=new-value0&tag1=value1", false},
 }
 
 func TestTemplates(t *testing.T) {
@@ -21,7 +20,7 @@ func TestTemplates(t *testing.T) {
 		Templates: []string{
 			"*.app a.b.c.measurement",
 			"stats.* .host.measurement* region=us-west,tag1=new-value1",
-			//"stats.* .host.measurement.field",
+			"multi.tags.* ..a.measurement*    tag0=new-value0",
 			".measurement*",
 		},
 	}

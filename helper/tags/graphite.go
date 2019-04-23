@@ -220,7 +220,11 @@ func (cfg *TagConfig) toGraphiteTagged(s string) (string, error) {
 				measurement += strings.Join(names[i:], cfg.Separator)
 				break Metric
 			default:
-				tagMap[desc.Template[i]] = name
+				if prefix, ok := tagMap[desc.Template[i]]; ok {
+					tagMap[desc.Template[i]] = prefix + cfg.Separator + name
+				} else {
+					tagMap[desc.Template[i]] = name
+				}
 			}
 		}
 
