@@ -29,7 +29,7 @@ func (u *Series) parseFile(filename string, out io.Writer) (map[string]bool, err
 	var reader *RowBinary.Reader
 	var err error
 
-	reader, err = RowBinary.NewReader(filename, u.config.CompAlgo, u.isReverse)
+	reader, err = RowBinary.NewReader(filename, u.isReverse)
 	if err != nil {
 		return nil, err
 	}

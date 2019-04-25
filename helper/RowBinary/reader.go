@@ -9,9 +9,9 @@ import (
 	"io"
 	"math"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/lomik/carbon-clickhouse/helper/config"
 	"github.com/pierrec/lz4"
 )
 
@@ -160,17 +160,14 @@ func (r *Reader) Read(p []byte) (int, error) {
 	}
 }
 
-func NewReader(filename string, compAlgo config.CompAlgo, reverse bool) (*Reader, error) {
+func NewReader(filename string, reverse bool) (*Reader, error) {
 	fd, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	var rdr io.Reader
-	switch compAlgo {
-	case config.CompAlgoNone:
-		rdr = fd
-	case config.CompAlgoLZ4:
+	var rdr io.Reader = fd
+	if strings.HasSuffix(filename, lz4.Extension) {
 		rdr = lz4.NewReader(fd)
 	}
 

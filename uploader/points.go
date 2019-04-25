@@ -23,7 +23,7 @@ func NewPoints(base *Base, reverse bool) *Points {
 }
 
 func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string) error {
-	reader, err := RowBinary.NewReader(filename, u.config.CompAlgo, u.reverse)
+	reader, err := RowBinary.NewReader(filename, u.reverse)
 	if err != nil {
 		return err
 	}

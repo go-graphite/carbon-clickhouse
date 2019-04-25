@@ -13,7 +13,6 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/carbon"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/lomik/carbon-clickhouse/helper/config"
 	"github.com/lomik/zapwriter"
 	"go.uber.org/zap"
 
@@ -47,8 +46,8 @@ func main() {
 	printDefaultConfig := flag.Bool("config-print-default", false, "Print default config")
 	checkConfig := flag.Bool("check-config", false, "Check config and exit")
 	printVersion := flag.Bool("version", false, "Print version")
-	cat := flag.String("cat", "", "Print RowBinary file in TabSeparated format (uncompressed only)")
-	bincat := flag.String("recover", "", "Read all good records from corrupted data file (uncompressed only). Write binary data to stdout")
+	cat := flag.String("cat", "", "Print RowBinary file in TabSeparated format")
+	bincat := flag.String("recover", "", "Read all good records from corrupted data file. Write binary data to stdout")
 
 	flag.Parse()
 
@@ -58,7 +57,7 @@ func main() {
 	}
 
 	if *cat != "" {
-		reader, err := RowBinary.NewReader(*cat, config.CompAlgoNone, false)
+		reader, err := RowBinary.NewReader(*cat, false)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -83,7 +82,7 @@ func main() {
 	}
 
 	if *bincat != "" {
-		reader, err := RowBinary.NewReader(*bincat, config.CompAlgoNone, false)
+		reader, err := RowBinary.NewReader(*bincat, false)
 		if err != nil {
 			log.Fatal(err)
 		}

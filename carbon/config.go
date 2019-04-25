@@ -257,9 +257,6 @@ func ReadConfig(filename string) (*Config, error) {
 		if err := u.Parse(); err != nil {
 			return nil, err
 		}
-
-		u.CompAlgo = cfg.Data.CompAlgo.CompAlgo
-		u.CompLevel = cfg.Data.CompLevel
 	}
 
 	return cfg, nil
