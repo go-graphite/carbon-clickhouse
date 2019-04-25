@@ -104,8 +104,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("Config TagDesc: ", app.Config.TagDesc.TemplateDescs)
-
 	// config parsed successfully. Exit in check-only mode
 	if *checkConfig {
 		return

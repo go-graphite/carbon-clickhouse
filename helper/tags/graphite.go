@@ -125,8 +125,8 @@ func makeRegexp(filter string) *regexp.Regexp {
 		end = ""
 		filter = filter[:len(filter)-1]
 	}
-	newF := begin + strings.Replace(strings.Replace(filter, ".", "\\.", -1), "*", "[^\\.]*", -1) + end
-	return regexp.MustCompile(newF)
+	pattern := begin + strings.Replace(strings.Replace(filter, ".", "\\.", -1), "*", "[^\\.]*", -1) + end
+	return regexp.MustCompile(pattern)
 }
 
 func (cfg *TagConfig) Configure() error {
@@ -228,7 +228,7 @@ func (cfg *TagConfig) toGraphiteTagged(s string) (string, error) {
 			}
 		}
 
-		if bytes.HasSuffix([]byte(measurement), []byte("_")) {
+		if strings.HasSuffix(measurement, "_") {
 			measurement = measurement[:len(measurement)-1]
 		}
 
