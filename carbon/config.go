@@ -118,7 +118,7 @@ func NewConfig() *Config {
 			},
 			AutoInterval: config.NewChunkAutoInterval(),
 			CompAlgo:     &config.Compression{CompAlgo: config.CompAlgoNone},
-			CompLevel:    1,
+			CompLevel:    0,
 		},
 		Udp: udpConfig{
 			Listen:        ":2003",
