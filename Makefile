@@ -5,7 +5,7 @@ DESCRIPTION:="Graphite metrics receiver with ClickHouse as storage"
 GO ?= go
 export GOPATH := $(CURDIR)/_vendor
 TEMPDIR:=$(shell mktemp -d)
-VERSION:=$(shell sh -c 'grep "const Version" $(NAME).go  | cut -d\" -f2')
+VERSION:=$(shell sh -c 'grep "const Version" $(NAME).go | cut -d\" -f2')
 
 all: build
 
@@ -15,14 +15,15 @@ build:
 gox-build:
 	rm -rf out
 	mkdir -p out
-	gox -os="linux" -arch="amd64" -arch="386" -output="out/$(NAME)-{{.OS}}-{{.Arch}}"  github.com/lomik/$(NAME)
+	gox -os="linux" -arch="amd64" -arch="386" -output="out/$(NAME)-{{.OS}}-{{.Arch}}" github.com/lomik/$(NAME)
 	ls -la out/
 	mkdir -p out/root/etc/$(NAME)/
-	./out/$(NAME)-linux-amd64 -config-print-default > out/root/etc/$(NAME)/$(NAME).conf
+	touch out/root/etc/$(NAME)/$(NAME).conf
 
 fpm-deb:
 	make fpm-build-deb ARCH=amd64
 	make fpm-build-deb ARCH=386
+
 fpm-rpm:
 	make fpm-build-rpm ARCH=amd64
 	make fpm-build-rpm ARCH=386
@@ -41,7 +42,6 @@ fpm-build-deb:
 		out/$(NAME)-linux-$(ARCH)=/usr/bin/$(NAME) \
 		deploy/systemd/$(NAME).service=/usr/lib/systemd/system/$(NAME).service \
 		out/root/=/
-
 
 fpm-build-rpm:
 	fpm -s dir -t rpm -n $(NAME) -v $(VERSION) \

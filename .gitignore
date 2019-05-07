@@ -23,3 +23,6 @@ carbon-clickhouse
 *.exe
 *.test
 *.prof
+
+out
+*.rpm

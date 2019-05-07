@@ -132,6 +132,9 @@ threads = 1
 url = "http://localhost:8123/"
 timeout = "1m0s"
 cache-ttl = "12h0m0s"
+# If set to a non-empty string then it will use global cache with specified name instead of local per-table
+# This reduces memory usage if uploading the same data to several Clickhouse tables/servers
+cache-name = ""
 
 # # You can define additional upload destinations of any supported type:
 # # - points

@@ -11,21 +11,41 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	globalCaches = map[string]*CMap{}
+)
+
 type DebugCacheDumper interface {
 	CacheDump(io.Writer)
 }
 
 type cached struct {
 	*Base
-	existsCache CMap // store known keys and don't load it to clickhouse tree
+	existsCache *CMap // store known keys and don't load it to clickhouse tree
 	parser      func(filename string, out io.Writer) (map[string]bool, error)
 	expired     uint32 // atomic counter
+}
+
+func getGlobalCache(name string) *CMap {
+	if cm, ok := globalCaches[name]; ok {
+		return cm
+	}
+
+	c := NewCMap()
+	globalCaches[name] = c
+	return c
 }
 
 func newCached(base *Base) *cached {
 	u := &cached{Base: base}
 	u.Base.handler = u.upload
-	u.existsCache = NewCMap()
+
+	if u.config.CacheName == "" {
+		u.existsCache = NewCMap()
+	} else {
+		u.existsCache = getGlobalCache(u.config.CacheName)
+	}
+
 	u.query = fmt.Sprintf("%s (Date, Level, Path, Version)", u.config.TableName)
 	return u
 }

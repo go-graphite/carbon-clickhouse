@@ -69,6 +69,10 @@
   name = "github.com/pierrec/lz4"
   version = "2.1.2"
 
+[[constraint]]
+  name = "github.com/cespare/xxhash"
+  version = "2.0.0"
+
 [prune]
   go-tests = true
   unused-packages = true

@@ -177,8 +177,6 @@ func (c *Collector) readData(ctx context.Context) []*Point {
 			}
 		}
 	}
-
-	return result
 }
 
 func (c *Collector) local(ctx context.Context) {
