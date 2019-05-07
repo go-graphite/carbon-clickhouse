@@ -201,4 +201,17 @@ drop-past = "0s"
 [pprof] 
 listen = "localhost:7007"
 enabled = false
+
+# You can use tag matching like in InfluxDB. Format is exactly the same.
+# It will parse all metrics that don't have tags yet.
+# For more information see https://docs.influxdata.com/influxdb/v1.7/supported_protocols/graphite/
+# Example:
+# [old_graphite]
+# enabled = true 
+# separator = "_"
+# tags = ["region=us-east", "zone=1c"]
+# templates = [
+#     "generated.* .measurement.cpu  metric=idle",
+#     "* host.measurement* template_match=none",
+# ] 
 ```
