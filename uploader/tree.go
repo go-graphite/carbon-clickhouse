@@ -16,6 +16,8 @@ type Tree struct {
 var _ Uploader = &Tree{}
 var _ UploaderWithReset = &Tree{}
 
+const ReverseLevelOffset = 10000
+
 func NewTree(base *Base) *Tree {
 	u := &Tree{}
 	u.cached = newCached(base)
@@ -41,6 +43,8 @@ func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error
 	if !u.config.TreeDate.IsZero() {
 		days = RowBinary.TimestampToDays(uint32(u.config.TreeDate.Unix()))
 	}
+
+	withReverse := u.config.WithReverse
 
 	newSeries := make(map[string]bool)
 
@@ -91,6 +95,12 @@ LineLoop:
 
 		if err = writePathLevel(name, level); err != nil {
 			return nil, err
+		}
+
+		if withReverse {
+			if err = writePathLevel(RowBinary.ReverseBytes(name), level+ReverseLevelOffset); err != nil {
+				return nil, err
+			}
 		}
 
 		p = name

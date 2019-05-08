@@ -35,6 +35,8 @@ func (u *Series) parseFile(filename string, out io.Writer) (map[string]bool, err
 	}
 	defer reader.Close()
 
+	withReverse := u.config.WithReverse
+
 	version := uint32(time.Now().Unix())
 	newSeries := make(map[string]bool)
 	wb := RowBinary.GetWriteBuffer()
@@ -72,6 +74,13 @@ LineLoop:
 		wb.WriteUint32(uint32(level))
 		wb.WriteBytes(name)
 		wb.WriteUint32(version)
+
+		if withReverse {
+			wb.WriteUint16(reader.Days())
+			wb.WriteUint32(uint32(level + ReverseLevelOffset))
+			wb.WriteBytes(RowBinary.ReverseBytes(name))
+			wb.WriteUint32(version)
+		}
 
 		_, err = out.Write(wb.Bytes())
 		if err != nil {

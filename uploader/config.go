@@ -13,6 +13,7 @@ type Config struct {
 	Date          string           `toml:"date"` // for tree table
 	TreeDate      time.Time        `toml:"-"`
 	ZeroTimestamp bool             `toml:"zero-timestamp"` // for points, points-reverse tables
+	WithReverse   bool             `toml:"with-reverse"`   // for tree, series tables
 	Threads       int              `toml:"threads"`
 	URL           string           `toml:"url"`
 	CacheTTL      *config.Duration `toml:"cache-ttl"`
