@@ -48,6 +48,8 @@ func New(path string, name string, config *Config) (Uploader, error) {
 		res = NewSeries(u, true)
 	case "tagged":
 		res = NewTagged(u)
+	case "index":
+		res = NewIndex(u)
 	default:
 		return nil, fmt.Errorf("unknown uploader type %#v", c.Type)
 	}
