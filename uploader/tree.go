@@ -20,8 +20,11 @@ func NewTree(base *Base) *Tree {
 	u := &Tree{}
 	u.cached = newCached(base)
 	u.cached.parser = u.parseFile
-	// Tree table does not have Date column anymore, so override query here
-	u.query = fmt.Sprintf("%s (Level, Path, Version)", u.config.TableName)
+	if u.config.TreeDate.IsZero() {
+		u.query = fmt.Sprintf("%s (Level, Path, Version)", u.config.TableName)
+	} else {
+		u.query = fmt.Sprintf("%s (Date, Level, Path, Version)", u.config.TableName)
+	}
 	return u
 }
 
@@ -34,12 +37,22 @@ func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error
 
 	version := uint32(time.Now().Unix())
 
+	var days uint16
+	if !u.config.TreeDate.IsZero() {
+		days = RowBinary.TimestampToDays(uint32(u.config.TreeDate.Unix()))
+	}
+
 	newSeries := make(map[string]bool)
 
 	var level, index, l int
 	var p []byte
 
 	writePathLevel := func(p []byte, level int) error {
+		if days > 0 {
+			if err := RowBinary.WriteUint16(out, days); err != nil {
+				return err
+			}
+		}
 		if err := RowBinary.WriteUint32(out, uint32(level)); err != nil {
 			return err
 		}

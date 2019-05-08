@@ -131,6 +131,9 @@ threads = 1
 url = "http://localhost:8123/"
 timeout = "1m0s"
 cache-ttl = "12h0m0s"
+# Date column is not required in actual versions of Clickhouse
+# But you can uncomment this option for backward compatibility with old tables
+# date = "2016-11-01"
 
 # # You can define additional upload destinations of any supported type:
 # # - points

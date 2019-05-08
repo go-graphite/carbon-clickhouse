@@ -206,6 +206,7 @@ func PrintDefaultConfig() error {
 			Threads:   1,
 			TableName: "graphite_tree",
 			URL:       "http://localhost:8123/",
+			Date:      "",
 		},
 	}
 
