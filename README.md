@@ -40,7 +40,6 @@ CREATE TABLE graphite_tree (
   Path String,
   Version UInt32
 ) ENGINE = ReplacingMergeTree(Version)
-PARTITION BY (Level)
 ORDER BY (Level, Path);
 
 -- optional table for daily series (see config file)
