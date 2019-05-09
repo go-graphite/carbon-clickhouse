@@ -94,7 +94,7 @@ type Config struct {
 	TelegrafHttpJson telegrafHttpJsonConfig      `toml:"telegraf_http_json"`
 	Pprof            pprofConfig                 `toml:"pprof"`
 	Logging          []zapwriter.Config          `toml:"logging"`
-	TagDesc          tags.TagConfig              `toml:"old_graphite"`
+	TagDesc          tags.TagConfig              `toml:"convert_to_tagged"`
 }
 
 // NewConfig ...

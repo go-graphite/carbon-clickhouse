@@ -206,7 +206,7 @@ enabled = false
 # It will parse all metrics that don't have tags yet.
 # For more information see https://docs.influxdata.com/influxdb/v1.7/supported_protocols/graphite/
 # Example:
-# [old_graphite]
+# [convert_to_tagged]
 # enabled = true 
 # separator = "_"
 # tags = ["region=us-east", "zone=1c"]
