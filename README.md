@@ -20,8 +20,6 @@ make
 1. Add `graphite_rollup` section to config.xml. Sample [here](https://clickhouse.yandex/docs/en/operations/table_engines/graphitemergetree/). You can use [carbon-schema-to-clickhouse](https://github.com/bzed/carbon-schema-to-clickhouse) for generate rollup xml from graphite [storage-schemas.conf](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf).
 
 2. Create tables.
-Be aware that in these examples the tables are partitioned by day.
-If you want old Clickhouse behaviour with monthly partitions then change toYYYYMMDD to toYYYYMM everywhere.
 
 ```sql
 CREATE TABLE graphite ( 
@@ -31,7 +29,7 @@ CREATE TABLE graphite (
   Date Date,  
   Timestamp UInt32
 ) ENGINE = GraphiteMergeTree('graphite_rollup')
-PARTITION BY toYYYYMMDD(Date)
+PARTITION BY toYYYYMM(Date)
 ORDER BY (Path, Time);
 
 -- optional table for faster metric search
@@ -49,7 +47,7 @@ CREATE TABLE graphite_series (
   Path String,
   Version UInt32
 ) ENGINE = ReplacingMergeTree(Version)
-PARTITION BY toYYYYMMDD(Date)
+PARTITION BY toYYYYMM(Date)
 ORDER BY (Level, Path, Date);
 
 -- optional table for storing Graphite tags
@@ -60,7 +58,7 @@ CREATE TABLE graphite_tagged (
   Tags Array(String),
   Version UInt32
 ) ENGINE = ReplacingMergeTree(Version)
-PARTITION BY toYYYYMMDD(Date)
+PARTITION BY toYYYYMM(Date)
 ORDER BY (Tag1, Path, Date);
 ```
 
