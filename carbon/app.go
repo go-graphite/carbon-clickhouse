@@ -200,6 +200,10 @@ func (app *App) Start() (err error) {
 
 	conf.Data.AutoInterval.SetDefault(conf.Data.FileInterval.Value())
 
+	if err := os.MkdirAll(conf.Data.Path, 0755); err != nil {
+		return err
+	}
+
 	app.Writer = writer.New(
 		app.writeChan,
 		conf.Data.Path,
