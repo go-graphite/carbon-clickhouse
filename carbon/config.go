@@ -9,6 +9,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/lomik/carbon-clickhouse/helper/config"
+	"github.com/lomik/carbon-clickhouse/helper/tags"
 	"github.com/lomik/carbon-clickhouse/uploader"
 	"github.com/lomik/zapwriter"
 )
@@ -97,6 +98,7 @@ type Config struct {
 	TelegrafHttpJson telegrafHttpJsonConfig      `toml:"telegraf_http_json"`
 	Pprof            pprofConfig                 `toml:"pprof"`
 	Logging          []zapwriter.Config          `toml:"logging"`
+	TagDesc          tags.TagConfig              `toml:"convert_to_tagged"`
 }
 
 // NewConfig ...
@@ -159,6 +161,9 @@ func NewConfig() *Config {
 		},
 		Pprof: pprofConfig{
 			Listen:  "localhost:7007",
+			Enabled: false,
+		},
+		TagDesc: tags.TagConfig{
 			Enabled: false,
 		},
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/stop"
+	"github.com/lomik/carbon-clickhouse/helper/tags"
 	"go.uber.org/zap"
 )
 
@@ -34,10 +35,11 @@ type Base struct {
 	dropPastSeconds   uint32
 	writeChan         chan *RowBinary.WriteBuffer
 	logger            *zap.Logger
+	Tags              tags.TagConfig
 }
 
-func NewBase(logger *zap.Logger) Base {
-	return Base{logger: logger}
+func NewBase(logger *zap.Logger, config tags.TagConfig) Base {
+	return Base{logger: logger, Tags: config}
 }
 
 func sendUint64Counter(send func(metric string, value float64), metric string, value *uint64) {

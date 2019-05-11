@@ -25,7 +25,7 @@ func TestGraphite(t *testing.T) {
 	assert := assert.New(t)
 
 	for i := 0; i < len(graphiteTestTable); i++ {
-		n, err := Graphite(graphiteTestTable[i].in)
+		n, err := Graphite(DisabledTagConfig(), graphiteTestTable[i].in)
 
 		if !graphiteTestTable[i].err {
 			assert.NoError(err)
@@ -39,7 +39,7 @@ func TestGraphite(t *testing.T) {
 
 func BenchmarkGraphite(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := Graphite(graphiteBenchmarkMetric)
+		_, err := Graphite(DisabledTagConfig(), graphiteBenchmarkMetric)
 		if err != nil {
 			b.Fatal(err)
 		}

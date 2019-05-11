@@ -100,7 +100,7 @@ func (g *GRPC) doStore(requestCtx context.Context, in *pb.Payload, confirmRequir
 			return errors.New("points is empty")
 		}
 
-		name, err := tags.Graphite(m.Metric)
+		name, err := tags.Graphite(g.Tags, m.Metric)
 		if err != nil {
 			return err
 		}

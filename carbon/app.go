@@ -77,6 +77,11 @@ func (app *App) configure() error {
 		}
 	}
 
+	err = cfg.TagDesc.Configure()
+	if err != nil {
+		return err
+	}
+
 	app.Config = cfg
 
 	return nil
@@ -235,6 +240,7 @@ func (app *App) Start() (err error) {
 	if conf.Tcp.Enabled {
 		app.TCP, err = receiver.New(
 			"tcp://"+conf.Tcp.Listen,
+			app.Config.TagDesc,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Tcp.DropFuture.Value().Seconds())),
@@ -251,6 +257,7 @@ func (app *App) Start() (err error) {
 	if conf.Udp.Enabled {
 		app.UDP, err = receiver.New(
 			"udp://"+conf.Udp.Listen,
+			app.Config.TagDesc,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Udp.DropFuture.Value().Seconds())),
@@ -267,6 +274,7 @@ func (app *App) Start() (err error) {
 	if conf.Pickle.Enabled {
 		app.Pickle, err = receiver.New(
 			"pickle://"+conf.Pickle.Listen,
+			app.Config.TagDesc,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Pickle.DropFuture.Value().Seconds())),
@@ -283,6 +291,7 @@ func (app *App) Start() (err error) {
 	if conf.Grpc.Enabled {
 		app.Grpc, err = receiver.New(
 			"grpc://"+conf.Grpc.Listen,
+			app.Config.TagDesc,
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Grpc.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Grpc.DropPast.Value().Seconds())),
@@ -298,6 +307,7 @@ func (app *App) Start() (err error) {
 	if conf.Prometheus.Enabled {
 		app.Prometheus, err = receiver.New(
 			"prometheus://"+conf.Prometheus.Listen,
+			app.Config.TagDesc,
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Prometheus.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Prometheus.DropPast.Value().Seconds())),
@@ -313,6 +323,7 @@ func (app *App) Start() (err error) {
 	if conf.TelegrafHttpJson.Enabled {
 		app.TelegrafHttpJson, err = receiver.New(
 			"telegraf+http+json://"+conf.TelegrafHttpJson.Listen,
+			app.Config.TagDesc,
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.TelegrafHttpJson.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.TelegrafHttpJson.DropPast.Value().Seconds())),
