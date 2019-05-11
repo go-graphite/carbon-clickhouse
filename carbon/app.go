@@ -215,7 +215,11 @@ func (app *App) Start() (err error) {
 	/* UPLOADER start */
 	app.Uploaders = make(map[string]uploader.Uploader)
 	for uploaderName, uploaderConfig := range conf.Upload {
-		up, err := uploader.New(filepath.Join(conf.Data.Path, uploaderName), uploaderName, uploaderConfig)
+		uploaderDir := filepath.Join(conf.Data.Path, uploaderName)
+		if err := os.MkdirAll(uploaderDir, 0755); err != nil {
+			return err
+		}
+		up, err := uploader.New(uploaderDir, uploaderName, uploaderConfig)
 		if err != nil {
 			return err
 		}
