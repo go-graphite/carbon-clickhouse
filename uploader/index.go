@@ -20,6 +20,8 @@ const ReverseLevelOffset = 10000
 const TreeLevelOffset = 20000
 const ReverseTreeLevelOffset = 30000
 
+const TreeDate = 683 // 1971-11-15
+
 func NewIndex(base *Base) *Index {
 	u := &Index{}
 	u.cached = newCached(base)
@@ -87,6 +89,11 @@ LineLoop:
 		wb.WriteUint32(version)
 
 		// Tree
+		wb.WriteUint16(TreeDate)
+		wb.WriteUint32(uint32(level + TreeLevelOffset))
+		wb.WriteBytes(name)
+		wb.WriteUint32(version)
+
 		p = name
 		l = level
 		for l--; l > 0; l-- {
@@ -95,9 +102,7 @@ LineLoop:
 				break
 			}
 
-			newSeries[string(p[:index+1])] = true
-
-			wb.WriteUint16(0)
+			wb.WriteUint16(TreeDate)
 			wb.WriteUint32(uint32(l + TreeLevelOffset))
 			wb.WriteBytes(p[:index+1])
 			wb.WriteUint32(version)
@@ -106,7 +111,7 @@ LineLoop:
 		}
 
 		// Reverse path without date
-		wb.WriteUint16(0)
+		wb.WriteUint16(TreeDate)
 		wb.WriteUint32(uint32(level + ReverseTreeLevelOffset))
 		wb.WriteBytes(reverseName)
 		wb.WriteUint32(version)
