@@ -102,6 +102,8 @@ LineLoop:
 				break
 			}
 
+			newSeries[string(p[:index+1])] = true
+
 			wb.WriteUint16(TreeDate)
 			wb.WriteUint32(uint32(l + TreeLevelOffset))
 			wb.WriteBytes(p[:index+1])
