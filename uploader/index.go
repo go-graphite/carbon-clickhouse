@@ -20,7 +20,7 @@ const ReverseLevelOffset = 10000
 const TreeLevelOffset = 20000
 const ReverseTreeLevelOffset = 30000
 
-const TreeDate = 683 // 1971-11-15
+const TreeDate = 42 // 1970-02-12
 
 func NewIndex(base *Base) *Index {
 	u := &Index{}
