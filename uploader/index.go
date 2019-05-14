@@ -20,7 +20,7 @@ const ReverseLevelOffset = 10000
 const TreeLevelOffset = 20000
 const ReverseTreeLevelOffset = 30000
 
-const TreeDate = 42 // 1970-02-12
+const DefaultTreeDate = 42 // 1970-02-12
 
 func NewIndex(base *Base) *Index {
 	u := &Index{}
@@ -45,6 +45,11 @@ func (u *Index) parseFile(filename string, out io.Writer) (map[string]bool, erro
 
 	var level, index, l int
 	var p []byte
+
+	treeDate := uint16(DefaultTreeDate)
+	if !u.config.TreeDate.IsZero() {
+		treeDate = RowBinary.TimestampToDays(uint32(u.config.TreeDate.Unix()))
+	}
 
 LineLoop:
 	for {
@@ -89,7 +94,7 @@ LineLoop:
 		wb.WriteUint32(version)
 
 		// Tree
-		wb.WriteUint16(TreeDate)
+		wb.WriteUint16(treeDate)
 		wb.WriteUint32(uint32(level + TreeLevelOffset))
 		wb.WriteBytes(name)
 		wb.WriteUint32(version)
@@ -104,7 +109,7 @@ LineLoop:
 
 			newSeries[string(p[:index+1])] = true
 
-			wb.WriteUint16(TreeDate)
+			wb.WriteUint16(treeDate)
 			wb.WriteUint32(uint32(l + TreeLevelOffset))
 			wb.WriteBytes(p[:index+1])
 			wb.WriteUint32(version)
@@ -113,7 +118,7 @@ LineLoop:
 		}
 
 		// Reverse path without date
-		wb.WriteUint16(TreeDate)
+		wb.WriteUint16(treeDate)
 		wb.WriteUint32(uint32(level + ReverseTreeLevelOffset))
 		wb.WriteBytes(reverseName)
 		wb.WriteUint32(version)
