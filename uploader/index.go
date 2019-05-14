@@ -41,6 +41,7 @@ func (u *Index) parseFile(filename string, out io.Writer) (map[string]bool, erro
 
 	version := uint32(time.Now().Unix())
 	newSeries := make(map[string]bool)
+	newUniq := make(map[string]bool)
 	wb := RowBinary.GetWriteBuffer()
 
 	var level, index, l int
@@ -103,11 +104,11 @@ LineLoop:
 		l = level
 		for l--; l > 0; l-- {
 			index = bytes.LastIndexByte(p, '.')
-			if newSeries[unsafeString(p[:index+1])] {
+			if newUniq[unsafeString(p[:index+1])] {
 				break
 			}
 
-			newSeries[string(p[:index+1])] = true
+			newUniq[string(p[:index+1])] = true
 
 			wb.WriteUint16(treeDate)
 			wb.WriteUint32(uint32(l + TreeLevelOffset))
