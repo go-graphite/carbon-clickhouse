@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -23,6 +24,18 @@ func NewTagged(base *Base) *Tagged {
 	u.cached.parser = u.parseFile
 	u.query = fmt.Sprintf("%s (Date, Tag1, Path, Tags, Version)", u.config.TableName)
 	return u
+}
+
+func urlParse(rawurl string) (*url.URL, error) {
+	p := strings.IndexByte(rawurl, '?')
+	if p < 0 {
+		return url.Parse(rawurl)
+	}
+	m, err := url.Parse(rawurl[p:])
+	if m != nil {
+		m.Path = rawurl[:p]
+	}
+	return m, err
 }
 
 func (u *Tagged) parseFile(filename string, out io.Writer) (map[string]bool, error) {
@@ -68,7 +81,7 @@ LineLoop:
 			continue LineLoop
 		}
 
-		m, err := url.Parse(unsafeString(name))
+		m, err := urlParse(unsafeString(name))
 		if err != nil {
 			continue
 		}
