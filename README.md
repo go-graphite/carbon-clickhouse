@@ -33,15 +33,7 @@ PARTITION BY toYYYYMM(Date)
 ORDER BY (Path, Time);
 
 -- optional table for faster metric search
-CREATE TABLE graphite_tree (
-  Level UInt32,
-  Path String,
-  Version UInt32
-) ENGINE = ReplacingMergeTree(Version)
-ORDER BY (Level, Path);
-
--- optional table for daily series (see config file)
-CREATE TABLE graphite_series (
+CREATE TABLE graphite_index (
   Date Date,
   Level UInt32,
   Path String,
@@ -122,33 +114,19 @@ timeout = "1m0s"
 # save zero value to Timestamp column (for point and posts-reverse tables)
 zero-timestamp = false 
 
-[upload.graphite_tree]
-type = "tree"
-table = "graphite_tree"
+[upload.graphite_index]
+type = "index"
+table = "graphite_index"
 threads = 1
 url = "http://localhost:8123/"
 timeout = "1m0s"
 cache-ttl = "12h0m0s"
-# Date column is not required in actual versions of Clickhouse
-# But you can uncomment this option for backward compatibility with old tables
-# date = "2016-11-01"
 
 # # You can define additional upload destinations of any supported type:
 # # - points
-# # - tree
-# # - series (is described below)
+# # - index
 # # - tagged (is described below)
 # # - points-reverse (same scheme as points, but path 'a1.b2.c3' stored as 'c3.b2.a1')
-# # - series-reverse (same scheme as series, but path 'a1.b2.c3' stored as 'c3.b2.a1')
-
-# # Extra table with daily series list
-# [upload.graphite_series]
-# type = "series"
-# table = "graphite_series"
-# threads = 1
-# url = "http://localhost:8123/"
-# timeout = "1m0s"
-# cache-ttl = "12h0m0s"
 
 # # Extra table which can be used as index for tagged series
 # [upload.graphite_tagged]
