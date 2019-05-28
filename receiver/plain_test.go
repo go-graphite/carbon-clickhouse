@@ -91,8 +91,10 @@ func TestPlainParseLine(t *testing.T) {
 		{"metric..name 42.15 -1\n", "metric.name", 42.15, now},
 	}
 
+	base := &Base{}
+
 	for _, p := range table {
-		name, value, timestamp, err := PlainParseLine([]byte(p.b), now)
+		name, value, timestamp, err := base.PlainParseLine([]byte(p.b), now)
 		if p.name == "" {
 			// expected error
 			if err == nil {
