@@ -94,6 +94,34 @@ func (w *Writer) WritePoint(metric string, value float64, timestamp int64) {
 	w.pointsWritten++
 }
 
+func (w *Writer) WritePointTagged(metric []string, value float64, timestamp int64) {
+	if w.wb == nil {
+		w.wb = GetWriteBuffer()
+	}
+	l := len(metric) - 1
+	for i := 0; i < len(metric); i++ {
+		l += len(metric[i])
+	}
+	if !w.wb.CanWriteGraphitePoint(l) {
+		w.Flush()
+		if l > WriteBufferSize-50 {
+			w.writeErrors++
+			return
+			// return fmt.Error("metric too long (%d bytes)", len(name))
+		}
+		w.wb = GetWriteBuffer()
+	}
+
+	w.wb.WriteGraphitePointTagged(
+		metric,
+		value,
+		uint32(timestamp),
+		w.now,
+	)
+
+	w.pointsWritten++
+}
+
 func (w *Writer) PointsWritten() uint32 {
 	return w.pointsWritten
 }

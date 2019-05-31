@@ -76,6 +76,32 @@ func (wb *WriteBuffer) WriteBytes(p []byte) {
 	wb.Used += copy(wb.Body[wb.Used:], p)
 }
 
+func (wb *WriteBuffer) WriteTagged(tagged []string) {
+	l := len(tagged) - 1
+	if l < 0 {
+		return
+	}
+	for i := 0; i < len(tagged); i++ {
+		l += len(tagged[i])
+	}
+	wb.Used += binary.PutUvarint(wb.Body[wb.Used:], uint64(l))
+	for i := 0; i < len(tagged); i++ {
+		if i > 0 {
+			if i == 1 {
+				wb.Body[wb.Used] = '?'
+			} else {
+				if i%2 == 1 {
+					wb.Body[wb.Used] = '&'
+				} else {
+					wb.Body[wb.Used] = '='
+				}
+			}
+			wb.Used++
+		}
+		wb.Used += copy(wb.Body[wb.Used:], tagged[i])
+	}
+}
+
 func (wb *WriteBuffer) WriteString(s string) {
 	wb.Used += binary.PutUvarint(wb.Body[wb.Used:], uint64(len(s)))
 	wb.Used += copy(wb.Body[wb.Used:], []byte(s))
@@ -129,6 +155,14 @@ func (wb *WriteBuffer) Write(p []byte) {
 
 func (wb *WriteBuffer) WriteGraphitePoint(name []byte, value float64, timestamp uint32, version uint32) {
 	wb.WriteBytes(name)
+	wb.WriteFloat64(value)
+	wb.WriteUint32(timestamp)
+	wb.WriteUint16(TimestampToDays(timestamp))
+	wb.WriteUint32(version)
+}
+
+func (wb *WriteBuffer) WriteGraphitePointTagged(labels []string, value float64, timestamp uint32, version uint32) {
+	wb.WriteTagged(labels)
 	wb.WriteFloat64(value)
 	wb.WriteUint32(timestamp)
 	wb.WriteUint16(TimestampToDays(timestamp))
