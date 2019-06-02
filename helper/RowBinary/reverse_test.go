@@ -18,30 +18,6 @@ func reverseBytesOriginal(target []byte) []byte {
 	return bytes.Join(a, []byte{'.'})
 }
 
-func reverse(m []byte) {
-	i := 0
-	j := len(m) - 1
-	for i < j {
-		m[i], m[j] = m[j], m[i]
-		i++
-		j--
-	}
-}
-
-func reverseMetricInplace(m []byte) {
-	reverse(m)
-
-	var a, b int
-	l := len(m)
-	for b = 0; b < l; b++ {
-		if m[b] == '.' {
-			reverse(m[a:b])
-			a = b + 1
-		}
-	}
-	reverse(m[a:b])
-}
-
 func TestReverseInplace(t *testing.T) {
 	assert := assert.New(t)
 	table := []string{
