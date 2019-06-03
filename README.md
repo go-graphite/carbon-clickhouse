@@ -17,7 +17,7 @@ make
 
 ## ClickHouse configuration
 
-1. Add `graphite_rollup` section to config.xml. Sample [here](https://clickhouse.yandex/docs/en/operations/table_engines/graphitemergetree/). You can use [carbon-schema-to-clickhouse](https://github.com/bzed/carbon-schema-to-clickhouse) for generate rollup xml from graphite [storage-schemas.conf](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf).
+1. Add `graphite_rollup` section to config.xml. Sample [here](https://github.com/lomik/graphite-clickhouse-tldr/blob/master/rollup.xml). You can use [carbon-schema-to-clickhouse](https://github.com/bzed/carbon-schema-to-clickhouse) for generate rollup xml from graphite [storage-schemas.conf](http://graphite.readthedocs.io/en/latest/config-carbon.html#storage-schemas-conf).
 
 2. Create tables.
 
