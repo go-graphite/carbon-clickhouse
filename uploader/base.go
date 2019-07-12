@@ -159,6 +159,8 @@ func (u *Base) uploadWorker(ctx context.Context) {
 					zap.Error(err),
 					zap.Duration("time", time.Since(startTime)),
 				)
+
+				time.Sleep(time.Second)
 			} else {
 				atomic.AddUint32(&u.stat.uploaded, 1)
 				logger.Info("handle success",
