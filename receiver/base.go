@@ -33,6 +33,7 @@ type Base struct {
 	parseThreads      int
 	dropFutureSeconds uint32
 	dropPastSeconds   uint32
+	readTimeoutSeconds uint32
 	writeChan         chan *RowBinary.WriteBuffer
 	logger            *zap.Logger
 	Tags              tags.TagConfig

@@ -58,7 +58,11 @@ func (rcv *TCP) HandleConnection(conn net.Conn) {
 	var err error
 
 	for {
-		conn.SetReadDeadline(time.Now().Add(2 * time.Minute))
+		if rcv.readTimeoutSeconds == 0 {
+			conn.SetReadDeadline(time.Time{})
+		} else {
+			conn.SetReadDeadline(time.Now().Add(time.Duration(rcv.readTimeoutSeconds) * time.Second))
+		}
 		n, err = conn.Read(buffer.Body[buffer.Used:])
 		conn.SetDeadline(time.Time{})
 		buffer.Used += n

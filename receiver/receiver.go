@@ -60,6 +60,16 @@ func DropPast(seconds uint32) Option {
 	}
 }
 
+// ReadTimeout creates option for New contructor
+func ReadTimeout(seconds uint32) Option {
+	return func(r interface{}) error {
+		if t, ok := r.(*Base); ok {
+			t.readTimeoutSeconds = seconds
+		}
+		return nil
+	}
+}
+
 // New creates udp, tcp, pickle receiver
 func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 	u, err := url.Parse(dsn)
