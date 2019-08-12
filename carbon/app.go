@@ -253,6 +253,7 @@ func (app *App) Start() (err error) {
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Tcp.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Tcp.DropPast.Value().Seconds())),
+			receiver.ReadTimeout(uint32(conf.Tcp.ReadTimeout.Value().Seconds())),
 		)
 
 		if err != nil {

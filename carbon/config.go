@@ -38,10 +38,11 @@ type udpConfig struct {
 }
 
 type tcpConfig struct {
-	Listen     string           `toml:"listen"`
-	Enabled    bool             `toml:"enabled"`
-	DropFuture *config.Duration `toml:"drop-future"`
-	DropPast   *config.Duration `toml:"drop-past"`
+	Listen      string           `toml:"listen"`
+	Enabled     bool             `toml:"enabled"`
+	DropFuture  *config.Duration `toml:"drop-future"`
+	DropPast    *config.Duration `toml:"drop-past"`
+	ReadTimeout *config.Duration `toml:"read-timeout"`
 }
 
 type pickleConfig struct {
@@ -134,6 +135,9 @@ func NewConfig() *Config {
 			Enabled:    true,
 			DropFuture: &config.Duration{},
 			DropPast:   &config.Duration{},
+			ReadTimeout: &config.Duration{
+				Duration: 120 * time.Second,
+			},
 		},
 		Pickle: pickleConfig{
 			Listen:     ":2004",
