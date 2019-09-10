@@ -118,7 +118,7 @@ metricsLoop:
 			}
 
 			if f != "value" {
-				pathBuf.WriteByte('_')
+				pathBuf.WriteByte('.')
 				pathBuf.WriteString(url.PathEscape(f))
 			}
 
