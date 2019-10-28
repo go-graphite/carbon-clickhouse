@@ -2,6 +2,7 @@ package uploader
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -20,9 +21,13 @@ type Points struct {
 func NewPoints(base *Base, reverse bool) *Points {
 	u := &Points{Base: base}
 	u.Base.handler = u.upload
-	u.blacklist = NewBlacklist(u.config.IgnoredPatterns)
 	u.reverse = reverse
 	u.query = fmt.Sprintf("%s (Path, Value, Time, Date, Timestamp)", u.config.TableName)
+
+	if len(u.config.IgnoredPatterns) > 0 {
+		u.blacklist = NewBlacklist(u.config.IgnoredPatterns)
+	}
+
 	return u
 }
 
@@ -45,8 +50,13 @@ func (u *Points) parseAndFilter(filename string, out io.Writer) error {
 			break
 		}
 
-		wb.Reset()
-		if !u.blacklist.Contains(unsafeString(name), u.reverse) {
+		blacklisted := false
+		if u.blacklist != nil && bytes.IndexByte(name, '?') == -1 { // tagged series don't undergo blacklist searching
+			blacklisted = u.blacklist.Contains(unsafeString(name), u.reverse)
+		}
+
+		if !blacklisted {
+			wb.Reset()
 			wb.WriteGraphitePoint(name, reader.Value(), reader.Timestamp(), reader.Version())
 
 			_, err = out.Write(wb.Bytes())
