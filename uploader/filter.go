@@ -35,6 +35,7 @@ length-5-group:
 */
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -155,7 +156,7 @@ func (root patternTreeNode) String() string {
 // stringInner is recursive part of String method
 func (root patternTreeNode) stringInner(depth int) string {
 	patternList := make([]string, 0, len(root))
-	result := strings.Builder{}
+	result := bytes.Buffer{}
 
 	for pattern := range root {
 		patternList = append(patternList, pattern)
