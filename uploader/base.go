@@ -22,14 +22,15 @@ import (
 type Base struct {
 	stop.Struct
 	sync.Mutex
-	name    string
-	path    string
-	config  *Config
-	queue   chan string
-	inQueue map[string]bool
-	logger  *zap.Logger
-	handler func(ctx context.Context, logger *zap.Logger, filename string) error // upload single file
-	query   string
+	name       string
+	path       string
+	config     *Config
+	queue      chan string
+	inQueue    map[string]bool
+	logger     *zap.Logger
+	handler    func(ctx context.Context, logger *zap.Logger, filename string) error // upload single file
+	query      string
+	httpClient *http.Client
 
 	stat struct {
 		uploaded  uint32
@@ -193,8 +194,7 @@ func (u *Base) insertRowBinary(table string, data io.Reader) error {
 		return err
 	}
 
-	client := &http.Client{Timeout: u.config.Timeout.Value()}
-	resp, err := client.Do(req)
+	resp, err := u.httpClient.Do(req)
 	if err != nil {
 		return err
 	}

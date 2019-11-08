@@ -2,6 +2,8 @@ package uploader
 
 import (
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/lomik/zapwriter"
 	"go.uber.org/zap"
@@ -24,14 +26,20 @@ func New(path string, name string, config *Config) (Uploader, error) {
 		c.Threads = 1
 	}
 
+	httpClient := &http.Client{Timeout: c.Timeout.Value()}
+	if transport, ok := httpClient.Transport.(*http.Transport); ok {
+		transport.IdleConnTimeout = time.Nanosecond
+	}
+
 	logger := zapwriter.Logger("upload").With(zap.String("name", name))
 	u := &Base{
-		path:    path,
-		name:    name,
-		queue:   make(chan string, 1024),
-		inQueue: make(map[string]bool),
-		logger:  logger,
-		config:  &c,
+		path:       path,
+		name:       name,
+		queue:      make(chan string, 1024),
+		inQueue:    make(map[string]bool),
+		logger:     logger,
+		config:     &c,
+		httpClient: httpClient,
 	}
 
 	if c.Type != "points" && c.Type != "points-reverse" && len(c.IgnoredPatterns) > 0 {
