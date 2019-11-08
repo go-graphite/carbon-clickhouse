@@ -193,7 +193,10 @@ func (u *Base) insertRowBinary(table string, data io.Reader) error {
 		return err
 	}
 
-	client := &http.Client{Timeout: u.config.Timeout.Value()}
+	client := &http.Client{
+		Timeout:   u.config.Timeout.Value(),
+		Transport: &http.Transport{DisableKeepAlives: true},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
