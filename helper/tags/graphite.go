@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/lomik/carbon-clickhouse/helper/escape"
 )
 
 type byKey []string
@@ -75,7 +77,7 @@ func Graphite(config TagConfig, s string) (string, error) {
 	arr = arr[:len(arr)-toDel]
 
 	if len(arr) > 0 {
-		res.WriteString(url.PathEscape(arr[0]))
+		res.WriteString(escape.Path(arr[0]))
 		res.WriteByte('?')
 	}
 

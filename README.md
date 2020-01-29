@@ -1,3 +1,6 @@
+[![deb](https://img.shields.io/badge/deb-packagecloud.io-844fec.svg)](https://packagecloud.io/go-graphite/stable)
+[![rpm](https://img.shields.io/badge/rpm-packagecloud.io-844fec.svg)](https://packagecloud.io/go-graphite/stable)
+
 # carbon-clickhouse
 Graphite metrics receiver with ClickHouse as storage
 
@@ -127,6 +130,17 @@ cache-ttl = "12h0m0s"
 # # - index
 # # - tagged (is described below)
 # # - points-reverse (same scheme as points, but path 'a1.b2.c3' stored as 'c3.b2.a1')
+
+# # For uploaders with types "points" and "points-reverse" there is a possibility to ignore data using patterns. E.g.
+# [upload.graphite]
+# type = "graphite"
+# table = "graphite.points"
+# threads = 1
+# url = "http://localhost:8123/"
+# timeout = "30s"
+# ignored-patterns = [
+#     "a1.b2.*.c3",
+# ]
 
 # # Extra table which can be used as index for tagged series
 # [upload.graphite_tagged]

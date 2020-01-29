@@ -8,12 +8,12 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"net/url"
 	"sort"
 	"sync/atomic"
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/carbon-clickhouse/helper/escape"
 	"go.uber.org/zap"
 )
 
@@ -41,9 +41,9 @@ func TelegrafEncodeTags(tags map[string]string) string {
 	if len(tags) == 1 {
 		var res bytes.Buffer
 		for k, v := range tags {
-			res.WriteString(url.QueryEscape(k))
+			res.WriteString(escape.Query(k))
 			res.WriteByte('=')
-			res.WriteString(url.QueryEscape(v))
+			res.WriteString(escape.Query(v))
 			return res.String()
 		}
 	}
@@ -66,9 +66,9 @@ func TelegrafEncodeTags(tags map[string]string) string {
 			key = "_name"
 		}
 
-		res.WriteString(url.QueryEscape(key))
+		res.WriteString(escape.Query(key))
 		res.WriteByte('=')
-		res.WriteString(url.QueryEscape(tags[keys[i]]))
+		res.WriteString(escape.Query(tags[keys[i]]))
 	}
 	return res.String()
 }
@@ -111,7 +111,7 @@ metricsLoop:
 				}
 			}
 			pathBuf.Reset()
-			pathBuf.WriteString(url.PathEscape(m.Name))
+			pathBuf.WriteString(escape.Path(m.Name))
 
 			if math.IsNaN(v) {
 				continue
@@ -119,7 +119,7 @@ metricsLoop:
 
 			if f != "value" {
 				pathBuf.WriteByte('.')
-				pathBuf.WriteString(url.PathEscape(f))
+				pathBuf.WriteString(escape.Path(f))
 			}
 
 			pathBuf.WriteByte('?')

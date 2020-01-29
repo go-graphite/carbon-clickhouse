@@ -2,10 +2,10 @@ package tags
 
 import (
 	"bytes"
-	"net/url"
 	"sort"
 	"strings"
 
+	"github.com/lomik/carbon-clickhouse/helper/escape"
 	"github.com/lomik/carbon-clickhouse/helper/prompb"
 )
 
@@ -34,7 +34,7 @@ func Prometheus(labels []*prompb.Label) (string, error) {
 	var res bytes.Buffer
 
 	if nameOffset > 0 {
-		res.WriteString(url.PathEscape(labels[0].Value))
+		res.WriteString(escape.Path(labels[0].Value))
 	}
 
 	res.WriteByte('?')
@@ -43,9 +43,9 @@ func Prometheus(labels []*prompb.Label) (string, error) {
 		if i > 1 {
 			res.WriteByte('&')
 		}
-		res.WriteString(url.QueryEscape(labels[i].Name))
+		res.WriteString(escape.Query(labels[i].Name))
 		res.WriteByte('=')
-		res.WriteString(url.QueryEscape(labels[i].Value))
+		res.WriteString(escape.Query(labels[i].Value))
 	}
 
 	return res.String(), nil

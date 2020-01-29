@@ -33,7 +33,10 @@ func urlParse(rawurl string) (*url.URL, error) {
 	}
 	m, err := url.Parse(rawurl[p:])
 	if m != nil {
-		m.Path = rawurl[:p]
+		m.Path, err = url.PathUnescape(rawurl[:p])
+		if err != nil {
+			return nil, err
+		}
 	}
 	return m, err
 }
