@@ -58,6 +58,7 @@ fpm-build-rpm:
 		out/root/=/
 
 packagecloud-push:
+	package_cloud push $(REPO)/el/8 $(NAME)-$(VERSION)-1.x86_64.rpm || true
 	package_cloud push $(REPO)/el/7 $(NAME)-$(VERSION)-1.x86_64.rpm || true
 	package_cloud push $(REPO)/ubuntu/xenial $(NAME)_$(VERSION)_amd64.deb || true
 	package_cloud push $(REPO)/ubuntu/bionic $(NAME)_$(VERSION)_amd64.deb || true
