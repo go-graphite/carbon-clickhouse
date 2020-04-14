@@ -17,6 +17,7 @@ type Config struct {
 	URL             string           `toml:"url"`
 	CacheTTL        *config.Duration `toml:"cache-ttl"`
 	IgnoredPatterns []string         `toml:"ignored-patterns,omitempty"` // points, points-reverse
+	CompressData    bool			 `toml:"compress-data"` //compress data while sending to clickhouse
 }
 
 func (cfg *Config) Parse() error {

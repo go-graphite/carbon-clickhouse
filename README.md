@@ -113,6 +113,8 @@ type = "points"
 table = "graphite"
 threads = 1
 url = "http://localhost:8123/"
+# compress-data enables gzip compression while sending to clickhouse
+compress-data = true
 timeout = "1m0s"
 # save zero value to Timestamp column (for point and posts-reverse tables)
 zero-timestamp = false 

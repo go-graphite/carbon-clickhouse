@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -176,6 +177,19 @@ func (u *Base) uploadWorker(ctx context.Context) {
 	}
 }
 
+func compress(data io.Reader) io.Reader {
+	pr, pw := io.Pipe()
+	gw := gzip.NewWriter(pw)
+
+	go func() {
+		_, _ = io.Copy(gw, data)
+		gw.Close()
+		pw.Close()
+	}()
+
+	return pr
+}
+
 func (u *Base) insertRowBinary(table string, data io.Reader) error {
 	p, err := url.Parse(u.config.URL)
 	if err != nil {
@@ -188,7 +202,15 @@ func (u *Base) insertRowBinary(table string, data io.Reader) error {
 	p.RawQuery = q.Encode()
 	queryUrl := p.String()
 
-	req, err := http.NewRequest("POST", queryUrl, data)
+	var req *http.Request
+
+	if u.config.CompressData {
+		req, err = http.NewRequest("POST", queryUrl, compress(data))
+		req.Header.Add("Content-Encoding", "gzip")
+	} else {
+		req, err = http.NewRequest("POST", queryUrl, data)
+	}
+
 	if err != nil {
 		return err
 	}
