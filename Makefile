@@ -5,7 +5,13 @@ DESCRIPTION:="Graphite metrics receiver with ClickHouse as storage"
 GO ?= go
 export GOPATH := $(CURDIR)/_vendor
 TEMPDIR:=$(shell mktemp -d)
+
+DEVEL ?= 0
+ifeq ($(DEVEL), 0)
 VERSION:=$(shell sh -c 'grep "const Version" $(NAME).go  | cut -d\" -f2')
+else
+VERSION:=$(shell sh -c 'git describe --always --tags | sed -e "s/^v//i"')
+endif
 
 all: build
 
