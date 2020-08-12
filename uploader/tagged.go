@@ -107,8 +107,8 @@ LineLoop:
 		tagsBuf.WriteString(t)
 
 		// don't upload any other tag but __name__
-		// if the main metric (m.Path) is ignored
-		if !u.ignoredMetrics[m.Path] {
+		// if either main metric (m.Path) or each metric (*) is ignored
+		if !u.ignoredMetrics[m.Path] && !u.ignoredMetrics["*"] {
 			for k, v := range m.Query() {
 				t := fmt.Sprintf("%s=%s", k, v[0])
 				tag1 = append(tag1, t)

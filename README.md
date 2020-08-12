@@ -155,7 +155,8 @@ cache-ttl = "12h0m0s"
 # timeout = "1m0s"
 # cache-ttl = "12h0m0s"
 # ignored-tagged-metrics = [
-#     "a.b.c.d",
+#     "a.b.c.d",  # all tags (but __name__) will be ignored for metrics like a.b.c.d?tagName1=tagValue1&tagName2=tagValue2...
+#     "*",  # all tags (but __name__) will be ignored for all metrics; this is the only special case with wildcards
 # ]
 
 [udp]
