@@ -38,6 +38,10 @@ func New(path string, name string, config *Config) (Uploader, error) {
 		logger.Warn(fmt.Sprintf("IgnoredPatterns are supported for points and points-reverse only, not for %s", c.Type))
 	}
 
+	if c.Type != "tagged" && len(c.IgnoredTaggedMetrics) > 0 {
+		logger.Warn(fmt.Sprintf("IgnoredTaggedMetrics are supported for tagged only, not for %s", c.Type))
+	}
+
 	var res Uploader
 
 	switch c.Type {
