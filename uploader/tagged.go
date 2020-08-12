@@ -13,6 +13,7 @@ import (
 
 type Tagged struct {
 	*cached
+	ignoredMetrics map[string]bool
 }
 
 var _ Uploader = &Tagged{}
@@ -23,6 +24,12 @@ func NewTagged(base *Base) *Tagged {
 	u.cached = newCached(base)
 	u.cached.parser = u.parseFile
 	u.query = fmt.Sprintf("%s (Date, Tag1, Path, Tags, Version)", u.config.TableName)
+
+	u.ignoredMetrics = make(map[string]bool, len(u.config.IgnoredTaggedMetrics))
+	for _, metric := range u.config.IgnoredTaggedMetrics {
+		u.ignoredMetrics[metric] = true
+	}
+
 	return u
 }
 
@@ -99,10 +106,14 @@ LineLoop:
 		tag1 = append(tag1, t)
 		tagsBuf.WriteString(t)
 
-		for k, v := range m.Query() {
-			t := fmt.Sprintf("%s=%s", k, v[0])
-			tag1 = append(tag1, t)
-			tagsBuf.WriteString(t)
+		// don't upload any other tag but __name__
+		// if the main metric (m.Path) is ignored
+		if !u.ignoredMetrics[m.Path] {
+			for k, v := range m.Query() {
+				t := fmt.Sprintf("%s=%s", k, v[0])
+				tag1 = append(tag1, t)
+				tagsBuf.WriteString(t)
+			}
 		}
 
 		for i := 0; i < len(tag1); i++ {
