@@ -145,6 +145,8 @@ cache-ttl = "12h0m0s"
 # ]
 
 # # Extra table which can be used as index for tagged series
+# # Also, there is an opportunity to avoid writing tags for some metrics.
+# # Example below, ignored-tagged-metrics.
 # [upload.graphite_tagged]
 # type = "tagged"
 # table = "graphite_tagged"
@@ -152,6 +154,9 @@ cache-ttl = "12h0m0s"
 # url = "http://localhost:8123/"
 # timeout = "1m0s"
 # cache-ttl = "12h0m0s"
+# ignored-tagged-metrics = [
+#     "a.b.c.d",
+# ]
 
 [udp]
 listen = ":2003"
