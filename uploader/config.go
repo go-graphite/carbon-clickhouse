@@ -7,17 +7,18 @@ import (
 )
 
 type Config struct {
-	Type            string           `toml:"type"`  // points, series, points-reverse, series-reverse
-	TableName       string           `toml:"table"` // keep empty for same as key
-	Timeout         *config.Duration `toml:"timeout"`
-	Date            string           `toml:"date"` // for tree table
-	TreeDate        time.Time        `toml:"-"`
-	ZeroTimestamp   bool             `toml:"zero-timestamp"` // for points, points-reverse tables
-	Threads         int              `toml:"threads"`
-	URL             string           `toml:"url"`
-	CacheTTL        *config.Duration `toml:"cache-ttl"`
-	IgnoredPatterns []string         `toml:"ignored-patterns,omitempty"` // points, points-reverse
-	CompressData    bool			 `toml:"compress-data"` //compress data while sending to clickhouse
+	Type                 string           `toml:"type"`  // points, series, points-reverse, series-reverse
+	TableName            string           `toml:"table"` // keep empty for same as key
+	Timeout              *config.Duration `toml:"timeout"`
+	Date                 string           `toml:"date"` // for tree table
+	TreeDate             time.Time        `toml:"-"`
+	ZeroTimestamp        bool             `toml:"zero-timestamp"` // for points, points-reverse tables
+	Threads              int              `toml:"threads"`
+	URL                  string           `toml:"url"`
+	CacheTTL             *config.Duration `toml:"cache-ttl"`
+	IgnoredPatterns      []string         `toml:"ignored-patterns,omitempty"` // points, points-reverse
+	CompressData         bool             `toml:"compress-data"`              //compress data while sending to clickhouse
+	IgnoredTaggedMetrics []string         `toml:"ignored-tagged-metrics"`     // for tagged table; create only `__name__` tag for these metrics and ignore others
 }
 
 func (cfg *Config) Parse() error {
