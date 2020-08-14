@@ -109,9 +109,11 @@ LineLoop:
 		// don't upload any other tag but __name__
 		// if either main metric (m.Path) or each metric (*) is ignored
 		ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
+		tagsWritten := 1
 		for k, v := range m.Query() {
 			t := fmt.Sprintf("%s=%s", k, v[0])
 			tagsBuf.WriteString(t)
+			tagsWritten++
 
 			if !ignoreAllButName {
 				tag1 = append(tag1, t)
@@ -122,7 +124,7 @@ LineLoop:
 			wb.WriteUint16(reader.Days())
 			wb.WriteString(tag1[i])
 			wb.WriteBytes(name)
-			wb.WriteUVarint(uint64(len(tag1)))
+			wb.WriteUVarint(uint64(tagsWritten))
 			wb.Write(tagsBuf.Bytes())
 			wb.WriteUint32(version)
 		}
