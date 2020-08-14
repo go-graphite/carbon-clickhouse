@@ -108,11 +108,13 @@ LineLoop:
 
 		// don't upload any other tag but __name__
 		// if either main metric (m.Path) or each metric (*) is ignored
-		if !u.ignoredMetrics[m.Path] && !u.ignoredMetrics["*"] {
-			for k, v := range m.Query() {
-				t := fmt.Sprintf("%s=%s", k, v[0])
+		ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
+		for k, v := range m.Query() {
+			t := fmt.Sprintf("%s=%s", k, v[0])
+			tagsBuf.WriteString(t)
+
+			if !ignoreAllButName {
 				tag1 = append(tag1, t)
-				tagsBuf.WriteString(t)
 			}
 		}
 
