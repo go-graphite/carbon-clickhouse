@@ -18,7 +18,7 @@ type DebugCacheDumper interface {
 type cached struct {
 	*Base
 	existsCache CMap // store known keys and don't load it to clickhouse tree
-	parser      func(filename string, out io.Writer) (map[string]bool, error)
+	parser      func(filename string, out io.Writer) (uint64, map[string]bool, error)
 	expired     uint32 // atomic counter
 }
 
@@ -59,7 +59,11 @@ func (u *cached) Reset() {
 	u.existsCache.Clear()
 }
 
-func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string) error {
+func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string) (uint64, error) {
+	var n uint64
+	var err error
+	var newSeries map[string]bool
+
 	pipeReader, pipeWriter := io.Pipe()
 	writer := bufio.NewWriter(pipeWriter)
 	startTime := time.Now()
@@ -67,7 +71,7 @@ func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string
 	uploadResult := make(chan error, 1)
 
 	u.Go(func(ctx context.Context) {
-		err := u.insertRowBinary(
+		err = u.insertRowBinary(
 			u.query,
 			pipeReader,
 		)
@@ -77,7 +81,7 @@ func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string
 		}
 	})
 
-	newSeries, err := u.parser(filename, writer)
+	n, newSeries, err = u.parser(filename, writer)
 	if err == nil {
 		err = writer.Flush()
 	}
@@ -89,19 +93,19 @@ func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string
 	case uploadErr = <-uploadResult:
 		// pass
 	case <-ctx.Done():
-		return fmt.Errorf("upload aborted")
+		return n, fmt.Errorf("upload aborted")
 	}
 
 	if err != nil {
-		return err
+		return n, err
 	}
 
 	if uploadErr != nil {
-		return uploadErr
+		return n, uploadErr
 	}
 
 	// commit new series
 	u.existsCache.Merge(newSeries, startTime.Unix())
 
-	return nil
+	return n, nil
 }

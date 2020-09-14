@@ -28,10 +28,12 @@ func NewTree(base *Base) *Tree {
 	return u
 }
 
-func (u *Tree) parseFile(filename string, out io.Writer) (map[string]bool, error) {
+func (u *Tree) parseFile(filename string, out io.Writer) (uint64, map[string]bool, error) {
+	var n uint64
+
 	reader, err := RowBinary.NewReader(filename, false)
 	if err != nil {
-		return nil, err
+		return n, nil, err
 	}
 	defer reader.Close()
 
@@ -84,13 +86,14 @@ LineLoop:
 		if newSeries[unsafeString(name)] {
 			continue LineLoop
 		}
+		n++
 
 		level = pathLevel(name)
 
 		newSeries[string(name)] = true
 
 		if err = writePathLevel(name, level); err != nil {
-			return nil, err
+			return n, nil, err
 		}
 
 		p = name
@@ -104,12 +107,12 @@ LineLoop:
 			newSeries[string(p[:index+1])] = true
 
 			if err = writePathLevel(p[:index+1], l); err != nil {
-				return nil, err
+				return n, nil, err
 			}
 
 			p = p[:index]
 		}
 	}
 
-	return newSeries, nil
+	return n, newSeries, nil
 }

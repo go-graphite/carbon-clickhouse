@@ -29,13 +29,15 @@ type Base struct {
 	queue   chan string
 	inQueue map[string]bool
 	logger  *zap.Logger
-	handler func(ctx context.Context, logger *zap.Logger, filename string) error // upload single file
+	handler func(ctx context.Context, logger *zap.Logger, filename string) (uint64, error) // upload single file
 	query   string
 
 	stat struct {
-		uploaded  uint32
-		errors    uint32
-		unhandled uint32 // @TODO: maxUnhandled
+		uploaded        uint32
+		uploadedMetrics uint64
+		errors          uint32
+		delay           int64
+		unhandled       uint32 // @TODO: maxUnhandled
 	}
 }
 
@@ -44,14 +46,23 @@ func (u *Base) Stat(send func(metric string, value float64)) {
 	atomic.AddUint32(&u.stat.uploaded, -uploaded)
 	send("uploaded", float64(uploaded))
 
+	uploadedMetrics := atomic.LoadUint64(&u.stat.uploadedMetrics)
+	atomic.AddUint64(&u.stat.uploadedMetrics, -uploadedMetrics)
+	send("uploaded_metrics", float64(uploadedMetrics))
+
 	errors := atomic.LoadUint32(&u.stat.errors)
 	atomic.AddUint32(&u.stat.errors, -errors)
 	send("errors", float64(errors))
+
+	delay := atomic.LoadInt64(&u.stat.delay)
+	send("delay", float64(delay))
 
 	send("unhandled", float64(atomic.LoadUint32(&u.stat.unhandled)))
 }
 
 func (u *Base) scanDir(ctx context.Context) {
+	var delay int64
+	now := time.Now().Unix()
 	flist, err := ioutil.ReadDir(u.path)
 	if err != nil {
 		u.logger.Error("ReadDir failed", zap.Error(err))
@@ -67,9 +78,22 @@ func (u *Base) scanDir(ctx context.Context) {
 			continue
 		}
 
-		files = append(files, filepath.Join(u.path, f.Name()))
+		fileName := filepath.Join(u.path, f.Name())
+		stat, err := os.Lstat(fileName)
+		if err != nil {
+			u.logger.Error("Lstat failed", zap.Error(err))
+			return
+		}
+		d := now - stat.ModTime().Unix()
+		if delay < d {
+			delay = d
+		}
+		files = append(files, fileName)
 	}
 
+	if delay > 0 {
+		atomic.StoreInt64(&u.stat.delay, delay)
+	}
 	atomic.StoreUint32(&u.stat.unhandled, uint32(len(files)))
 
 	if len(files) == 0 {
@@ -152,11 +176,12 @@ func (u *Base) uploadWorker(ctx context.Context) {
 			logger := u.logger.With(zap.String("filename", filename))
 			logger.Info("start handle")
 
-			err := u.handler(ctx, logger, filename)
+			n, err := u.handler(ctx, logger, filename)
 
 			if err != nil {
 				atomic.AddUint32(&u.stat.errors, 1)
 				logger.Error("handle failed",
+					zap.Uint64("metrics", n),
 					zap.Error(err),
 					zap.Duration("time", time.Since(startTime)),
 				)
@@ -164,7 +189,9 @@ func (u *Base) uploadWorker(ctx context.Context) {
 				time.Sleep(time.Second)
 			} else {
 				atomic.AddUint32(&u.stat.uploaded, 1)
+				atomic.AddUint64(&u.stat.uploadedMetrics, n)
 				logger.Info("handle success",
+					zap.Uint64("metrics", n),
 					zap.Duration("time", time.Since(startTime)),
 				)
 			}
