@@ -57,9 +57,9 @@ PARTITION BY toYYYYMM(Date)
 ORDER BY (Tag1, Path, Date);
 ```
 
-[GraphiteMergeTree documentation](https://clickhouse.yandex/docs/en/table_engines/graphitemergetree.html)
+[GraphiteMergeTree documentation](https://clickhouse.tech/docs/en/engines/table-engines/mergetree-family/graphitemergetree/)
 
-You can create Replicated tables. See [ClickHouse documentation](https://clickhouse.yandex/docs/en/table_engines/replication.html)
+You can create Replicated tables. See [ClickHouse documentation](https://clickhouse.tech/docs/en/engines/table-engines/mergetree-family/replication/)
 
 ## Configuration
 ```
