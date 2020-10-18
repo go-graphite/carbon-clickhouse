@@ -1,9 +1,11 @@
 NAME:=carbon-clickhouse
 MAINTAINER:="Roman Lomonosov <r.lomonosov@gmail.com>"
 DESCRIPTION:="Graphite metrics receiver with ClickHouse as storage"
+MODULE:=github.com/lomik/carbon-clickhouse
 
 GO ?= go
-export GOPATH := $(CURDIR)/_vendor
+export GOFLAGS +=  -mod=vendor
+export GO111MODULE := on
 TEMPDIR:=$(shell mktemp -d)
 
 DEVEL ?= 0
@@ -13,10 +15,14 @@ else
 VERSION:=$(shell sh -c 'git describe --always --tags | sed -e "s/^v//i"')
 endif
 
-all: build
+all: $(NAME)
 
-build:
-	$(GO) build github.com/lomik/$(NAME)
+.PHONY: $(NAME)
+$(NAME):
+	$(GO) build $(MODULE)
+
+test:
+	$(GO) test ./...
 
 gox-build:
 	rm -rf out
