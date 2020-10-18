@@ -23,6 +23,7 @@ type commonConfig struct {
 	MetricInterval *config.Duration `toml:"metric-interval"`
 	MetricEndpoint string           `toml:"metric-endpoint"`
 	MaxCPU         int              `toml:"max-cpu"`
+	Enabled        bool             `toml:"enabled"`
 }
 
 type clickhouseConfig struct {
@@ -112,6 +113,7 @@ func NewConfig() *Config {
 			},
 			MetricEndpoint: MetricEndpointLocal,
 			MaxCPU:         1,
+			Enabled:        true,
 		},
 		Logging: nil,
 		Data: dataConfig{

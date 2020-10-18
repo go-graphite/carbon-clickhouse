@@ -347,7 +347,9 @@ func (app *App) Start() (err error) {
 	/* RECEIVER end */
 
 	/* COLLECTOR start */
-	app.Collector = NewCollector(app)
+	if app.Config.Common.Enabled {
+		app.Collector = NewCollector(app)
+	}
 	/* COLLECTOR end */
 
 	return
