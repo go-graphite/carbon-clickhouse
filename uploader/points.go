@@ -32,10 +32,12 @@ func NewPoints(base *Base, reverse bool) *Points {
 }
 
 // parseAndFilter reads points data and excludes those ones which match blacklist
-func (u *Points) parseAndFilter(filename string, out io.Writer) error {
+func (u *Points) parseAndFilter(filename string, out io.Writer) (uint64, error) {
+	var n uint64
+
 	reader, err := RowBinary.NewReader(filename, u.reverse)
 	if err != nil {
-		return err
+		return n, err
 	}
 
 	defer reader.Close()
@@ -61,18 +63,20 @@ func (u *Points) parseAndFilter(filename string, out io.Writer) error {
 
 			_, err = out.Write(wb.Bytes())
 			if err != nil {
-				return err
+				return n, err
 			}
+			n++
 		}
 	}
 
-	return nil
+	return n, nil
 }
 
-func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string) error {
+func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string) (uint64, error) {
 	var (
 		err, uploadErr error
 		uploadResult   chan error
+		n              uint64
 	)
 
 	pipeReader, pipeWriter := io.Pipe()
@@ -90,7 +94,7 @@ func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string
 		}
 	})
 
-	err = u.parseAndFilter(filename, out)
+	n, err = u.parseAndFilter(filename, out)
 	if err == nil {
 		err = out.Flush()
 	}
@@ -100,14 +104,14 @@ func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string
 	case uploadErr = <-uploadResult:
 		// pass
 	case <-ctx.Done():
-		return fmt.Errorf("upload aborted")
+		return n, fmt.Errorf("upload aborted")
 	}
 
 	if err != nil {
-		return err
+		return n, err
 	} else if uploadErr != nil {
-		return uploadErr
+		return n, uploadErr
 	} else {
-		return nil
+		return n, nil
 	}
 }
