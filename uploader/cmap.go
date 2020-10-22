@@ -5,6 +5,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/msaf1980/stringutils"
+	"github.com/spaolacci/murmur3"
 )
 
 var shardCount = 1024
@@ -66,7 +69,9 @@ func (m CMap) Clear() int {
 // Returns shard under given key
 func (m CMap) GetShard(key string) *CMapShard {
 	// @TODO: remove type casts
-	return m[uint(fnv32(key))%uint(shardCount)]
+	//return m[uint(fnv32(key))%uint(shardCount)]
+	// replace hash function to murmur3 for better perfomance]
+	return m[uint(murmur3.Sum32(stringutils.UnsafeStringBytes(&key)))%uint(shardCount)]
 }
 
 // Retrieves an element from map under given key.

@@ -46,6 +46,10 @@ github.com/lomik/stop v0.0.0-20161127103810-188e98d969bd h1:hUNpVzZOYNANa5s8XMBE
 github.com/lomik/stop v0.0.0-20161127103810-188e98d969bd/go.mod h1:3pLqdYIrxHYk+VsfIlrTcBD9J34YkGq8iN9yzJuhrP0=
 github.com/lomik/zapwriter v0.0.0-20170315193840-d4499a33b592 h1:NEjGY17W0lNlYFX9i7GupGjrJojX2Ilhy4XebC+86+w=
 github.com/lomik/zapwriter v0.0.0-20170315193840-d4499a33b592/go.mod h1:8xn4WUTM35HWUh6BGz2NkXFmD2l4D420gb4lL8OPJcg=
+github.com/msaf1980/stringutils v0.0.1 h1:g0EnWEuidjdhYju2brLAOiZAgSONqpJAAYF80uZImv0=
+github.com/msaf1980/stringutils v0.0.1/go.mod h1:PVF+ukHO/yBVWyAOLIeFJT5XyGoI2oR8y2S/8gOjJOw=
+github.com/msaf1980/stringutils v0.0.2-0.20201020141843-69ada32f5dc0 h1:mECAdOf/jCR2l5KiE0QfiW/MxRKyMMQb3hjrX8Q1syk=
+github.com/msaf1980/stringutils v0.0.2-0.20201020141843-69ada32f5dc0/go.mod h1:PVF+ukHO/yBVWyAOLIeFJT5XyGoI2oR8y2S/8gOjJOw=
 github.com/pierrec/lz4 v2.5.2+incompatible h1:WCjObylUIOlKy/+7Abdn34TLIkXiA4UWUMhxq9m9ZXI=
 github.com/pierrec/lz4 v2.5.2+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
@@ -53,6 +57,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
+github.com/spaolacci/murmur3 v1.1.0 h1:7c1g84S4BPRrfL5Xrdp6fOJ206sU9y293DDHaoy0bLI=
+github.com/spaolacci/murmur3 v1.1.0/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
