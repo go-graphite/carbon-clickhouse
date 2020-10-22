@@ -1,7 +1,9 @@
 package uploader
 
 import (
+	"fmt"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/lomik/carbon-clickhouse/helper/escape"
@@ -31,4 +33,27 @@ func TestUrlParse(t *testing.T) {
 	assert.NotNil(m)
 	assert.NoError(err)
 	assert.Equal("instance:cpu_utilization:ratio_avg", m.Path)
+}
+
+func BenchmarkKeySprintf(b *testing.B) {
+	path := "test.path"
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = fmt.Sprintf("%d:%s", 1285, path)
+	}
+}
+
+func BenchmarkKeyConcat(b *testing.B) {
+	path := "test.path"
+	var unum uint16 = 1245
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = strconv.Itoa(int(unum)) + ":" + path
+	}
 }

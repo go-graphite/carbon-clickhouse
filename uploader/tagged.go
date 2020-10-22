@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -82,7 +83,7 @@ LineLoop:
 			continue
 		}
 
-		key := fmt.Sprintf("%d:%s", reader.Days(), unsafeString(name))
+		key := strconv.Itoa(int(reader.Days())) + ":" + unsafeString(name)
 
 		if u.existsCache.Exists(key) {
 			continue LineLoop

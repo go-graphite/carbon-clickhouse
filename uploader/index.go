@@ -2,8 +2,8 @@ package uploader
 
 import (
 	"bytes"
-	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -65,7 +65,7 @@ LineLoop:
 			continue
 		}
 
-		key := fmt.Sprintf("%d:%s", reader.Days(), unsafeString(name))
+		key := strconv.Itoa(int(reader.Days())) + ":" + unsafeString(name)
 
 		if u.existsCache.Exists(key) {
 			continue LineLoop
