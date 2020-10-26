@@ -53,6 +53,7 @@ func (u *Index) parseFile(filename string, out io.Writer) (uint64, map[string]bo
 		treeDate = RowBinary.TimestampToDays(uint32(u.config.TreeDate.Unix()))
 	}
 
+	reverseNameBuf := make([]byte, 256)
 LineLoop:
 	for {
 		name, err := reader.ReadRecord()
@@ -88,7 +89,12 @@ LineLoop:
 		wb.WriteBytes(name)
 		wb.WriteUint32(version)
 
-		reverseName := RowBinary.ReverseBytes(name)
+		l = len(name)
+		if l > len(reverseNameBuf) {
+			reverseNameBuf = make([]byte, len(name)*2)
+		}
+		reverseName := reverseNameBuf[0:l]
+		RowBinary.ReverseBytesTo(reverseName, name)
 
 		// Reverse path with date
 		wb.WriteUint16(reader.Days())

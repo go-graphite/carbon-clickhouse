@@ -82,6 +82,11 @@ func reverseMetricInplace(m []byte) {
 	reverse(m[a:b])
 }
 
+func ReverseBytesTo(dst []byte, src []byte) {
+	copy(dst, src)
+	reverseMetricInplace(dst)
+}
+
 func (r *Reader) readRecord() ([]byte, error) {
 	r.size = 0
 	r.offset = 0

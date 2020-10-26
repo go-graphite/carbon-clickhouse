@@ -37,6 +37,25 @@ func TestReverseInplace(t *testing.T) {
 	}
 }
 
+func TestReverseBytesTo(t *testing.T) {
+	assert := assert.New(t)
+	table := []string{
+		"carbon.agents.carbon-clickhouse.graphite1.tcp.metricsReceived",
+		"",
+		".",
+		"carbon..xx",
+		".hello..world.",
+	}
+
+	for i := 0; i < len(table); i++ {
+		x := []byte(table[i])
+		y := make([]byte, len(table[i]))
+		z := reverseBytesOriginal(x)
+		ReverseBytesTo(y, x)
+		assert.Equal(string(z), string(y))
+	}
+}
+
 func BenchmarkReverseOriginal(b *testing.B) {
 	m := []byte("carbon.agents.carbon-clickhouse.graphite1.tcp.metricsReceived")
 	var a []byte
@@ -57,5 +76,33 @@ func BenchmarkMetricInplace(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		reverseMetricInplace(m)
+	}
+}
+
+func BenchmarkReverseBytes(b *testing.B) {
+	name := []byte("test.reverse.metric")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = ReverseBytes(name)
+	}
+}
+
+func BenchmarkReverseBytesTo(b *testing.B) {
+	name := []byte("test.reverse.metric")
+	reverseNameBuf := make([]byte, 256)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		l := len(name)
+		if l > len(reverseNameBuf) {
+			reverseNameBuf = make([]byte, 2*len(name))
+		}
+		reverseName := reverseNameBuf[0:l]
+		ReverseBytesTo(reverseName, name)
 	}
 }
