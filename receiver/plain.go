@@ -11,6 +11,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
+	"github.com/msaf1980/stringutils"
 )
 
 // https://github.com/golang/go/issues/2632#issuecomment-66061057
@@ -91,7 +92,7 @@ func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32,
 	// parse tagged
 	// @TODO: parse as bytes, don't cast to string and back
 	name, err := tags.Graphite(base.Tags, unsafeString(s))
-	return []byte(name), value, timestamp, err
+	return stringutils.UnsafeStringBytes(&name), value, timestamp, err
 }
 
 func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer) {
