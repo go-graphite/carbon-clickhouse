@@ -53,6 +53,11 @@ func (u *Index) parseFile(filename string, out io.Writer) (uint64, map[string]bo
 		treeDate = RowBinary.TimestampToDays(uint32(u.config.TreeDate.Unix()))
 	}
 
+	hashFunc := u.config.hashFunc
+	if hashFunc == nil {
+		hashFunc = keepOriginal
+	}
+
 LineLoop:
 	for {
 		name, err := reader.ReadRecord()
@@ -65,7 +70,7 @@ LineLoop:
 			continue
 		}
 
-		key := strconv.Itoa(int(reader.Days())) + ":" + unsafeString(name)
+		key := hashFunc(strconv.Itoa(int(reader.Days())) + ":" + unsafeString(name))
 
 		if u.existsCache.Exists(key) {
 			continue LineLoop
