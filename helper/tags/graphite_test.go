@@ -13,6 +13,8 @@ type graphiteTestCase struct {
 }
 
 var graphiteTestTable = []graphiteTestCase{
+	{";tag1=value2;tag2=value.2;tag1=value3", "", true}, // name not set
+	{"notag", "notag", false},                           // no tags
 	{"some.metric;tag1=value2;tag2=value.2;tag1=value3", "some.metric?tag1=value3&tag2=value.2", false},
 	{"some.metric;tag1=value2;tag2=value.2;tag1=value0", "some.metric?tag1=value0&tag2=value.2", false},
 	{"some.metric;c=1;b=2;a=3", "some.metric?a=3&b=2&c=1", false},
@@ -25,9 +27,11 @@ var graphiteTestTable = []graphiteTestCase{
 	{"some.metric,1;tagged=true", "some.metric,1?tagged=true", false},
 	{"some.metric?name", "some.metric?name", false}, // question mark is disallowed in plain graphite protocol
 	{"some.metric?name;tagged=true", "some.metric%3Fname?tagged=true", false},
+	{"some.metric;tagged=true?false", "some.metric?tagged=true%3Ffalse", false},
 }
 
 var graphiteBenchmarkMetric = "used;host=dfs1;what=diskspace;mountpoint=srv/node/dfs10;unit=B;metric_type=gauge;agent=diamond;processed_by=statsd2"
+var graphiteBenchmarkMetricEscaped = "used;host=dfs1;what=diskspace;mountpoint=srv/node/dfs10;unit=A?B;metric_type=gauge;agent=diamond;url=http://dfs1.test.int/metrics"
 
 func TestGraphite(t *testing.T) {
 	assert := assert.New(t)
@@ -48,6 +52,15 @@ func TestGraphite(t *testing.T) {
 func BenchmarkGraphite(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := Graphite(DisabledTagConfig(), graphiteBenchmarkMetric)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkGraphiteEscaped(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := Graphite(DisabledTagConfig(), graphiteBenchmarkMetricEscaped)
 		if err != nil {
 			b.Fatal(err)
 		}
