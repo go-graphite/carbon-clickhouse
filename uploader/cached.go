@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -57,6 +58,7 @@ func (u *cached) Start() error {
 
 func (u *cached) Reset() {
 	u.existsCache.Clear()
+	debug.FreeOSMemory()
 }
 
 func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string) (uint64, error) {
