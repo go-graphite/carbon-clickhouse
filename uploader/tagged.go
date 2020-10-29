@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
-	"github.com/msaf1980/stringutils"
 )
 
 type Tagged struct {
@@ -50,18 +49,6 @@ func urlParse(rawurl string) (*url.URL, error) {
 	return m, err
 }
 
-// don't unescape special symbols
-// escape also not needed (all is done in receiver/plain.go, Base.PlainParseLine)
-func tagsParse(path string) (string, []string, error) {
-	name, args, n := stringutils.Split2(path, "?")
-	if n == 1 || args == "" {
-		return name, nil, fmt.Errorf("incomplete tags in '%s'", path)
-	}
-	name = "__name__=" + name
-	tags := strings.Split(args, "&")
-	return name, tags, nil
-}
-
 func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]bool, error) {
 	var reader *RowBinary.Reader
 	var err error
@@ -82,6 +69,8 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]b
 	defer wb.Release()
 	defer tagsBuf.Release()
 
+	tag1 := make([]string, 0)
+
 LineLoop:
 	for {
 		name, err := reader.ReadRecord()
@@ -94,8 +83,7 @@ LineLoop:
 			continue
 		}
 
-		day := reader.Days()
-		key := strconv.Itoa(int(day)) + ":" + unsafeString(name)
+		key := strconv.Itoa(int(reader.Days())) + ":" + unsafeString(name)
 
 		if u.existsCache.Exists(key) {
 			continue LineLoop
@@ -106,7 +94,7 @@ LineLoop:
 		}
 		n++
 
-		mname, tags, err := tagsParse(unsafeString(name))
+		m, err := urlParse(unsafeString(name))
 		if err != nil {
 			continue
 		}
@@ -115,36 +103,33 @@ LineLoop:
 
 		wb.Reset()
 		tagsBuf.Reset()
+		tag1 = tag1[:0]
 
-		tagsBuf.WriteString(mname)
+		t := fmt.Sprintf("__name__=%s", m.Path)
+		tag1 = append(tag1, t)
+		tagsBuf.WriteString(t)
 
 		// don't upload any other tag but __name__
 		// if either main metric (m.Path) or each metric (*) is ignored
-		ignoreAllButName := u.ignoredMetrics[mname] || u.ignoredMetrics["*"]
+		ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
 		tagsWritten := 1
-		for _, tag := range tags {
-			tagsBuf.WriteString(tag)
-		}
+		for k, v := range m.Query() {
+			t := fmt.Sprintf("%s=%s", k, v[0])
+			tagsBuf.WriteString(t)
+			tagsWritten++
 
-		if !ignoreAllButName {
-			tagsWritten += len(tags)
-		}
-
-		wb.WriteUint16(day)
-		wb.WriteString(mname)
-		wb.WriteBytes(name)
-		wb.WriteUVarint(uint64(tagsWritten))
-		wb.Write(tagsBuf.Bytes())
-		wb.WriteUint32(version)
-		if !ignoreAllButName {
-			for i := 0; i < len(tags); i++ {
-				wb.WriteUint16(day)
-				wb.WriteString(tags[i])
-				wb.WriteBytes(name)
-				wb.WriteUVarint(uint64(tagsWritten))
-				wb.Write(tagsBuf.Bytes())
-				wb.WriteUint32(version)
+			if !ignoreAllButName {
+				tag1 = append(tag1, t)
 			}
+		}
+
+		for i := 0; i < len(tag1); i++ {
+			wb.WriteUint16(reader.Days())
+			wb.WriteString(tag1[i])
+			wb.WriteBytes(name)
+			wb.WriteUVarint(uint64(tagsWritten))
+			wb.Write(tagsBuf.Bytes())
+			wb.WriteUint32(version)
 		}
 
 		_, err = out.Write(wb.Bytes())
