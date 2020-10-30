@@ -3,7 +3,7 @@
 cd `dirname $0`
 ROOT=$PWD
 
-docker run -ti --rm -v $ROOT:/root/go/src/github.com/lomik/carbon-clickhouse ubuntu:20.04 bash -c '
+docker run -ti -e "DEVEL=${DEVEL:-0}"  --rm -v $ROOT:/root/go/src/github.com/lomik/carbon-clickhouse ubuntu:20.04 bash -c '
     cd /root/
     export GO_VERSION=1.15.1
     export TZ=Europe/Moscow
