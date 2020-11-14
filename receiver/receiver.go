@@ -60,6 +60,16 @@ func DropPast(seconds uint32) Option {
 	}
 }
 
+// DropLongerThan creates option for New constructor
+func DropLongerThan(maximumLength uint16) Option {
+	return func(r interface{}) error {
+		if t, ok := r.(*Base); ok {
+			t.dropTooLongLimit = maximumLength
+		}
+		return nil
+	}
+}
+
 // ReadTimeout creates option for New contructor
 func ReadTimeout(seconds uint32) Option {
 	return func(r interface{}) error {

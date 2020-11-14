@@ -152,7 +152,7 @@ func (rcv *TelegrafHttpJson) Addr() net.Addr {
 }
 
 func (rcv *TelegrafHttpJson) Stat(send func(metric string, value float64)) {
-	rcv.SendStat(send, "samplesReceived", "errors", "futureDropped", "pastDropped")
+	rcv.SendStat(send, "samplesReceived", "errors", "futureDropped", "pastDropped", "tooLongDropped")
 }
 
 // Listen bind port. Receive messages and send to out channel
