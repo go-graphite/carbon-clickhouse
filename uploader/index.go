@@ -87,20 +87,6 @@ LineLoop:
 
 		newSeries[key] = true
 
-		// Direct path with date
-		wb.WriteUint16(reader.Days())
-		wb.WriteUint32(uint32(level))
-		wb.WriteBytes(name)
-		wb.WriteUint32(version)
-
-		reverseName := RowBinary.ReverseBytes(name)
-
-		// Reverse path with date
-		wb.WriteUint16(reader.Days())
-		wb.WriteUint32(uint32(level + ReverseLevelOffset))
-		wb.WriteBytes(reverseName)
-		wb.WriteUint32(version)
-
 		// Tree
 		wb.WriteUint16(treeDate)
 		wb.WriteUint32(uint32(level + TreeLevelOffset))
@@ -126,11 +112,36 @@ LineLoop:
 		}
 
 		// Reverse path without date
+		reverseName := RowBinary.ReverseBytes(name)
 		wb.WriteUint16(treeDate)
 		wb.WriteUint32(uint32(level + ReverseTreeLevelOffset))
 		wb.WriteBytes(reverseName)
 		wb.WriteUint32(version)
 
+		// Write data with treeDate
+		_, err = out.Write(wb.Bytes())
+		if err != nil {
+			return n, nil, err
+		}
+
+		// Skip daily index
+		if u.config.DisableDailyIndex {
+			continue LineLoop
+		}
+
+		// Direct path with date
+		wb.WriteUint16(reader.Days())
+		wb.WriteUint32(uint32(level))
+		wb.WriteBytes(name)
+		wb.WriteUint32(version)
+
+		// Reverse path with date
+		wb.WriteUint16(reader.Days())
+		wb.WriteUint32(uint32(level + ReverseLevelOffset))
+		wb.WriteBytes(reverseName)
+		wb.WriteUint32(version)
+
+		// Write data with daily index
 		_, err = out.Write(wb.Bytes())
 		if err != nil {
 			return n, nil, err

@@ -21,6 +21,7 @@ type Config struct {
 	CompressData         bool                `toml:"compress-data"`              //compress data while sending to clickhouse
 	IgnoredTaggedMetrics []string            `toml:"ignored-tagged-metrics"`     // for tagged table; create only `__name__` tag for these metrics and ignore others
 	Hash                 string              `toml:"hash"`                       // in index uploader store hash in memory instead of full metric
+	DisableDailyIndex    bool                `toml:"disable-daily-index"`        // do not calculate and upload daily index to ClickHouse
 	hashFunc             func(string) string `toml:"-"`
 }
 
