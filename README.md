@@ -129,6 +129,8 @@ cache-ttl = "12h0m0s"
 # Store hash of metric in memory instead of full metric name
 # Allowed values: "", "city64" (empty value - disabled)
 hash = ""
+# If daily index should be disabled, default is `false`
+disable-daily-index = false
 
 # # You can define additional upload destinations of any supported type:
 # # - points
