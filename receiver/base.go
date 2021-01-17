@@ -26,6 +26,7 @@ type Base struct {
 		incompleteReceived uint64 // atomic
 		futureDropped      uint64 // atomic
 		pastDropped        uint64 // atomic
+		tooLongDropped     uint64 // atomic
 	}
 	droppedList       [droppedListSize]string
 	droppedListNext   int
@@ -33,6 +34,7 @@ type Base struct {
 	parseThreads      int
 	dropFutureSeconds uint32
 	dropPastSeconds   uint32
+	dropTooLongLimit  uint16
 	readTimeoutSeconds uint32
 	writeChan         chan *RowBinary.WriteBuffer
 	logger            *zap.Logger
@@ -65,6 +67,14 @@ func (base *Base) isDrop(nowTime uint32, metricTime uint32) bool {
 	return false
 }
 
+func (base *Base) isDropMetricNameTooLong(name string) bool {
+	if base.dropTooLongLimit != 0 && len(name) > int(base.dropTooLongLimit) {
+		atomic.AddUint64(&base.stat.tooLongDropped, 1)
+		return true
+	}
+	return false
+}
+
 func (base *Base) DroppedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 
@@ -90,15 +100,16 @@ func (base *Base) saveDropped(name string, nowTime uint32, metricTime uint32, va
 }
 
 func (base *Base) isDropString(name string, nowTime uint32, metricTime uint32, value float64) bool {
-	if !base.isDrop(nowTime, metricTime) {
+	if !base.isDrop(nowTime, metricTime) && !base.isDropMetricNameTooLong(name) {
 		return false
 	}
+
 	base.saveDropped(name, nowTime, metricTime, value)
 	return true
 }
 
 func (base *Base) isDropBytes(name []byte, nowTime uint32, metricTime uint32, value float64) bool {
-	if !base.isDrop(nowTime, metricTime) {
+	if !base.isDrop(nowTime, metricTime) && !base.isDropMetricNameTooLong(string(name)) {
 		return false
 	}
 	base.saveDropped(string(name), nowTime, metricTime, value)
@@ -120,6 +131,8 @@ func (base *Base) SendStat(send func(metric string, value float64), fields ...st
 			sendUint64Counter(send, f, &base.stat.futureDropped)
 		case "pastDropped":
 			sendUint64Counter(send, f, &base.stat.pastDropped)
+		case "tooLongDropped":
+			sendUint64Counter(send, f, &base.stat.tooLongDropped)
 		case "errors":
 			sendUint64Counter(send, f, &base.stat.errors)
 		case "active":

@@ -169,18 +169,22 @@ enabled = true
 drop-future = "0s"
 # drop received point if timestamp < now - value. 0 - don't drop anything
 drop-past = "0s"
+# drop metrics with names longer than this value. 0 - don't drop anything
+drop-longer-than = 0
 
 [tcp]
 listen = ":2003"
 enabled = true
 drop-future = "0s"
 drop-past = "0s"
+drop-longer-than = 0
 
 [pickle]
 listen = ":2004"
 enabled = true
 drop-future = "0s"
 drop-past = "0s"
+drop-longer-than = 0
 
 # https://github.com/lomik/carbon-clickhouse/blob/master/grpc/carbon.proto
 [grpc]
@@ -188,22 +192,25 @@ listen = ":2005"
 enabled = false
 drop-future = "0s"
 drop-past = "0s"
+drop-longer-than = 0
 
 [prometheus]
 listen = ":2006"
 enabled = false
 drop-future = "0s"
 drop-past = "0s"
+drop-longer-than = 0
 
 [telegraf_http_json]
 listen = ":2007"
 enabled = false
 drop-future = "0s"
 drop-past = "0s"
+drop-longer-than = 0
 
 # Golang pprof + some extra locations
 #
-# Last 1000 points dropped by "drop-future" and "drop-past" rules:
+# Last 1000 points dropped by "drop-future", "drop-past" and "drop-longer-than" rules:
 # /debug/receive/tcp/dropped/
 # /debug/receive/udp/dropped/
 # /debug/receive/pickle/dropped/
