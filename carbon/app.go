@@ -272,7 +272,7 @@ func (app *App) Start() (err error) {
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Udp.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Udp.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Tcp.DropLongerThan),
+			receiver.DropLongerThan(conf.Udp.DropLongerThan),
 		)
 
 		if err != nil {
@@ -290,7 +290,7 @@ func (app *App) Start() (err error) {
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Pickle.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Pickle.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Tcp.DropLongerThan),
+			receiver.DropLongerThan(conf.Pickle.DropLongerThan),
 		)
 
 		if err != nil {
@@ -307,7 +307,7 @@ func (app *App) Start() (err error) {
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Grpc.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Grpc.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Tcp.DropLongerThan),
+			receiver.DropLongerThan(conf.Grpc.DropLongerThan),
 		)
 
 		if err != nil {
@@ -324,7 +324,7 @@ func (app *App) Start() (err error) {
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.Prometheus.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Prometheus.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Tcp.DropLongerThan),
+			receiver.DropLongerThan(conf.Prometheus.DropLongerThan),
 		)
 
 		if err != nil {
@@ -341,7 +341,7 @@ func (app *App) Start() (err error) {
 			receiver.WriteChan(app.writeChan),
 			receiver.DropFuture(uint32(conf.TelegrafHttpJson.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.TelegrafHttpJson.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Tcp.DropLongerThan),
+			receiver.DropLongerThan(conf.TelegrafHttpJson.DropLongerThan),
 		)
 
 		if err != nil {
