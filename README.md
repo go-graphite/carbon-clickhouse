@@ -91,7 +91,10 @@ level = "info"
 [data]
 # Folder for buffering received data
 path = "/data/carbon-clickhouse/"
-# Rotate (and upload) file interval.
+# Rotate (and upload) file iniciated on size and interval
+# Rotate (and upload) file size
+chunk-switch-size = 0
+# Rotate (and upload) file interval
 # Minimize chunk-interval for minimize lag between point receive and store
 chunk-interval = "1s"
 # Auto-increase chunk interval if the number of unprocessed files is grown

@@ -31,53 +31,53 @@ type clickhouseConfig struct {
 }
 
 type udpConfig struct {
-	Listen          string           `toml:"listen"`
-	Enabled         bool             `toml:"enabled"`
-	LogIncomplete   bool             `toml:"log-incomplete"`
-	DropFuture      *config.Duration `toml:"drop-future"`
-	DropPast        *config.Duration `toml:"drop-past"`
-	DropLongerThan  uint16           `toml:"drop-longer-than"`
+	Listen         string           `toml:"listen"`
+	Enabled        bool             `toml:"enabled"`
+	LogIncomplete  bool             `toml:"log-incomplete"`
+	DropFuture     *config.Duration `toml:"drop-future"`
+	DropPast       *config.Duration `toml:"drop-past"`
+	DropLongerThan uint16           `toml:"drop-longer-than"`
 }
 
 type tcpConfig struct {
-	Listen          string           `toml:"listen"`
-	Enabled         bool             `toml:"enabled"`
-	DropFuture      *config.Duration `toml:"drop-future"`
-	DropPast        *config.Duration `toml:"drop-past"`
-	DropLongerThan  uint16           `toml:"drop-longer-than"`
-	ReadTimeout     *config.Duration `toml:"read-timeout"`
+	Listen         string           `toml:"listen"`
+	Enabled        bool             `toml:"enabled"`
+	DropFuture     *config.Duration `toml:"drop-future"`
+	DropPast       *config.Duration `toml:"drop-past"`
+	DropLongerThan uint16           `toml:"drop-longer-than"`
+	ReadTimeout    *config.Duration `toml:"read-timeout"`
 }
 
 type pickleConfig struct {
-	Listen              string           `toml:"listen"`
-	Enabled             bool             `toml:"enabled"`
-	DropFuture          *config.Duration `toml:"drop-future"`
-	DropPast            *config.Duration `toml:"drop-past"`
-	DropLongerThan      uint16           `toml:"drop-longer-than"`
+	Listen         string           `toml:"listen"`
+	Enabled        bool             `toml:"enabled"`
+	DropFuture     *config.Duration `toml:"drop-future"`
+	DropPast       *config.Duration `toml:"drop-past"`
+	DropLongerThan uint16           `toml:"drop-longer-than"`
 }
 
 type grpcConfig struct {
-	Listen              string           `toml:"listen"`
-	Enabled             bool             `toml:"enabled"`
-	DropFuture          *config.Duration `toml:"drop-future"`
-	DropPast            *config.Duration `toml:"drop-past"`
-	DropLongerThan      uint16           `toml:"drop-longer-than"`
+	Listen         string           `toml:"listen"`
+	Enabled        bool             `toml:"enabled"`
+	DropFuture     *config.Duration `toml:"drop-future"`
+	DropPast       *config.Duration `toml:"drop-past"`
+	DropLongerThan uint16           `toml:"drop-longer-than"`
 }
 
 type promConfig struct {
-	Listen              string           `toml:"listen"`
-	Enabled             bool             `toml:"enabled"`
-	DropFuture          *config.Duration `toml:"drop-future"`
-	DropPast            *config.Duration `toml:"drop-past"`
-	DropLongerThan      uint16           `toml:"drop-longer-than"`
+	Listen         string           `toml:"listen"`
+	Enabled        bool             `toml:"enabled"`
+	DropFuture     *config.Duration `toml:"drop-future"`
+	DropPast       *config.Duration `toml:"drop-past"`
+	DropLongerThan uint16           `toml:"drop-longer-than"`
 }
 
 type telegrafHttpJsonConfig struct {
-	Listen          string           `toml:"listen"`
-	Enabled         bool             `toml:"enabled"`
-	DropFuture      *config.Duration `toml:"drop-future"`
-	DropPast        *config.Duration `toml:"drop-past"`
-	DropLongerThan  uint16           `toml:"drop-longer-than"`
+	Listen         string           `toml:"listen"`
+	Enabled        bool             `toml:"enabled"`
+	DropFuture     *config.Duration `toml:"drop-future"`
+	DropPast       *config.Duration `toml:"drop-past"`
+	DropLongerThan uint16           `toml:"drop-longer-than"`
 }
 
 type pprofConfig struct {
@@ -86,11 +86,12 @@ type pprofConfig struct {
 }
 
 type dataConfig struct {
-	Path         string                    `toml:"path"`
-	FileInterval *config.Duration          `toml:"chunk-interval"`
-	AutoInterval *config.ChunkAutoInterval `toml:"chunk-auto-interval"`
-	CompAlgo     *config.Compression       `toml:"compression"`
-	CompLevel    int                       `toml:"compression-level"`
+	Path            string                    `toml:"path"`
+	ChunkSwitchSize int64                     `toml:"chunk-switch-size"`
+	FileInterval    *config.Duration          `toml:"chunk-interval"`
+	AutoInterval    *config.ChunkAutoInterval `toml:"chunk-auto-interval"`
+	CompAlgo        *config.Compression       `toml:"compression"`
+	CompLevel       int                       `toml:"compression-level"`
 }
 
 // Config ...
@@ -140,41 +141,41 @@ func NewConfig() *Config {
 			DropLongerThan: 0,
 		},
 		Tcp: tcpConfig{
-			Listen:     ":2003",
-			Enabled:    true,
-			DropFuture: &config.Duration{},
-			DropPast:   &config.Duration{},
+			Listen:         ":2003",
+			Enabled:        true,
+			DropFuture:     &config.Duration{},
+			DropPast:       &config.Duration{},
 			DropLongerThan: 0,
 			ReadTimeout: &config.Duration{
 				Duration: 120 * time.Second,
 			},
 		},
 		Pickle: pickleConfig{
-			Listen:     ":2004",
-			Enabled:    true,
-			DropFuture: &config.Duration{},
-			DropPast:   &config.Duration{},
+			Listen:         ":2004",
+			Enabled:        true,
+			DropFuture:     &config.Duration{},
+			DropPast:       &config.Duration{},
 			DropLongerThan: 0,
 		},
 		Grpc: grpcConfig{
-			Listen:     ":2005",
-			Enabled:    false,
-			DropFuture: &config.Duration{},
-			DropPast:   &config.Duration{},
+			Listen:         ":2005",
+			Enabled:        false,
+			DropFuture:     &config.Duration{},
+			DropPast:       &config.Duration{},
 			DropLongerThan: 0,
 		},
 		Prometheus: promConfig{
-			Listen:     ":2006",
-			Enabled:    false,
-			DropFuture: &config.Duration{},
-			DropPast:   &config.Duration{},
+			Listen:         ":2006",
+			Enabled:        false,
+			DropFuture:     &config.Duration{},
+			DropPast:       &config.Duration{},
 			DropLongerThan: 0,
 		},
 		TelegrafHttpJson: telegrafHttpJsonConfig{
-			Listen:     ":2007",
-			Enabled:    false,
-			DropFuture: &config.Duration{},
-			DropPast:   &config.Duration{},
+			Listen:         ":2007",
+			Enabled:        false,
+			DropFuture:     &config.Duration{},
+			DropPast:       &config.Duration{},
 			DropLongerThan: 0,
 		},
 		Pprof: pprofConfig{

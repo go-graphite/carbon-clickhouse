@@ -36,6 +36,7 @@ type Writer struct {
 	}
 	inputChan    chan *RowBinary.WriteBuffer
 	path         string
+	switchSize   int64
 	autoInterval *config.ChunkAutoInterval
 	compAlgo     config.CompAlgo
 	compLevel    int
@@ -46,7 +47,7 @@ type Writer struct {
 	onFinish     func(string) error
 }
 
-func New(in chan *RowBinary.WriteBuffer, path string, autoInterval *config.ChunkAutoInterval, compAlgo config.CompAlgo, compLevel int, uploaders []string, onFinish func(string) error) *Writer {
+func New(in chan *RowBinary.WriteBuffer, path string, switchSize int64, autoInterval *config.ChunkAutoInterval, compAlgo config.CompAlgo, compLevel int, uploaders []string, onFinish func(string) error) *Writer {
 	finishCallback := func(fn string) error {
 		if err := Link(fn, uploaders); err != nil {
 			return err
@@ -62,6 +63,7 @@ func New(in chan *RowBinary.WriteBuffer, path string, autoInterval *config.Chunk
 	wr := &Writer{
 		inputChan:    in,
 		path:         path,
+		switchSize:   switchSize,
 		autoInterval: autoInterval,
 		compAlgo:     compAlgo,
 		compLevel:    compLevel,
@@ -119,7 +121,8 @@ func (w *Writer) worker(ctx context.Context) {
 	var outBuf *bufio.Writer
 	var fn string // current filename
 	var size int64
-	var start int64
+	var start time.Time
+	var chunkInterval time.Duration
 
 	cwrClose := func() {
 		if cwr != nil {
@@ -140,15 +143,32 @@ func (w *Writer) worker(ctx context.Context) {
 	}()
 
 	// close old file, open new
-	rotate := func() {
+	rotateCheck := func() {
 		if out != nil {
+			if w.switchSize == 0 || size < w.switchSize {
+				now := time.Now()
+				prevInterval := w.autoInterval.GetDefault()
+				u := int(atomic.LoadUint32(&w.stat.unhandled))
+				interval := w.autoInterval.GetInterval(u)
+				if interval != prevInterval {
+					w.logger.Info("chunk interval changed", zap.String("interval", interval.String()))
+					prevInterval = interval
+					atomic.StoreUint32(&w.stat.chunkInterval, uint32(interval.Seconds()))
+				}
+
+				chunkInterval = now.Sub(start)
+				if chunkInterval < interval {
+					return
+				}
+			} else {
+				chunkInterval = time.Now().Sub(start)
+			}
+
 			outBuf.Flush()
 			cwrClose()
 			out.Close()
 
-			end := time.Now().UnixNano()
-
-			w.logger.Info("chunk switched", zap.String("filename", fn), zap.Int64("size", size), zap.Float32("time", float32(end-start)/1000000000.0))
+			w.logger.Info("chunk switched", zap.String("filename", fn), zap.Int64("size", size), zap.Float64("time", float64(chunkInterval.Nanoseconds())/1000000000.0))
 
 			out = nil
 			cwr = nil
@@ -187,7 +207,7 @@ func (w *Writer) worker(ctx context.Context) {
 
 			out, err = os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 
-			start = time.Now().UnixNano()
+			start = time.Now()
 
 			if err != nil {
 				w.logger.Error("create failed", zap.String("filename", fn), zap.Error(err))
@@ -222,25 +242,16 @@ func (w *Writer) worker(ctx context.Context) {
 	}
 
 	// open first file
-	rotate()
+	rotateCheck()
 
 	tickerC := make(chan struct{}, 1)
 
 	go func() {
-		prevInterval := w.autoInterval.GetDefault()
 		for {
-			u := int(atomic.LoadUint32(&w.stat.unhandled))
-			interval := w.autoInterval.GetInterval(u)
-			if interval != prevInterval {
-				w.logger.Info("chunk interval changed", zap.String("interval", interval.String()))
-				prevInterval = interval
-			}
-			atomic.StoreUint32(&w.stat.chunkInterval, uint32(interval.Seconds()))
-
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(interval):
+			case <-time.After(100 * time.Millisecond):
 				select {
 				case tickerC <- struct{}{}:
 					// pass
@@ -276,7 +287,7 @@ func (w *Writer) worker(ctx context.Context) {
 		case b := <-w.inputChan:
 			write(b)
 		case <-tickerC:
-			rotate()
+			rotateCheck()
 		case <-ctx.Done():
 			return
 		default: // outBuf flush if nothing received
@@ -292,7 +303,7 @@ func (w *Writer) worker(ctx context.Context) {
 			case b := <-w.inputChan:
 				write(b)
 			case <-tickerC:
-				rotate()
+				rotateCheck()
 			case <-ctx.Done():
 				return
 			}
