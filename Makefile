@@ -12,7 +12,7 @@ DEVEL ?= 0
 ifeq ($(DEVEL), 0)
 VERSION:=$(shell sh -c 'grep "const Version" $(NAME).go  | cut -d\" -f2')
 else
-VERSION:=$(shell sh -c 'git describe --always --tags | sed -e "s/^v//i"')
+VERSION:=$(shell sh -c 'git describe --always --tags | sed -e "s/^v//"')
 endif
 
 all: $(NAME)

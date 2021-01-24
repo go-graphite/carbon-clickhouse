@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
+	"time"
 
 	"github.com/lomik/carbon-clickhouse/carbon"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -148,6 +150,13 @@ func main() {
 			case syscall.SIGHUP:
 				mainLogger.Info("SIGHUP received. Ignoring")
 			}
+		}
+	}()
+
+	go func() {
+		for {
+			debug.FreeOSMemory()
+			time.Sleep(30 * time.Minute)
 		}
 	}()
 

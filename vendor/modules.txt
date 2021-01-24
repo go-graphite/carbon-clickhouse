@@ -49,6 +49,9 @@ github.com/pmezard/go-difflib/difflib
 # github.com/stretchr/testify v1.3.0
 ## explicit
 github.com/stretchr/testify/assert
+# github.com/zentures/cityhash v0.0.0-20131128155616-cdd6a94144ab
+## explicit
+github.com/zentures/cityhash
 # go.uber.org/atomic v1.7.0
 go.uber.org/atomic
 # go.uber.org/multierr v1.6.0
