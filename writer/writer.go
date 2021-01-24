@@ -118,6 +118,8 @@ func (w *Writer) worker(ctx context.Context) {
 	var cwr compWriter
 	var outBuf *bufio.Writer
 	var fn string // current filename
+	var size int64
+	var start int64
 
 	cwrClose := func() {
 		if cwr != nil {
@@ -132,6 +134,8 @@ func (w *Writer) worker(ctx context.Context) {
 			outBuf.Flush()
 			cwrClose()
 			out.Close()
+
+			w.logger.Info("chunk switched", zap.String("filename", fn), zap.Int64("size", size))
 		}
 	}()
 
@@ -142,9 +146,14 @@ func (w *Writer) worker(ctx context.Context) {
 			cwrClose()
 			out.Close()
 
+			end := time.Now().UnixNano()
+
+			w.logger.Info("chunk switched", zap.String("filename", fn), zap.Int64("size", size), zap.Float32("time", float32(end-start)/1000000000.0))
+
 			out = nil
 			cwr = nil
 			outBuf = nil
+			size = 0
 		}
 
 		var err error
@@ -177,6 +186,8 @@ func (w *Writer) worker(ctx context.Context) {
 			w.Unlock()
 
 			out, err = os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+
+			start = time.Now().UnixNano()
 
 			if err != nil {
 				w.logger.Error("create failed", zap.String("filename", fn), zap.Error(err))
@@ -255,6 +266,7 @@ func (w *Writer) worker(ctx context.Context) {
 			}
 		}
 		// @TODO: log error?
+		size += int64(b.Used)
 		atomic.AddUint32(&w.stat.writtenBytes, uint32(b.Used))
 		b.Release()
 	}
