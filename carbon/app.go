@@ -207,7 +207,7 @@ func (app *App) Start() (err error) {
 	app.Writer = writer.New(
 		app.writeChan,
 		conf.Data.Path,
-		conf.Data.ChunkSwitchSize,
+		conf.Data.ChunkMaxSize.Value(),
 		conf.Data.AutoInterval,
 		conf.Data.CompAlgo.CompAlgo,
 		conf.Data.CompLevel,

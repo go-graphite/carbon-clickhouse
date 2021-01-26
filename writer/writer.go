@@ -36,7 +36,7 @@ type Writer struct {
 	}
 	inputChan    chan *RowBinary.WriteBuffer
 	path         string
-	switchSize   int64
+	maxSize      int64
 	autoInterval *config.ChunkAutoInterval
 	compAlgo     config.CompAlgo
 	compLevel    int
@@ -63,7 +63,7 @@ func New(in chan *RowBinary.WriteBuffer, path string, switchSize int64, autoInte
 	wr := &Writer{
 		inputChan:    in,
 		path:         path,
-		switchSize:   switchSize,
+		maxSize:      switchSize,
 		autoInterval: autoInterval,
 		compAlgo:     compAlgo,
 		compLevel:    compLevel,
@@ -145,7 +145,7 @@ func (w *Writer) worker(ctx context.Context) {
 	// close old file, open new
 	rotateCheck := func() {
 		if out != nil {
-			if w.switchSize == 0 || size < w.switchSize {
+			if w.maxSize == 0 || size < w.maxSize {
 				now := time.Now()
 				prevInterval := w.autoInterval.GetDefault()
 				u := int(atomic.LoadUint32(&w.stat.unhandled))

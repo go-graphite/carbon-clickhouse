@@ -86,12 +86,12 @@ type pprofConfig struct {
 }
 
 type dataConfig struct {
-	Path            string                    `toml:"path"`
-	ChunkSwitchSize int64                     `toml:"chunk-switch-size"`
-	FileInterval    *config.Duration          `toml:"chunk-interval"`
-	AutoInterval    *config.ChunkAutoInterval `toml:"chunk-auto-interval"`
-	CompAlgo        *config.Compression       `toml:"compression"`
-	CompLevel       int                       `toml:"compression-level"`
+	Path         string                    `toml:"path"`
+	ChunkMaxSize config.Size               `toml:"chunk-max-size"`
+	FileInterval *config.Duration          `toml:"chunk-interval"`
+	AutoInterval *config.ChunkAutoInterval `toml:"chunk-auto-interval"`
+	CompAlgo     *config.Compression       `toml:"compression"`
+	CompLevel    int                       `toml:"compression-level"`
 }
 
 // Config ...
@@ -247,7 +247,7 @@ func PrintDefaultConfig() error {
 
 // ReadConfig ...
 func ReadConfig(filename string) (*Config, error) {
-	// var err error
+	var err error
 
 	cfg := NewConfig()
 	if filename != "" {
@@ -274,7 +274,7 @@ func ReadConfig(filename string) (*Config, error) {
 		cfg.Logging = append(cfg.Logging, NewLoggingConfig())
 	}
 
-	if err := zapwriter.CheckConfig(cfg.Logging, nil); err != nil {
+	if err = zapwriter.CheckConfig(cfg.Logging, nil); err != nil {
 		return nil, err
 	}
 
