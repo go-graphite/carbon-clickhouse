@@ -39,6 +39,7 @@ type Base struct {
 	writeChan         chan *RowBinary.WriteBuffer
 	logger            *zap.Logger
 	Tags              tags.TagConfig
+	concatCharacter   string
 }
 
 func NewBase(logger *zap.Logger, config tags.TagConfig) Base {

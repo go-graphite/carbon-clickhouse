@@ -70,11 +70,21 @@ func DropLongerThan(maximumLength uint16) Option {
 	}
 }
 
-// ReadTimeout creates option for New contructor
+// ReadTimeout creates option for New constructor
 func ReadTimeout(seconds uint32) Option {
 	return func(r interface{}) error {
 		if t, ok := r.(*Base); ok {
 			t.readTimeoutSeconds = seconds
+		}
+		return nil
+	}
+}
+
+// ConcatChar creates option for New constructor
+func ConcatChar(concat string) Option {
+	return func(r interface{}) error {
+		if t, ok := r.(*Base); ok {
+			t.concatCharacter = concat
 		}
 		return nil
 	}

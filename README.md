@@ -213,6 +213,8 @@ enabled = false
 drop-future = "0s"
 drop-past = "0s"
 drop-longer-than = 0
+# the character to join telegraf metric and field (default is "_" for historical reason and Prometheus compatibility)
+concat = "."
 
 # Golang pprof + some extra locations
 #

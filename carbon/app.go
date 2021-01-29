@@ -343,6 +343,7 @@ func (app *App) Start() (err error) {
 			receiver.DropFuture(uint32(conf.TelegrafHttpJson.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.TelegrafHttpJson.DropPast.Value().Seconds())),
 			receiver.DropLongerThan(conf.TelegrafHttpJson.DropLongerThan),
+			receiver.ConcatChar(conf.TelegrafHttpJson.Concat),
 		)
 
 		if err != nil {
