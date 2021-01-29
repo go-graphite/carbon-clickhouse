@@ -78,6 +78,7 @@ type telegrafHttpJsonConfig struct {
 	DropFuture     *config.Duration `toml:"drop-future"`
 	DropPast       *config.Duration `toml:"drop-past"`
 	DropLongerThan uint16           `toml:"drop-longer-than"`
+	Concat         string           `toml:"concat"`
 }
 
 type pprofConfig struct {
@@ -177,6 +178,7 @@ func NewConfig() *Config {
 			DropFuture:     &config.Duration{},
 			DropPast:       &config.Duration{},
 			DropLongerThan: 0,
+			Concat:         "_",
 		},
 		Pprof: pprofConfig{
 			Listen:  "localhost:7007",

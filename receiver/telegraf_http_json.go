@@ -118,7 +118,7 @@ metricsLoop:
 			}
 
 			if f != "value" {
-				pathBuf.WriteByte('_')
+				pathBuf.WriteString(rcv.concatCharacter)
 				pathBuf.WriteString(escape.Path(f))
 			}
 
