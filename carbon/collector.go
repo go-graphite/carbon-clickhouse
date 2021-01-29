@@ -21,12 +21,14 @@ type statModule interface {
 	Stat(send func(metric string, value float64))
 }
 
+// Point represents the graphite metric point
 type Point struct {
 	Metric    string
 	Value     float64
 	Timestamp uint32
 }
 
+// Collector sends metrics to carbon endpoint
 type Collector struct {
 	stop.Struct
 	graphPrefix    string
@@ -38,6 +40,7 @@ type Collector struct {
 	writeChan      chan *RowBinary.WriteBuffer
 }
 
+// NewCollector ...
 func NewCollector(app *App) *Collector {
 	// app locked by caller
 
@@ -177,8 +180,6 @@ func (c *Collector) readData(ctx context.Context) []*Point {
 			}
 		}
 	}
-
-	return result
 }
 
 func (c *Collector) local(ctx context.Context) {
