@@ -5,6 +5,8 @@
 // Package url parses URLs and implements query escaping.
 package escape
 
+import "github.com/msaf1980/stringutils"
+
 // See RFC 3986. This package generally follows RFC 3986, except where
 // it deviates for compatibility reasons. When sending changes, first
 // search old issues for history on decisions. Unit tests should also
@@ -158,4 +160,29 @@ func escape(s string, mode encoding) string {
 		}
 	}
 	return string(t)
+}
+
+func escapeTo(s string, mode encoding, sb *stringutils.Builder) {
+	pos := 0
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if shouldEscape(c, mode) {
+			sb.WriteString(s[pos:i])
+			if c == ' ' && mode == encodeQueryComponent {
+				sb.WriteByte('+')
+			} else {
+				sb.WriteByte('%')
+				sb.WriteByte("0123456789ABCDEF"[c>>4])
+				sb.WriteByte("0123456789ABCDEF"[c&15])
+			}
+			pos = i + 1
+		}
+	}
+
+	if pos == 0 {
+		sb.WriteString(s)
+		return
+	} else if pos < len(s)-1 {
+		sb.WriteString(s[pos:])
+	}
 }

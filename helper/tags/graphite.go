@@ -1,14 +1,13 @@
 package tags
 
 import (
-	"bytes"
 	"fmt"
-	"net/url"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/lomik/carbon-clickhouse/helper/escape"
+	"github.com/msaf1980/stringutils"
 )
 
 type byKey []string
@@ -72,12 +71,13 @@ func Graphite(config TagConfig, s string) (string, error) {
 		}
 	}
 
-	var res bytes.Buffer
+	var res stringutils.Builder
+	res.Grow(len(s) + 10)
 
 	arr = arr[:len(arr)-toDel]
 
 	if len(arr) > 0 {
-		res.WriteString(escape.Path(arr[0]))
+		escape.PathTo(arr[0], &res)
 		res.WriteByte('?')
 	}
 
@@ -86,9 +86,9 @@ func Graphite(config TagConfig, s string) (string, error) {
 			res.WriteByte('&')
 		}
 		p := strings.Index(arr[i], "=")
-		res.WriteString(url.QueryEscape(arr[i][:p]))
+		escape.QueryTo(arr[i][:p], &res)
 		res.WriteByte('=')
-		res.WriteString(url.QueryEscape(arr[i][p+1:]))
+		escape.QueryTo(arr[i][p+1:], &res)
 	}
 
 	return res.String(), nil
