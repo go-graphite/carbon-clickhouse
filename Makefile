@@ -12,23 +12,23 @@ DEVEL ?= 0
 ifeq ($(DEVEL), 0)
 VERSION:=$(shell sh -c 'grep "const Version" $(NAME).go  | cut -d\" -f2')
 else
-VERSION:=$(shell sh -c 'git describe --always --tags | sed -e "s/^v//"')
+VERSION:=$(shell sh -c 'git describe --always --tags | sed -e "s/^v//i"')
 endif
 
 all: $(NAME)
 
 .PHONY: clean
 clean:
+	rm -f $(NAME)
 	rm -rf out
 	rm -f *deb *rpm
 	rm -f sha256sum md5sum
 
-.PHONY: $(NAME)
-$(NAME):
+$(NAME): $(wildcard **/*.go)
 	$(GO) build $(MODULE)
 
 test:
-	$(GO) test ./...
+	$(GO) test -race ./...
 
 gox-build:
 	rm -rf out
