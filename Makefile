@@ -12,23 +12,23 @@ DEVEL ?= 0
 ifeq ($(DEVEL), 0)
 VERSION:=$(shell sh -c 'grep "const Version" $(NAME).go  | cut -d\" -f2')
 else
-VERSION:=$(shell sh -c 'git describe --always --tags | sed -e "s/^v//"')
+VERSION:=$(shell sh -c 'git describe --always --tags | sed -e "s/^v//i"')
 endif
 
 all: $(NAME)
 
 .PHONY: clean
 clean:
+	rm -f $(NAME)
 	rm -rf out
 	rm -f *deb *rpm
 	rm -f sha256sum md5sum
 
-.PHONY: $(NAME)
-$(NAME):
+$(NAME): $(wildcard **/*.go)
 	$(GO) build $(MODULE)
 
 test:
-	$(GO) test ./...
+	$(GO) test -race ./...
 
 gox-build:
 	rm -rf out
@@ -76,16 +76,28 @@ fpm-build-rpm:
 		deploy/root/=/ \
 		out/root/=/
 
+.ONESHELL:
+RPM_VERSION:=$(subst -,_,$(VERSION))
+packagecloud-push-rpm: $(wildcard $(NAME)-$(RPM_VERSION)-1.*.rpm)
+	for pkg in $^; do
+		package_cloud push $(REPO)/el/7 $${pkg} || true
+		package_cloud push $(REPO)/el/8 $${pkg} || true
+	done
+
+.ONESHELL:
+packagecloud-push-deb: $(wildcard $(NAME)_$(VERSION)_*.deb)
+	for pkg in $^; do
+		package_cloud push $(REPO)/ubuntu/xenial   $${pkg} || true
+		package_cloud push $(REPO)/ubuntu/bionic   $${pkg} || true
+		package_cloud push $(REPO)/ubuntu/focal    $${pkg} || true
+		package_cloud push $(REPO)/debian/stretch  $${pkg} || true
+		package_cloud push $(REPO)/debian/buster   $${pkg} || true
+		package_cloud push $(REPO)/debian/bullseye $${pkg} || true
+	done
+
 packagecloud-push:
-	package_cloud push $(REPO)/el/8 $(NAME)-$(VERSION)-1.x86_64.rpm || true
-	package_cloud push $(REPO)/el/7 $(NAME)-$(VERSION)-1.x86_64.rpm || true
-	package_cloud push $(REPO)/ubuntu/xenial $(NAME)_$(VERSION)_amd64.deb || true
-	package_cloud push $(REPO)/ubuntu/bionic $(NAME)_$(VERSION)_amd64.deb || true
-	package_cloud push $(REPO)/ubuntu/disco $(NAME)_$(VERSION)_amd64.deb || true
-	package_cloud push $(REPO)/ubuntu/eoan $(NAME)_$(VERSION)_amd64.deb || true
-	package_cloud push $(REPO)/debian/buster $(NAME)_$(VERSION)_amd64.deb || true
-	package_cloud push $(REPO)/debian/stretch $(NAME)_$(VERSION)_amd64.deb || true
-	package_cloud push $(REPO)/debian/jessie $(NAME)_$(VERSION)_amd64.deb || true
+	@$(MAKE) packagecloud-push-rpm
+	@$(MAKE) packagecloud-push-deb
 
 packagecloud-autobuilds:
 	$(MAKE) packagecloud-push REPO=go-graphite/autobuilds
