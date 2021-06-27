@@ -27,6 +27,8 @@ type PrometheusRemoteWrite struct {
 }
 
 func (rcv *PrometheusRemoteWrite) unpackFast(ctx context.Context, bufBody []byte) error {
+	// The writer is created first to have the writer.now written at execution time
+	writer := RowBinary.NewWriter(ctx, rcv.writeChan)
 
 	b := bufBody
 	var err error
@@ -40,8 +42,6 @@ func (rcv *PrometheusRemoteWrite) unpackFast(ctx context.Context, bufBody []byte
 
 	var value float64
 	var timestamp int64
-
-	writer := RowBinary.NewWriter(ctx, rcv.writeChan)
 
 TimeSeriesLoop:
 	for len(b) > 0 {
@@ -124,12 +124,13 @@ TimeSeriesLoop:
 }
 
 func (rcv *PrometheusRemoteWrite) unpackDefault(ctx context.Context, bufBody []byte) error {
+	// The writer is created first to have the writer.now written at execution time, not after unmarshalling
+	writer := RowBinary.NewWriter(ctx, rcv.writeChan)
 	var req prompb.WriteRequest
+
 	if err := proto.Unmarshal(bufBody, &req); err != nil {
 		return err
 	}
-
-	writer := RowBinary.NewWriter(ctx, rcv.writeChan)
 
 	series := req.GetTimeseries()
 	for i := 0; i < len(series); i++ {
