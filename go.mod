@@ -15,7 +15,7 @@ require (
 	github.com/msaf1980/stringutils v0.0.2-0.20201020141843-69ada32f5dc0
 	github.com/pierrec/lz4 v2.5.2+incompatible
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.7.0
 	github.com/zentures/cityhash v0.0.0-20131128155616-cdd6a94144ab
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.7.1
