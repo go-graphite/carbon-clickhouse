@@ -36,13 +36,30 @@ func TestProm1UnpackFast(t *testing.T) {
 	reqBuf, err := snappy.Decode(nil, compressed)
 	assert.NoError(err)
 
+	type errorChan struct {
+		err     error
+		message string
+	}
+	errChan := make(chan errorChan)
+
+	// Make both fast and slow unpacks simultaneously to have the same RowBinary.Writer.now
+	// Otherwise it's highly probable to have different `now` and WriterBuffer.Body accordingly
 	fast := &PrometheusRemoteWrite{}
 	fast.writeChan = make(chan *RowBinary.WriteBuffer, 1024)
-	assert.NoError(fast.unpackFast(context.Background(), reqBuf))
+	go func() {
+		errChan <- errorChan{fast.unpackFast(context.Background(), reqBuf), "fast unpack"}
+	}()
 
 	slow := &PrometheusRemoteWrite{}
 	slow.writeChan = make(chan *RowBinary.WriteBuffer, 1024)
-	assert.NoError(slow.unpackDefault(context.Background(), reqBuf))
+	go func() {
+		errChan <- errorChan{slow.unpackDefault(context.Background(), reqBuf), "slow unpack"}
+	}()
+
+	for i := 0; i < 2; i++ {
+		err := <-errChan
+		assert.NoError(err.err, err.message)
+	}
 
 	var wbf, wbs *RowBinary.WriteBuffer
 chanLoop:
