@@ -28,18 +28,18 @@ type Base struct {
 		pastDropped        uint64 // atomic
 		tooLongDropped     uint64 // atomic
 	}
-	droppedList       [droppedListSize]string
-	droppedListNext   int
-	droppedListMu     sync.Mutex
-	parseThreads      int
-	dropFutureSeconds uint32
-	dropPastSeconds   uint32
-	dropTooLongLimit  uint16
+	droppedList        [droppedListSize]string
+	droppedListNext    int
+	droppedListMu      sync.Mutex
+	parseThreads       int
+	dropFutureSeconds  uint32
+	dropPastSeconds    uint32
+	dropTooLongLimit   uint16
 	readTimeoutSeconds uint32
-	writeChan         chan *RowBinary.WriteBuffer
-	logger            *zap.Logger
-	Tags              tags.TagConfig
-	concatCharacter   string
+	writeChan          chan *RowBinary.WriteBuffer
+	logger             *zap.Logger
+	Tags               tags.TagConfig
+	concatCharacter    string
 }
 
 func NewBase(logger *zap.Logger, config tags.TagConfig) Base {
@@ -54,6 +54,12 @@ func sendUint64Counter(send func(metric string, value float64), metric string, v
 
 func sendInt64Gauge(send func(metric string, value float64), metric string, value *int64) {
 	send(metric, float64(atomic.LoadInt64(value)))
+}
+
+func (base *Base) applyOptions(opts ...Option) {
+	for _, applyOption := range opts {
+		applyOption(base)
+	}
 }
 
 func (base *Base) isDrop(nowTime uint32, metricTime uint32) bool {
