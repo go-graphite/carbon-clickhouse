@@ -246,16 +246,16 @@ func (app *App) Start() (err error) {
 	/* UPLOADER end */
 
 	/* RECEIVER start */
-	if conf.Tcp.Enabled {
+	if conf.TCP.Enabled {
 		app.TCP, err = receiver.New(
-			"tcp://"+conf.Tcp.Listen,
+			"tcp://"+conf.TCP.Listen,
 			app.Config.TagDesc,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
-			receiver.DropFuture(uint32(conf.Tcp.DropFuture.Value().Seconds())),
-			receiver.DropPast(uint32(conf.Tcp.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Tcp.DropLongerThan),
-			receiver.ReadTimeout(uint32(conf.Tcp.ReadTimeout.Value().Seconds())),
+			receiver.DropFuture(uint32(conf.TCP.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.TCP.DropPast.Value().Seconds())),
+			receiver.DropLongerThan(conf.TCP.DropLongerThan),
+			receiver.ReadTimeout(uint32(conf.TCP.ReadTimeout.Value().Seconds())),
 		)
 
 		if err != nil {
@@ -265,15 +265,15 @@ func (app *App) Start() (err error) {
 		http.HandleFunc("/debug/receive/tcp/dropped/", app.TCP.DroppedHandler)
 	}
 
-	if conf.Udp.Enabled {
+	if conf.UDP.Enabled {
 		app.UDP, err = receiver.New(
-			"udp://"+conf.Udp.Listen,
+			"udp://"+conf.UDP.Listen,
 			app.Config.TagDesc,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
-			receiver.DropFuture(uint32(conf.Udp.DropFuture.Value().Seconds())),
-			receiver.DropPast(uint32(conf.Udp.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Udp.DropLongerThan),
+			receiver.DropFuture(uint32(conf.UDP.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.UDP.DropPast.Value().Seconds())),
+			receiver.DropLongerThan(conf.UDP.DropLongerThan),
 		)
 
 		if err != nil {
@@ -335,15 +335,15 @@ func (app *App) Start() (err error) {
 		http.HandleFunc("/debug/receive/prometheus/dropped/", app.Prometheus.DroppedHandler)
 	}
 
-	if conf.TelegrafHttpJson.Enabled {
+	if conf.TelegrafHTTPJSON.Enabled {
 		app.TelegrafHttpJson, err = receiver.New(
-			"telegraf+http+json://"+conf.TelegrafHttpJson.Listen,
+			"telegraf+http+json://"+conf.TelegrafHTTPJSON.Listen,
 			app.Config.TagDesc,
 			receiver.WriteChan(app.writeChan),
-			receiver.DropFuture(uint32(conf.TelegrafHttpJson.DropFuture.Value().Seconds())),
-			receiver.DropPast(uint32(conf.TelegrafHttpJson.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.TelegrafHttpJson.DropLongerThan),
-			receiver.ConcatChar(conf.TelegrafHttpJson.Concat),
+			receiver.DropFuture(uint32(conf.TelegrafHTTPJSON.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.TelegrafHTTPJSON.DropPast.Value().Seconds())),
+			receiver.DropLongerThan(conf.TelegrafHTTPJSON.DropLongerThan),
+			receiver.ConcatChar(conf.TelegrafHTTPJSON.Concat),
 		)
 
 		if err != nil {
