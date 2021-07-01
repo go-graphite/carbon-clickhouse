@@ -125,7 +125,7 @@ func NewConfig() *Config {
 		},
 		Logging: nil,
 		Data: dataConfig{
-			Path: "/data/carbon-clickhouse/",
+			Path: "/var/lib/carbon-clickhouse/",
 			FileInterval: &config.Duration{
 				Duration: time.Second,
 			},
