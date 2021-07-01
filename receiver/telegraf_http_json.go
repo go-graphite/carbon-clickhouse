@@ -17,18 +17,18 @@ import (
 	"go.uber.org/zap"
 )
 
-type TelegrafHttpMetric struct {
+type TelegrafHTTPMetric struct {
 	Name      string                 `json:"name"`
 	Timestamp int64                  `json:"timestamp"`
 	Fields    map[string]interface{} `json:"fields"`
 	Tags      map[string]string      `json:"tags"`
 }
 
-type TelegrafHttpPayload struct {
-	Metrics []TelegrafHttpMetric `json:"metrics"`
+type TelegrafHTTPPayload struct {
+	Metrics []TelegrafHTTPMetric `json:"metrics"`
 }
 
-type TelegrafHttpJson struct {
+type TelegrafHTTPJSON struct {
 	Base
 	listener *net.TCPListener
 }
@@ -73,14 +73,14 @@ func TelegrafEncodeTags(tags map[string]string) string {
 	return res.String()
 }
 
-func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (rcv *TelegrafHTTPJSON) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var data TelegrafHttpPayload
+	var data TelegrafHTTPPayload
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -144,19 +144,19 @@ metricsLoop:
 }
 
 // Addr returns binded socket address. For bind port 0 in tests
-func (rcv *TelegrafHttpJson) Addr() net.Addr {
+func (rcv *TelegrafHTTPJSON) Addr() net.Addr {
 	if rcv.listener == nil {
 		return nil
 	}
 	return rcv.listener.Addr()
 }
 
-func (rcv *TelegrafHttpJson) Stat(send func(metric string, value float64)) {
+func (rcv *TelegrafHTTPJSON) Stat(send func(metric string, value float64)) {
 	rcv.SendStat(send, "samplesReceived", "errors", "futureDropped", "pastDropped", "tooLongDropped")
 }
 
 // Listen bind port. Receive messages and send to out channel
-func (rcv *TelegrafHttpJson) Listen(addr *net.TCPAddr) error {
+func (rcv *TelegrafHTTPJSON) Listen(addr *net.TCPAddr) error {
 	return rcv.StartFunc(func() error {
 
 		tcpListener, err := net.ListenTCP("tcp", addr)

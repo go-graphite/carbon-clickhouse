@@ -198,7 +198,7 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 			return nil, err
 		}
 
-		r := &TelegrafHttpJson{
+		r := &TelegrafHTTPJSON{
 			Base: NewBase(logger, config),
 		}
 		r.applyOptions(opts...)

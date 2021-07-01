@@ -29,7 +29,7 @@ type App struct {
 	Pickle           receiver.Receiver
 	Grpc             receiver.Receiver
 	Prometheus       receiver.Receiver
-	TelegrafHttpJson receiver.Receiver
+	TelegrafHTTPJSON receiver.Receiver
 	Collector        *Collector // (!!!) Should be re-created on every change config/modules
 	writeChan        chan *RowBinary.WriteBuffer
 	exit             chan bool
@@ -129,9 +129,9 @@ func (app *App) stopListeners() {
 		logger.Debug("finished", zap.String("module", "prometheus"))
 	}
 
-	if app.TelegrafHttpJson != nil {
-		app.TelegrafHttpJson.Stop()
-		app.TelegrafHttpJson = nil
+	if app.TelegrafHTTPJSON != nil {
+		app.TelegrafHTTPJSON.Stop()
+		app.TelegrafHTTPJSON = nil
 		logger.Debug("finished", zap.String("module", "telegraf_http_json"))
 	}
 }
@@ -336,7 +336,7 @@ func (app *App) Start() (err error) {
 	}
 
 	if conf.TelegrafHTTPJSON.Enabled {
-		app.TelegrafHttpJson, err = receiver.New(
+		app.TelegrafHTTPJSON, err = receiver.New(
 			"telegraf+http+json://"+conf.TelegrafHTTPJSON.Listen,
 			app.Config.TagDesc,
 			receiver.WriteChan(app.writeChan),
@@ -350,7 +350,7 @@ func (app *App) Start() (err error) {
 			return
 		}
 
-		http.HandleFunc("/debug/receive/telegraf_http_json/dropped/", app.TelegrafHttpJson.DroppedHandler)
+		http.HandleFunc("/debug/receive/telegraf_http_json/dropped/", app.TelegrafHTTPJSON.DroppedHandler)
 	}
 	/* RECEIVER end */
 
