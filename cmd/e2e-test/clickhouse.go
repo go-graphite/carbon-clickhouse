@@ -81,6 +81,10 @@ func (c *Clickhouse) Delete() (error, string) {
 	cmd := exec.Command(c.Docker, chDel...)
 	out, err := cmd.CombinedOutput()
 
+	if err == nil {
+		c.container = ""
+	}
+
 	return err, string(out)
 }
 

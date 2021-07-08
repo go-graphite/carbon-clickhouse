@@ -38,6 +38,7 @@ func (c *CarbonClickhouse) Start(clickhouseAddr string) error {
 	if err != nil {
 		return err
 	}
+
 	c.address, err = getFreeTCPPort("")
 	if err != nil {
 		c.Cleanup()
@@ -79,7 +80,6 @@ func (c *CarbonClickhouse) Start(clickhouseAddr string) error {
 	err = c.cmd.Start()
 	if err != nil {
 		c.Cleanup()
-		c.cmd = nil
 		return err
 	}
 
