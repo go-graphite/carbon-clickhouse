@@ -5,11 +5,7 @@
         <function>avg</function>
         <retention>
             <age>0</age>
-            <precision>60</precision>
-        </retention>
-        <retention>
-            <age>86400</age>
-            <precision>600</precision>
+            <precision>1</precision>
         </retention>
     </default>
     <pattern>
@@ -17,11 +13,7 @@
         <function>sum</function>
         <retention>
             <age>0</age>
-            <precision>60</precision>
-        </retention>
-        <retention>
-            <age>86400</age>
-            <precision>600</precision>
+            <precision>1</precision>
         </retention>
     </pattern>
     <pattern>
@@ -29,11 +21,7 @@
         <function>min</function>
         <retention>
             <age>0</age>
-            <precision>60</precision>
-        </retention>
-        <retention>
-            <age>86400</age>
-            <precision>600</precision>
+            <precision>1</precision>
         </retention>
     </pattern>
     <pattern>
@@ -41,11 +29,7 @@
         <function>max</function>
         <retention>
             <age>0</age>
-            <precision>60</precision>
-        </retention>
-        <retention>
-            <age>86400</age>
-            <precision>600</precision>
+            <precision>1</precision>
         </retention>
     </pattern>
 </graphite_rollup>

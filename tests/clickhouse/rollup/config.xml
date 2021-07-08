@@ -46,19 +46,6 @@
     <!-- Default database. -->
     <default_database>default</default_database>
 
-    <graphite>
-        <host>graphite-test.dev.kontur.ru</host>
-        <port>2003</port>
-        <timeout>30</timeout>
-        <interval>60</interval>
-        <root_path>DevOps.test.clickhouse</root_path>
-
-        <metrics>true</metrics>
-        <events>true</events>
-        <asynchronous_metrics>true</asynchronous_metrics>
-    </graphite>
-
-
     <!-- Query log. Used only for queries with setting log_queries = 1. -->
     <query_log>
         <!-- What table to insert data. If table is not exist, it will be created.
