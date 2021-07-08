@@ -7,11 +7,8 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
 	"syscall"
 	"text/template"
-
-	"github.com/phayes/freeport"
 )
 
 type CarbonClickhouse struct {
@@ -37,17 +34,15 @@ func (c *CarbonClickhouse) Start(clickhouseAddr string) error {
 	}
 
 	var err error
-
 	c.storeDir, err = ioutil.TempDir("", "carbon-clickhouse")
 	if err != nil {
 		return err
 	}
-	port, err := freeport.GetFreePort()
+	c.address, err = getFreeTCPPort("")
 	if err != nil {
 		c.Cleanup()
 		return err
 	}
-	c.address = "127.0.0.1:" + strconv.Itoa(port)
 
 	name := filepath.Base(c.ConfigTpl)
 	tmpl, err := template.New(name).ParseFiles(c.ConfigTpl)

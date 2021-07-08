@@ -3,9 +3,6 @@ package main
 import (
 	"fmt"
 	"os/exec"
-	"strconv"
-
-	"github.com/phayes/freeport"
 )
 
 type Clickhouse struct {
@@ -32,12 +29,12 @@ func (c *Clickhouse) Start() (error, string) {
 	if len(c.DockerImage) == 0 {
 		c.DockerImage = "yandex/clickhouse-server"
 	}
-	port, err := freeport.GetFreePort()
+	var err error
+	c.address, err = getFreeTCPPort("")
 	if err != nil {
 		return err, ""
 	}
 
-	c.address = "127.0.0.1:" + strconv.Itoa(port)
 	c.container = "carbon-clickhouse-clickhouse-server-test"
 
 	chStart := []string{"run", "-d",
