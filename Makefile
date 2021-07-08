@@ -27,7 +27,7 @@ clean:
 $(NAME): $(wildcard **/*.go *.go)
 	$(GO) build $(MODULE)
 
-e2e:
+e2e: $(NAME)
 	$(GO) build $(MODULE)/cmd/e2e-test
 
 test:
