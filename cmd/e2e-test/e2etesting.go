@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -13,9 +14,47 @@ import (
 	"go.uber.org/zap"
 )
 
+type InputType int
+
+const (
+	InputPlainTCP InputType = iota
+)
+
+var inputStrings []string = []string{"tcp_plain"}
+
+func (a *InputType) String() string {
+	return inputStrings[*a]
+}
+
+func (a *InputType) Set(value string) error {
+	switch value {
+	case "plain_tcp":
+		*a = InputPlainTCP
+	default:
+		return fmt.Errorf("invalid input type %s", value)
+	}
+	return nil
+}
+
+func (a *InputType) UnmarshalText(text []byte) error {
+	return a.Set(string(text))
+}
+
 type Verify struct {
 	Query  string   `yaml:"query"`
 	Output []string `yaml:"output"`
+}
+
+type TestSchema struct {
+	InputTypes []InputType `toml:"input_types"` // carbon-clickhouse input types
+
+	Input      []string     `toml:"input"`           // carbon-clickhouse input
+	ConfigTpl  string       `toml:"config_template"` // carbon-clickhouse config template
+	Clickhouse []Clickhouse `yaml:"clickhouse"`
+
+	Verify []Verify `yaml:"verify"`
+
+	name string `yaml:"-"` // test alias (from config name)
 }
 
 func getFreeTCPPort(name string) (string, error) {
@@ -96,7 +135,7 @@ func verifyOut(address string, verify Verify) []string {
 }
 
 func testCarbonClickhouse(
-	test *TestSchema, clickhouse Clickhouse,
+	inputType InputType, test *TestSchema, clickhouse Clickhouse,
 	testDir, rootDir string,
 	verbose bool, logger *zap.Logger) (testSuccess bool) {
 
@@ -110,6 +149,7 @@ func testCarbonClickhouse(
 	if err != nil {
 		logger.Error("starting clickhouse",
 			zap.String("config", test.name),
+			zap.String("input", inputType.String()),
 			zap.Any("clickhouse version", clickhouse.Version),
 			zap.String("clickhouse config", clickhouseDir),
 			zap.Error(err),
@@ -127,6 +167,7 @@ func testCarbonClickhouse(
 	if err != nil {
 		logger.Error("starting carbon-clickhouse",
 			zap.String("config", test.name),
+			zap.String("input", inputType.String()),
 			zap.String("clickhouse version", clickhouse.Version),
 			zap.String("clickhouse config", clickhouseDir),
 			zap.Error(err),
@@ -138,6 +179,7 @@ func testCarbonClickhouse(
 	if testSuccess {
 		logger.Info("starting e2e test",
 			zap.String("config", test.name),
+			zap.String("input", inputType.String()),
 			zap.String("clickhouse version", clickhouse.Version),
 			zap.String("clickhouse config", clickhouseDir),
 		)
@@ -145,13 +187,19 @@ func testCarbonClickhouse(
 		// Run test
 
 		if len(test.Input) > 0 {
-			if err = sendPlain("tcp", cch.address, test.Input); err != nil {
+			switch inputType {
+			case InputPlainTCP:
+				err = sendPlain("tcp", cch.address, test.Input)
+			default:
+				err = fmt.Errorf("input type not implemented")
+			}
+			if err != nil {
 				logger.Error("send plain to carbon-clickhouse",
 					zap.String("config", test.name),
+					zap.String("input", inputType.String()),
 					zap.String("clickhouse version", clickhouse.Version),
 					zap.String("clickhouse config", clickhouseDir),
 					zap.Error(err),
-					zap.String("out", out),
 				)
 				testSuccess = false
 			}
@@ -169,6 +217,7 @@ func testCarbonClickhouse(
 					}
 					logger.Error("verify records in clickhouse",
 						zap.String("config", test.name),
+						zap.String("input", inputType.String()),
 						zap.String("clickhouse version", clickhouse.Version),
 						zap.String("clickhouse config", clickhouseDir),
 						zap.String("verify", verify.Query),
@@ -176,6 +225,7 @@ func testCarbonClickhouse(
 				} else if verbose {
 					logger.Info("verify records in clickhouse",
 						zap.String("config", test.name),
+						zap.String("input", inputType.String()),
 						zap.String("clickhouse version", clickhouse.Version),
 						zap.String("clickhouse config", clickhouseDir),
 						zap.String("verify", verify.Query),
@@ -185,6 +235,7 @@ func testCarbonClickhouse(
 			if verifyFailed > 0 {
 				logger.Error("verify records in clickhouse",
 					zap.String("config", test.name),
+					zap.String("input", inputType.String()),
 					zap.String("clickhouse version", clickhouse.Version),
 					zap.String("clickhouse config", clickhouseDir),
 					zap.Int("verify failed", verifyFailed),
@@ -193,6 +244,7 @@ func testCarbonClickhouse(
 			} else {
 				logger.Info("verify records in clickhouse",
 					zap.String("config", test.name),
+					zap.String("input", inputType.String()),
 					zap.String("clickhouse version", clickhouse.Version),
 					zap.String("clickhouse config", clickhouseDir),
 					zap.Int("verify success", len(test.Verify)),
@@ -207,6 +259,7 @@ func testCarbonClickhouse(
 	if err != nil {
 		logger.Error("stoping carbon-clickhouse",
 			zap.String("config", test.name),
+			zap.String("input", inputType.String()),
 			zap.String("clickhouse version", clickhouse.Version),
 			zap.String("clickhouse config", clickhouseDir),
 			zap.Error(err),
@@ -219,6 +272,7 @@ func testCarbonClickhouse(
 	if err != nil {
 		logger.Error("stoping clickhouse",
 			zap.String("config", test.name),
+			zap.String("input", inputType.String()),
 			zap.String("clickhouse version", clickhouse.Version),
 			zap.String("clickhouse config", clickhouseDir),
 			zap.Error(err),
@@ -230,6 +284,7 @@ func testCarbonClickhouse(
 	if testSuccess {
 		logger.Info("end e2e test",
 			zap.String("config", test.name),
+			zap.String("input", inputType.String()),
 			zap.String("status", "success"),
 			zap.String("clickhouse version", clickhouse.Version),
 			zap.String("clickhouse config", clickhouseDir),
@@ -237,6 +292,7 @@ func testCarbonClickhouse(
 	} else {
 		logger.Error("end e2e test",
 			zap.String("config", test.name),
+			zap.String("input", inputType.String()),
 			zap.String("status", "failed"),
 			zap.String("clickhouse version", clickhouse.Version),
 			zap.String("clickhouse config", clickhouseDir),
@@ -270,6 +326,9 @@ func runTest(config string, rootDir string, verbose bool, logger *zap.Logger) (f
 	}
 
 	cfg.Test.name = confShort
+	if len(cfg.Test.InputTypes) == 0 {
+		cfg.Test.InputTypes = []InputType{InputPlainTCP}
+	}
 
 	if len(cfg.Test.Input) == 0 {
 		logger.Fatal("input not set",
@@ -278,9 +337,11 @@ func runTest(config string, rootDir string, verbose bool, logger *zap.Logger) (f
 	}
 
 	for _, clickhouse := range cfg.Test.Clickhouse {
-		total++
-		if !testCarbonClickhouse(cfg.Test, clickhouse, testDir, rootDir, verbose, logger) {
-			failed++
+		for _, inputType := range cfg.Test.InputTypes {
+			total++
+			if !testCarbonClickhouse(inputType, cfg.Test, clickhouse, testDir, rootDir, verbose, logger) {
+				failed++
+			}
 		}
 	}
 

@@ -11,16 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type TestSchema struct {
-	Input      []string     `toml:"input"`           // carbon-clickhouse input
-	ConfigTpl  string       `toml:"config_template"` // carbon-clickhouse config template
-	Clickhouse []Clickhouse `yaml:"clickhouse"`
-
-	Verify []Verify `yaml:"verify"`
-
-	name string `yaml:"-"` // test alias (from config name)
-}
-
 type MainConfig struct {
 	Test *TestSchema `toml:"test"`
 }

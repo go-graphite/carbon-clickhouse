@@ -53,12 +53,12 @@ func (c *CarbonClickhouse) Start(clickhouseAddr string) error {
 	}
 	param := struct {
 		CLICKHOUSE_ADDR string
-		CCH_ADDR        string
 		CCH_STORE_DIR   string
+		CCH_ADDR        string
 	}{
 		CLICKHOUSE_ADDR: clickhouseAddr,
-		CCH_ADDR:        c.address,
 		CCH_STORE_DIR:   c.storeDir,
+		CCH_ADDR:        c.address,
 	}
 
 	c.configFile = path.Join(c.storeDir, "carbon-clickhouse.conf")
