@@ -27,7 +27,7 @@ clean:
 $(NAME): $(shell find . -name '*.go')
 	$(GO) build $(MODULE)
 
-e2e: $(NAME)
+e2e-test: $(NAME)
 	$(GO) build $(MODULE)/cmd/e2e-test
 
 test:
