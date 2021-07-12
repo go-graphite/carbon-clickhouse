@@ -96,7 +96,7 @@ func verifyOut(address string, verify Verify) []string {
 	q := []byte(verify.Query)
 	req, err := http.NewRequest("POST", "http://"+address+"/", bytes.NewBuffer(q))
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: time.Second * 5}
 	resp, err := client.Do(req)
 	if err != nil {
 		return []string{err.Error()}
