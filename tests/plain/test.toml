@@ -8,11 +8,11 @@ input = [
 ]
 
 [[test.clickhouse]]
-version = "19.7"
+version = "19.14"
 dir = "tests/clickhouse/rollup"
 
 [[test.clickhouse]]
-version = "20.4"
+version = "20.3"
 dir = "tests/clickhouse/rollup"
 
 [[test.clickhouse]]
@@ -24,7 +24,7 @@ version = "21.3"
 dir = "tests/clickhouse/rollup"
 
 [[test.clickhouse]]
-version = "21.6"
+version = "latest"
 dir = "tests/clickhouse/rollup"
 
 # test.host1.cpu.loadavg 10.2 1625478240
