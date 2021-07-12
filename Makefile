@@ -24,8 +24,11 @@ clean:
 	rm -f *deb *rpm
 	rm -f sha256sum md5sum
 
-$(NAME): $(wildcard **/*.go)
+$(NAME): $(shell find . -name '*.go')
 	$(GO) build $(MODULE)
+
+e2e-test: $(NAME)
+	$(GO) build $(MODULE)/cmd/e2e-test
 
 test:
 	$(GO) test -race ./...

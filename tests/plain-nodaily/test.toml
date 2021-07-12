@@ -1,0 +1,56 @@
+# Test graphite_index with disable-daily-index = false
+[test]
+config_template = "carbon-clickhouse.conf.tpl"
+input = [ 
+    "test.host1.cpu.loadavg 10.2 1625478240",
+    "test.host1.cpu.loadavg 9.4 1625478300",
+]
+
+[[test.clickhouse]]
+version = "19.14"
+dir = "tests/clickhouse/rollup"
+
+[[test.clickhouse]]
+version = "20.3"
+dir = "tests/clickhouse/rollup"
+
+[[test.clickhouse]]
+version = "20.8"
+dir = "tests/clickhouse/rollup"
+
+[[test.clickhouse]]
+version = "21.3"
+dir = "tests/clickhouse/rollup"
+
+[[test.clickhouse]]
+version = "latest"
+dir = "tests/clickhouse/rollup"
+
+# test.host1.cpu.loadavg 10.2 1625478240
+[[test.verify]]
+query = "SELECT Date, Level, Path FROM graphite_index WHERE Path LIKE 'test.%' OR Path LIKE '%.test' GROUP BY Date, Level, Path, Version ORDER BY Date, Level, Path"
+#query = "SELECT Date, Level, Path FROM graphite_index WHERE Path LIKE 'test.%' OR Path LIKE '%.test' ORDER BY Date, Level"
+output = [
+    "1970-02-12 20001 test.",
+    "1970-02-12 20002 test.host1.",
+    "1970-02-12 20003 test.host1.cpu.",
+    "1970-02-12 20004 test.host1.cpu.loadavg",
+    "1970-02-12 30004 loadavg.cpu.host1.test",
+]
+[[test.verify]]
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite WHERE Path LIKE 'test.%' ORDER BY Time, Path"
+output = [
+    "test.host1.cpu.loadavg 10.2 1625478240 2021-07-05 0",
+    "test.host1.cpu.loadavg 9.4 1625478300 2021-07-05 0",
+]
+[[test.verify]]
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite_reverse WHERE Path LIKE '%.test' ORDER BY Time, Path"
+output = [
+    "loadavg.cpu.host1.test 10.2 1625478240 2021-07-05 0",
+    "loadavg.cpu.host1.test 9.4 1625478300 2021-07-05 0",
+]
+
+# taggs must be empty
+[[test.verify]]
+query = "SELECT Date, Tag1, Path, arraySort(Tags) as Tags FROM graphite_tags ORDER BY Date, Tag1, Path"
+output = []
