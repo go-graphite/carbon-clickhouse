@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/escape"
+	"github.com/lomik/zapwriter"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,4 +59,31 @@ func BenchmarkKeyConcat(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = strconv.Itoa(int(unum)) + ":" + path
 	}
+}
+
+func TestTagged_parseName_Overflow(t *testing.T) {
+	var tag1 []string
+	wb := RowBinary.GetWriteBuffer()
+	tagsBuf := RowBinary.GetWriteBuffer()
+	defer wb.Release()
+	defer tagsBuf.Release()
+
+	logger := zapwriter.Logger("upload")
+	base := &Base{
+		queue:   make(chan string, 1024),
+		inQueue: make(map[string]bool),
+		logger:  logger,
+		config:  &Config{TableName: "test"},
+	}
+	var sb strings.Builder
+	sb.WriteString("very_long_name_field1.very_long_name_field2.very_long_name_field3.very_long_name_field4?")
+	for i := 0; i < 100; i++ {
+		if i > 0 {
+			sb.WriteString("&")
+		}
+		sb.WriteString(fmt.Sprintf("very_long_tag%d=very_long_value%d", i, i))
+	}
+	u := NewTagged(base)
+	err := u.parseName(sb.String(), 10, tag1, wb, tagsBuf)
+	assert.Equal(t, errBufOverflow, err)
 }

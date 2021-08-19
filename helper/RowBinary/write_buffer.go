@@ -7,6 +7,12 @@ import (
 	"sync"
 )
 
+const (
+	SIZE_INT64 = 8
+	SIZE_INT16 = 2
+	SIZE_INT32 = 4
+)
+
 var writeBufferPool = sync.Pool{
 	New: func() interface{} {
 		return &WriteBuffer{}
@@ -57,6 +63,14 @@ func (wb *WriteBuffer) Reset() *WriteBuffer {
 	wb.wg = nil
 	wb.errorChan = nil
 	return wb
+}
+
+func (wb *WriteBuffer) Len() int {
+	return wb.Used
+}
+
+func (wb *WriteBuffer) FreeSize() int {
+	return len(wb.Body) - wb.Used
 }
 
 func (wb *WriteBuffer) Empty() bool {
