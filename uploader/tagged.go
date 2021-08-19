@@ -67,22 +67,30 @@ func (u *Tagged) parseName(name string, days uint16,
 	tagsBuf.Reset()
 	tag1 = tag1[:0]
 
-	mName := m.Path
-	t := fmt.Sprintf("__name__=%s", mName)
+	t := fmt.Sprintf("__name__=%s", m.Path)
 	tag1 = append(tag1, t)
 	tagsBuf.WriteString(t)
 
-	// calc size for prevent w
-	sizeTags := 2 + 8 + len(mName) + 8 + len(name) + 8 + tagsBuf.Len() + 2
+	// calc size for prevent buffer overflow
+	sizeTags := RowBinary.SIZE_INT16 /* days */ +
+		RowBinary.SIZE_INT64 + len(m.Path) +
+		RowBinary.SIZE_INT64 + len(name) +
+		RowBinary.SIZE_INT64 + //  tagsBuf.Len() not known at this step
+		RowBinary.SIZE_INT16 //version
 
 	// don't upload any other tag but __name__
 	// if either main metric (m.Path) or each metric (*) is ignored
-	ignoreAllButName := u.ignoredMetrics[mName] || u.ignoredMetrics["*"]
+	ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
 	tagsWritten := 1
 	for k, v := range m.Query() {
 		t := fmt.Sprintf("%s=%s", k, v[0])
 
-		sizeTags += 2 + 8 + len(t) + 8 + len(name) + 8 + tagsBuf.Len() + 4
+		sizeTags += RowBinary.SIZE_INT16 /* days */ +
+			RowBinary.SIZE_INT64 + len(t) +
+			RowBinary.SIZE_INT64 + len(name) +
+			RowBinary.SIZE_INT64 + // tagsBuf.Len() not known at this step
+			RowBinary.SIZE_INT16 //version
+
 		if sizeTags >= wb.FreeSize() {
 			return errBufOverflow
 		}
@@ -93,6 +101,11 @@ func (u *Tagged) parseName(name string, days uint16,
 		if !ignoreAllButName {
 			tag1 = append(tag1, t)
 		}
+	}
+
+	sizeTags += len(tag1) * tagsBuf.Len()
+	if sizeTags >= wb.FreeSize() {
+		return errBufOverflow
 	}
 
 	for i := 0; i < len(tag1); i++ {

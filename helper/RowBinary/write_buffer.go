@@ -7,6 +7,12 @@ import (
 	"sync"
 )
 
+const (
+	SIZE_INT64 = 8
+	SIZE_INT16 = 2
+	SIZE_INT32 = 4
+)
+
 var writeBufferPool = sync.Pool{
 	New: func() interface{} {
 		return &WriteBuffer{}
