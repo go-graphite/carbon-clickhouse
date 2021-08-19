@@ -66,8 +66,28 @@ func (sb *Builder) Release() {
 	sb.Reset()
 }
 
-// Write appends the contents of p to b's buffer.
-func (sb *Builder) Write(bytes []byte) {
+// Write like WriteBytes, but realized io.Writer interface
+func (sb *Builder) Write(bytes []byte) (int, error) {
+	if len(bytes) == 0 {
+		return 0, nil
+	}
+	newlen := sb.length + len(bytes)
+	if newlen > cap(sb.data) {
+		scaled := sb.length * scaleFactor
+		if newlen > scaled {
+			sb.Grow(newlen)
+		} else {
+			sb.Grow(scaled)
+		}
+	}
+	copy(sb.data[sb.length:], bytes)
+	sb.length += len(bytes)
+
+	return len(bytes), nil
+}
+
+// WriteBytes appends the contents of p to b's buffer.
+func (sb *Builder) WriteBytes(bytes []byte) {
 	if len(bytes) == 0 {
 		return
 	}
