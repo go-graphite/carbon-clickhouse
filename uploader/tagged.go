@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"go.uber.org/zap"
 )
 
 type Tagged struct {
@@ -49,6 +50,51 @@ func urlParse(rawurl string) (*url.URL, error) {
 	return m, err
 }
 
+func (u *Tagged) parseName(name string, days uint16,
+	// reusable buffers
+	tag1 []string, wb *RowBinary.WriteBuffer, tagsBuf *RowBinary.WriteBuffer) error {
+
+	m, err := urlParse(name)
+	if err != nil {
+		return err
+	}
+
+	version := uint32(time.Now().Unix())
+
+	wb.Reset()
+	tagsBuf.Reset()
+	tag1 = tag1[:0]
+
+	t := fmt.Sprintf("__name__=%s", m.Path)
+	tag1 = append(tag1, t)
+	tagsBuf.WriteString(t)
+
+	// don't upload any other tag but __name__
+	// if either main metric (m.Path) or each metric (*) is ignored
+	ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
+	tagsWritten := 1
+	for k, v := range m.Query() {
+		t := fmt.Sprintf("%s=%s", k, v[0])
+		tagsBuf.WriteString(t)
+		tagsWritten++
+
+		if !ignoreAllButName {
+			tag1 = append(tag1, t)
+		}
+	}
+
+	for i := 0; i < len(tag1); i++ {
+		wb.WriteUint16(days)
+		wb.WriteString(tag1[i])
+		wb.WriteString(name)
+		wb.WriteUVarint(uint64(tagsWritten))
+		wb.Write(tagsBuf.Bytes())
+		wb.WriteUint32(version)
+	}
+
+	return nil
+}
+
 func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]bool, error) {
 	var reader *RowBinary.Reader
 	var err error
@@ -59,8 +105,6 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]b
 		return n, nil, err
 	}
 	defer reader.Close()
-
-	version := uint32(time.Now().Unix())
 
 	newTagged := make(map[string]bool)
 
@@ -83,59 +127,30 @@ LineLoop:
 			continue
 		}
 
-		key := strconv.Itoa(int(reader.Days())) + ":" + unsafeString(name)
+		nameStr := unsafeString(name)
 
+		days := reader.Days()
+		key := strconv.Itoa(int(days)) + ":" + nameStr
 		if u.existsCache.Exists(key) {
 			continue LineLoop
 		}
 
 		if newTagged[key] {
+			// already processed
 			continue LineLoop
 		}
+
 		n++
 
-		m, err := urlParse(unsafeString(name))
-		if err != nil {
-			continue
-		}
-
-		newTagged[key] = true
-
-		wb.Reset()
-		tagsBuf.Reset()
-		tag1 = tag1[:0]
-
-		t := fmt.Sprintf("__name__=%s", m.Path)
-		tag1 = append(tag1, t)
-		tagsBuf.WriteString(t)
-
-		// don't upload any other tag but __name__
-		// if either main metric (m.Path) or each metric (*) is ignored
-		ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
-		tagsWritten := 1
-		for k, v := range m.Query() {
-			t := fmt.Sprintf("%s=%s", k, v[0])
-			tagsBuf.WriteString(t)
-			tagsWritten++
-
-			if !ignoreAllButName {
-				tag1 = append(tag1, t)
-			}
-		}
-
-		for i := 0; i < len(tag1); i++ {
-			wb.WriteUint16(reader.Days())
-			wb.WriteString(tag1[i])
-			wb.WriteBytes(name)
-			wb.WriteUVarint(uint64(tagsWritten))
-			wb.Write(tagsBuf.Bytes())
-			wb.WriteUint32(version)
-		}
-
-		_, err = out.Write(wb.Bytes())
-		if err != nil {
+		if err = u.parseName(nameStr, days, tag1, wb, tagsBuf); err != nil {
+			u.logger.Warn("parse",
+				zap.String("metric", string(name)), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
+			)
+			continue LineLoop
+		} else if _, err = out.Write(wb.Bytes()); err != nil {
 			return n, nil, err
 		}
+		newTagged[key] = true
 	}
 
 	return n, newTagged, nil
