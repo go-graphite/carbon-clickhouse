@@ -85,5 +85,5 @@ func TestTagged_parseName_Overflow(t *testing.T) {
 	}
 	u := NewTagged(base)
 	err := u.parseName(sb.String(), 10, tag1, wb, tagsBuf)
-	assert.NoError(t, err)
+	assert.Equal(t, errBufOverflow, err)
 }

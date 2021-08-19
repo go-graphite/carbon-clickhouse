@@ -21,6 +21,8 @@ type Tagged struct {
 var _ Uploader = &Tagged{}
 var _ UploaderWithReset = &Tagged{}
 
+var errBufOverflow = fmt.Errorf("output buffer overflow")
+
 func NewTagged(base *Base) *Tagged {
 	u := &Tagged{}
 	u.cached = newCached(base)
@@ -65,16 +67,26 @@ func (u *Tagged) parseName(name string, days uint16,
 	tagsBuf.Reset()
 	tag1 = tag1[:0]
 
-	t := fmt.Sprintf("__name__=%s", m.Path)
+	mName := m.Path
+	t := fmt.Sprintf("__name__=%s", mName)
 	tag1 = append(tag1, t)
 	tagsBuf.WriteString(t)
 
+	// calc size for prevent w
+	sizeTags := 2 + 8 + len(mName) + 8 + len(name) + 8 + tagsBuf.Len() + 2
+
 	// don't upload any other tag but __name__
 	// if either main metric (m.Path) or each metric (*) is ignored
-	ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
+	ignoreAllButName := u.ignoredMetrics[mName] || u.ignoredMetrics["*"]
 	tagsWritten := 1
 	for k, v := range m.Query() {
 		t := fmt.Sprintf("%s=%s", k, v[0])
+
+		sizeTags += 2 + 8 + len(t) + 8 + len(name) + 8 + tagsBuf.Len() + 4
+		if sizeTags >= wb.FreeSize() {
+			return errBufOverflow
+		}
+
 		tagsBuf.WriteString(t)
 		tagsWritten++
 
@@ -144,7 +156,7 @@ LineLoop:
 
 		if err = u.parseName(nameStr, days, tag1, wb, tagsBuf); err != nil {
 			u.logger.Warn("parse",
-				zap.String("metric", string(name)), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
+				zap.String("metric", nameStr), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
 			)
 			continue LineLoop
 		} else if _, err = out.Write(wb.Bytes()); err != nil {

@@ -59,6 +59,14 @@ func (wb *WriteBuffer) Reset() *WriteBuffer {
 	return wb
 }
 
+func (wb *WriteBuffer) Len() int {
+	return wb.Used
+}
+
+func (wb *WriteBuffer) FreeSize() int {
+	return len(wb.Body) - wb.Used
+}
+
 func (wb *WriteBuffer) Empty() bool {
 	return wb.Used == 0
 }
