@@ -65,7 +65,7 @@ func (u *Tagged) parseName(name string, days uint16, version uint32,
 	tagsBuf.Reset()
 	tag1 = tag1[:0]
 
-	t := fmt.Sprintf("__name__=%s", m.Path)
+	t := "__name__=" + m.Path
 	tag1 = append(tag1, t)
 	tagsBuf.WriteString(t)
 
