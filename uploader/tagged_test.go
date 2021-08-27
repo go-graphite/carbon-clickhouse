@@ -395,10 +395,10 @@ func TestTagged_parseName(t *testing.T) {
 				}
 
 				// workaround: tags slice are unsorted
-				for i := 0; i < len(r); i++ {
-					sort.Strings(r[i].tags)
-				}
-				sort.Slice(r, func(i, j int) bool { return r[i].name < r[j].name })
+				// for i := 0; i < len(r); i++ {
+				// 	sort.Strings(r[i].tags)
+				// }
+				// sort.Slice(r, func(i, j int) bool { return r[i].name < r[j].name })
 
 				for i := 0; i < max; i++ {
 					if i >= len(r) {
@@ -416,7 +416,7 @@ func TestTagged_parseName(t *testing.T) {
 
 func BenchmarkParseNameShort(b *testing.B) {
 	// locate reusable buffers
-	tag1 := make([]string, 0)
+	tag1 := make([]string, 0, 32)
 	wb := RowBinary.GetWriteBuffer()
 	tagsBuf := RowBinary.GetWriteBuffer()
 	defer wb.Release()
@@ -443,7 +443,7 @@ func BenchmarkParseNameShort(b *testing.B) {
 
 func BenchmarkParseNameLong(b *testing.B) {
 	// locate reusable buffers
-	tag1 := make([]string, 0)
+	tag1 := make([]string, 0, 32)
 	wb := RowBinary.GetWriteBuffer()
 	tagsBuf := RowBinary.GetWriteBuffer()
 	defer wb.Release()

@@ -136,7 +136,7 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]b
 	defer wb.Release()
 	defer tagsBuf.Release()
 
-	tag1 := make([]string, 0)
+	tag1 := make([]string, 0, 32)
 
 LineLoop:
 	for {
