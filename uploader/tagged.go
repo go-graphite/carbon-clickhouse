@@ -118,14 +118,14 @@ func (u *Tagged) parseName(name string, days uint16, version uint32,
 	return nil
 }
 
-func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]bool, error) {
+func (u *Tagged) parseFile(filename string, out io.Writer) (*uploaderStat, map[string]bool, error) {
 	var reader *RowBinary.Reader
 	var err error
-	var n uint64
+	stat := &uploaderStat{}
 
 	reader, err = RowBinary.NewReader(filename, false)
 	if err != nil {
-		return n, nil, err
+		return stat, nil, err
 	}
 	defer reader.Close()
 
@@ -163,7 +163,7 @@ LineLoop:
 			continue LineLoop
 		}
 
-		n++
+		stat.written++
 
 		version := uint32(time.Now().Unix())
 		if err = u.parseName(nameStr, days, version, tag1, wb, tagsBuf); err != nil {
@@ -172,10 +172,11 @@ LineLoop:
 			)
 			continue LineLoop
 		} else if _, err = out.Write(wb.Bytes()); err != nil {
-			return n, nil, err
+			return stat, nil, err
 		}
+		stat.writtenBytes += uint64(wb.Used)
 		newTagged[key] = true
 	}
 
-	return n, newTagged, nil
+	return stat, newTagged, nil
 }

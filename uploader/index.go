@@ -29,14 +29,14 @@ func NewIndex(base *Base) *Index {
 	return u
 }
 
-func (u *Index) parseFile(filename string, out io.Writer) (uint64, map[string]bool, error) {
+func (u *Index) parseFile(filename string, out io.Writer) (*uploaderStat, map[string]bool, error) {
 	var reader *RowBinary.Reader
 	var err error
-	var n uint64
+	stat := &uploaderStat{}
 
 	reader, err = RowBinary.NewReader(filename, false)
 	if err != nil {
-		return n, nil, err
+		return stat, nil, err
 	}
 	defer reader.Close()
 
@@ -81,7 +81,7 @@ LineLoop:
 		if newSeries[key] {
 			continue LineLoop
 		}
-		n++
+		stat.written++
 
 		level = pathLevel(name)
 
@@ -129,8 +129,9 @@ LineLoop:
 		// Write data with treeDate
 		_, err = out.Write(wb.Bytes())
 		if err != nil {
-			return n, nil, err
+			return stat, nil, err
 		}
+		stat.writtenBytes += uint64(wb.Used)
 
 		// Skip daily index
 		if u.config.DisableDailyIndex {
@@ -152,11 +153,12 @@ LineLoop:
 		// Write data with daily index
 		_, err = out.Write(wb.Bytes())
 		if err != nil {
-			return n, nil, err
+			return stat, nil, err
 		}
+		stat.writtenBytes += uint64(wb.Used)
 	}
 
 	wb.Release()
 
-	return n, newSeries, nil
+	return stat, newSeries, nil
 }

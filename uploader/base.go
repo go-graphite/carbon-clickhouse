@@ -20,6 +20,11 @@ import (
 	"go.uber.org/zap"
 )
 
+type uploaderStat struct {
+	written      uint64
+	writtenBytes uint64
+}
+
 type Base struct {
 	stop.Struct
 	sync.Mutex
@@ -29,12 +34,13 @@ type Base struct {
 	queue   chan string
 	inQueue map[string]bool
 	logger  *zap.Logger
-	handler func(ctx context.Context, logger *zap.Logger, filename string) (uint64, error) // upload single file
+	handler func(ctx context.Context, logger *zap.Logger, filename string) (*uploaderStat, error) // upload single file
 	query   string
 
 	stat struct {
 		uploaded        uint32
 		uploadedMetrics uint64
+		uploadedBytes   uint64
 		errors          uint32
 		delay           int64
 		unhandled       uint32 // @TODO: maxUnhandled
@@ -49,6 +55,10 @@ func (u *Base) Stat(send func(metric string, value float64)) {
 	uploadedMetrics := atomic.LoadUint64(&u.stat.uploadedMetrics)
 	atomic.AddUint64(&u.stat.uploadedMetrics, -uploadedMetrics)
 	send("uploaded_metrics", float64(uploadedMetrics))
+
+	uploadedBytes := atomic.LoadUint64(&u.stat.uploadedBytes)
+	atomic.AddUint64(&u.stat.uploadedMetrics, -uploadedBytes)
+	send("uploaded_bytes", float64(uploadedBytes))
 
 	errors := atomic.LoadUint32(&u.stat.errors)
 	atomic.AddUint32(&u.stat.errors, -errors)
@@ -176,12 +186,13 @@ func (u *Base) uploadWorker(ctx context.Context) {
 			logger := u.logger.With(zap.String("filename", filename))
 			logger.Info("start handle")
 
-			n, err := u.handler(ctx, logger, filename)
+			stat, err := u.handler(ctx, logger, filename)
 
 			if err != nil {
 				atomic.AddUint32(&u.stat.errors, 1)
 				logger.Error("handle failed",
-					zap.Uint64("metrics", n),
+					zap.Uint64("metrics", stat.written),
+					zap.Uint64("written_bytes", stat.writtenBytes),
 					zap.Error(err),
 					zap.Duration("time", time.Since(startTime)),
 				)
@@ -189,9 +200,11 @@ func (u *Base) uploadWorker(ctx context.Context) {
 				time.Sleep(time.Second)
 			} else {
 				atomic.AddUint32(&u.stat.uploaded, 1)
-				atomic.AddUint64(&u.stat.uploadedMetrics, n)
+				atomic.AddUint64(&u.stat.uploadedMetrics, stat.written)
+				atomic.AddUint64(&u.stat.uploadedBytes, stat.writtenBytes)
 				logger.Info("handle success",
-					zap.Uint64("metrics", n),
+					zap.Uint64("metrics", stat.written),
+					zap.Uint64("written_bytes", stat.writtenBytes),
 					zap.Duration("time", time.Since(startTime)),
 				)
 			}

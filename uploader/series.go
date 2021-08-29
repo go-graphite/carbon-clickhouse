@@ -25,14 +25,14 @@ func NewSeries(base *Base, reverse bool) *Series {
 	return u
 }
 
-func (u *Series) parseFile(filename string, out io.Writer) (uint64, map[string]bool, error) {
+func (u *Series) parseFile(filename string, out io.Writer) (*uploaderStat, map[string]bool, error) {
 	var reader *RowBinary.Reader
 	var err error
-	var n uint64
+	stat := &uploaderStat{}
 
 	reader, err = RowBinary.NewReader(filename, u.isReverse)
 	if err != nil {
-		return n, nil, err
+		return stat, nil, err
 	}
 	defer reader.Close()
 
@@ -63,7 +63,7 @@ LineLoop:
 		if newSeries[key] {
 			continue LineLoop
 		}
-		n++
+		stat.written++
 
 		level = pathLevel(name)
 
@@ -77,11 +77,12 @@ LineLoop:
 
 		_, err = out.Write(wb.Bytes())
 		if err != nil {
-			return n, nil, err
+			return stat, nil, err
 		}
+		stat.writtenBytes += uint64(wb.Used)
 	}
 
 	wb.Release()
 
-	return n, newSeries, nil
+	return stat, newSeries, nil
 }

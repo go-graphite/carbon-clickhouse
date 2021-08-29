@@ -19,7 +19,7 @@ type DebugCacheDumper interface {
 type cached struct {
 	*Base
 	existsCache CMap // store known keys and don't load it to clickhouse tree
-	parser      func(filename string, out io.Writer) (uint64, map[string]bool, error)
+	parser      func(filename string, out io.Writer) (*uploaderStat, map[string]bool, error)
 	expired     uint32 // atomic counter
 }
 
@@ -61,8 +61,8 @@ func (u *cached) Reset() {
 	debug.FreeOSMemory()
 }
 
-func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string) (uint64, error) {
-	var n uint64
+func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string) (*uploaderStat, error) {
+	var stat *uploaderStat
 	var err error
 	var newSeries map[string]bool
 
@@ -83,7 +83,7 @@ func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string
 		}
 	})
 
-	n, newSeries, err = u.parser(filename, writer)
+	stat, newSeries, err = u.parser(filename, writer)
 	if err == nil {
 		err = writer.Flush()
 	}
@@ -95,19 +95,19 @@ func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string
 	case uploadErr = <-uploadResult:
 		// pass
 	case <-ctx.Done():
-		return n, fmt.Errorf("upload aborted")
+		return stat, fmt.Errorf("upload aborted")
 	}
 
 	if err != nil {
-		return n, err
+		return stat, err
 	}
 
 	if uploadErr != nil {
-		return n, uploadErr
+		return stat, uploadErr
 	}
 
 	// commit new series
 	u.existsCache.Merge(newSeries, startTime.Unix())
 
-	return n, nil
+	return stat, nil
 }
