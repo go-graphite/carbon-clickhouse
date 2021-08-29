@@ -41,6 +41,71 @@ func TestUrlParse(t *testing.T) {
 	assert.Equal("instance:cpu_utilization:ratio_avg", m.Path)
 }
 
+func TestTagsParse(t *testing.T) {
+	assert := assert.New(t)
+
+	// make metric name as receiver
+	metric := escape.Path("instance:cpu_utilization:ratio_avg") +
+		"?" + escape.Query("dc") + "=" + escape.Query("qwe") +
+		"&" + escape.Query("fqdn") + "=" + escape.Query("asd") +
+		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10_9100") +
+		"&" + escape.Query("job") + "=" + escape.Query("node")
+
+	assert.Equal("instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node", metric)
+
+	m, err := urlParse(metric)
+	assert.NotNil(m)
+	assert.NoError(err)
+	assert.Equal("instance:cpu_utilization:ratio_avg", m.Path)
+
+	mapTags := m.Query()
+	mTags := make(map[string]string)
+	for k, v := range mapTags {
+		mTags[k] = k + "=" + v[0]
+	}
+
+	name, tags, err := tagsParse(metric)
+	if err != nil {
+		t.Errorf("tagParse: %s", err.Error())
+	}
+	assert.Equal(m.Path, name)
+	assert.Equal(mTags, tags)
+}
+
+func BenchmarkUrlParse(b *testing.B) {
+	// make metric name as receiver
+	metric := escape.Path("instance:cpu_utilization:ratio_avg") +
+		"?" + escape.Query("dc") + "=" + escape.Query("qwe") +
+		"&" + escape.Query("fqdn") + "=" + escape.Query("asd") +
+		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10_9100") +
+		"&" + escape.Query("job") + "=" + escape.Query("node")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		u, _ := urlParse(metric)
+		u.Path = "__name__=" + u.Path
+		_ = u.Query()
+	}
+}
+
+func BenchmarkTagParse(b *testing.B) {
+	// make metric name as receiver
+	metric := escape.Path("instance:cpu_utilization:ratio_avg") +
+		"?" + escape.Query("dc") + "=" + escape.Query("qwe") +
+		"&" + escape.Query("fqdn") + "=" + escape.Query("asd") +
+		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10_9100") +
+		"&" + escape.Query("job") + "=" + escape.Query("node")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, _, _ = tagsParse(metric)
+	}
+}
+
 func BenchmarkKeySprintf(b *testing.B) {
 	path := "test.path"
 
