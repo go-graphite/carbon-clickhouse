@@ -165,6 +165,11 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (*uploaderStat, map[s
 
 	tag1 := make([]string, 0, 32)
 
+	hashFunc := u.config.hashFunc
+	if hashFunc == nil {
+		hashFunc = keepOriginal
+	}
+
 LineLoop:
 	for {
 		name, err := reader.ReadRecord()
@@ -180,7 +185,7 @@ LineLoop:
 		nameStr := unsafeString(name)
 
 		days := reader.Days()
-		key := strconv.Itoa(int(days)) + ":" + nameStr
+		key := strconv.Itoa(int(days)) + ":" + hashFunc(nameStr)
 		if u.existsCache.Exists(key) {
 			continue LineLoop
 		}
