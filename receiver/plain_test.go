@@ -32,13 +32,15 @@ func BenchmarkPlainParseBuffer(b *testing.B) {
 
 	base := &Base{writeChan: out}
 
+	splitBuf := make([]string, 256)
+
 	var wb *RowBinary.WriteBuffer
 	for i := 0; i < b.N; i += 100 {
-		base.PlainParseBuffer(context.Background(), buf)
+		base.PlainParseBuffer(context.Background(), buf, splitBuf)
 		wb = <-out
 		wb.Release()
 
-		base.PlainParseBuffer(context.Background(), buf2)
+		base.PlainParseBuffer(context.Background(), buf2, splitBuf)
 		wb = <-out
 		wb.Release()
 	}
@@ -93,8 +95,10 @@ func TestPlainParseLine(t *testing.T) {
 
 	base := &Base{}
 
+	splitBuf := make([]string, 256)
+
 	for _, p := range table {
-		name, value, timestamp, err := base.PlainParseLine([]byte(p.b), now)
+		name, value, timestamp, err := base.PlainParseLine([]byte(p.b), now, splitBuf)
 		if p.name == "" {
 			// expected error
 			if err == nil {

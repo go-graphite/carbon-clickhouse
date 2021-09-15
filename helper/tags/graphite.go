@@ -27,21 +27,26 @@ func (a byKey) Less(i, j int) bool {
 	return strings.Compare(a[i][:p1+1], a[j][:p2+1]) < 0
 }
 
-func Graphite(config TagConfig, s string) (string, error) {
-	if strings.IndexByte(s, ';') < 0 && config.Enabled {
+func Graphite(config TagConfig, s string, splitBuf []string) (string, error) {
+	hasSemicolon := strings.IndexByte(s, ';')
+	if hasSemicolon < 0 && config.Enabled {
 		tagged, err := config.toGraphiteTagged(s)
 		if err != nil {
 			return "", err
 		}
 		s = tagged
+		hasSemicolon = strings.IndexByte(s, ';')
 	}
 
-	if strings.IndexByte(s, ';') < 0 {
+	if hasSemicolon < 0 {
 		return s, nil
 	}
 
-	arr := strings.Split(s, ";")
-
+	//arr := strings.Split(s, ";")
+	arr := stringutils.SplitN(s, ";", splitBuf)
+	if len(arr) >= len(splitBuf) {
+		return "", fmt.Errorf("cannot parse path %#v, tags overflow", s)
+	}
 	if len(arr[0]) == 0 {
 		return "", fmt.Errorf("cannot parse path %#v, no metric found", s)
 	}

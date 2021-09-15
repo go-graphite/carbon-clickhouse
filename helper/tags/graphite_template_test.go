@@ -1,8 +1,9 @@
 package tags
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var graphiteTemplateTestTable = []graphiteTestCase{
@@ -26,8 +27,10 @@ func TestTemplates(t *testing.T) {
 	}
 	tagCfg.Configure()
 
+	splitBuf := make([]string, 256)
+
 	for i := 0; i < len(graphiteTemplateTestTable); i++ {
-		n, err := Graphite(tagCfg, graphiteTemplateTestTable[i].in)
+		n, err := Graphite(tagCfg, graphiteTemplateTestTable[i].in, splitBuf)
 
 		if !graphiteTemplateTestTable[i].err {
 			assert.NoError(err)

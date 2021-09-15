@@ -35,9 +35,10 @@ var graphiteBenchmarkMetricEscaped = "used;host=dfs1;what=diskspace;mountpoint=s
 
 func TestGraphite(t *testing.T) {
 	assert := assert.New(t)
+	splitBuf := make([]string, 256)
 
 	for i := 0; i < len(graphiteTestTable); i++ {
-		n, err := Graphite(DisabledTagConfig(), graphiteTestTable[i].in)
+		n, err := Graphite(DisabledTagConfig(), graphiteTestTable[i].in, splitBuf)
 
 		if !graphiteTestTable[i].err {
 			assert.NoError(err)
@@ -50,8 +51,10 @@ func TestGraphite(t *testing.T) {
 }
 
 func BenchmarkGraphite(b *testing.B) {
+	splitBuf := make([]string, 256)
+
 	for i := 0; i < b.N; i++ {
-		_, err := Graphite(DisabledTagConfig(), graphiteBenchmarkMetric)
+		_, err := Graphite(DisabledTagConfig(), graphiteBenchmarkMetric, splitBuf)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -59,8 +62,10 @@ func BenchmarkGraphite(b *testing.B) {
 }
 
 func BenchmarkGraphiteEscaped(b *testing.B) {
+	splitBuf := make([]string, 256)
+
 	for i := 0; i < b.N; i++ {
-		_, err := Graphite(DisabledTagConfig(), graphiteBenchmarkMetricEscaped)
+		_, err := Graphite(DisabledTagConfig(), graphiteBenchmarkMetricEscaped, splitBuf)
 		if err != nil {
 			b.Fatal(err)
 		}

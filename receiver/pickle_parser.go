@@ -47,8 +47,10 @@ func (base *Base) PickleParseBytes(ctx context.Context, b []byte, now uint32) {
 		atomic.AddUint64(&base.stat.errors, 1)
 	}
 
+	splitBuf := make([]string, 256)
+
 	pickle.ParseMessage(b, func(name string, value float64, timestamp int64) {
-		name, err := tags.Graphite(base.Tags, name)
+		name, err := tags.Graphite(base.Tags, name, splitBuf)
 		if err != nil {
 			// @TODO: log?
 			return

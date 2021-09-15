@@ -81,6 +81,8 @@ func (g *GRPC) doStore(requestCtx context.Context, in *pb.Payload, confirmRequir
 
 	pointsCount := uint32(0)
 
+	splitBuf := make([]string, 256)
+
 	for i := 0; i < len(in.Metrics); i++ {
 		m := in.Metrics[i]
 
@@ -100,7 +102,7 @@ func (g *GRPC) doStore(requestCtx context.Context, in *pb.Payload, confirmRequir
 			return errors.New("points is empty")
 		}
 
-		name, err := tags.Graphite(g.Tags, m.Metric)
+		name, err := tags.Graphite(g.Tags, m.Metric, splitBuf)
 		if err != nil {
 			return err
 		}
