@@ -195,8 +195,6 @@ LineLoop:
 			continue LineLoop
 		}
 
-		stat.written++
-
 		version := uint32(time.Now().Unix())
 		if err = u.parseName(nameStr, days, version, tag1, wb, tagsBuf); err != nil {
 			u.logger.Warn("parse",
@@ -204,8 +202,10 @@ LineLoop:
 			)
 			continue LineLoop
 		} else if _, err = out.Write(wb.Bytes()); err != nil {
+			stat.written = 0
 			return stat, nil, err
 		}
+		stat.written++
 		stat.writtenBytes += uint64(wb.Used)
 		newTagged[key] = true
 	}
