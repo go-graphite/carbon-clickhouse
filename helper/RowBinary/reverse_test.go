@@ -106,3 +106,20 @@ func BenchmarkReverseBytesTo(b *testing.B) {
 		ReverseBytesTo(reverseName, name)
 	}
 }
+
+func BenchmarkReverseBytesToLong(b *testing.B) {
+	name := []byte("carbon.agents.carbon-clickhouse.graphite1.tcp.metricsReceived")
+	reverseNameBuf := make([]byte, 256)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		l := len(name)
+		if l > len(reverseNameBuf) {
+			reverseNameBuf = make([]byte, 2*len(name))
+		}
+		reverseName := reverseNameBuf[0:l]
+		ReverseBytesTo(reverseName, name)
+	}
+}

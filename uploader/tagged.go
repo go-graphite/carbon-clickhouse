@@ -52,7 +52,7 @@ func urlParse(rawurl string) (*url.URL, error) {
 	return m, err
 }
 
-func (u *Tagged) parseName(name string, days uint16,
+func (u *Tagged) parseName(name string, days uint16, version uint32,
 	// reusable buffers
 	tag1 []string, wb *RowBinary.WriteBuffer, tagsBuf *RowBinary.WriteBuffer) error {
 
@@ -60,8 +60,6 @@ func (u *Tagged) parseName(name string, days uint16,
 	if err != nil {
 		return err
 	}
-
-	version := uint32(time.Now().Unix())
 
 	wb.Reset()
 	tagsBuf.Reset()
@@ -167,7 +165,8 @@ LineLoop:
 
 		n++
 
-		if err = u.parseName(nameStr, days, tag1, wb, tagsBuf); err != nil {
+		version := uint32(time.Now().Unix())
+		if err = u.parseName(nameStr, days, version, tag1, wb, tagsBuf); err != nil {
 			u.logger.Warn("parse",
 				zap.String("metric", nameStr), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
 			)
