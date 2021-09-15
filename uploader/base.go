@@ -48,20 +48,16 @@ type Base struct {
 }
 
 func (u *Base) Stat(send func(metric string, value float64)) {
-	uploaded := atomic.LoadUint32(&u.stat.uploaded)
-	atomic.AddUint32(&u.stat.uploaded, -uploaded)
+	uploaded := atomic.SwapUint32(&u.stat.uploaded, 0)
 	send("uploaded", float64(uploaded))
 
-	uploadedMetrics := atomic.LoadUint64(&u.stat.uploadedMetrics)
-	atomic.AddUint64(&u.stat.uploadedMetrics, -uploadedMetrics)
+	uploadedMetrics := atomic.SwapUint64(&u.stat.uploadedMetrics, 0)
 	send("uploaded_metrics", float64(uploadedMetrics))
 
-	uploadedBytes := atomic.LoadUint64(&u.stat.uploadedBytes)
-	atomic.AddUint64(&u.stat.uploadedMetrics, -uploadedBytes)
+	uploadedBytes := atomic.SwapUint64(&u.stat.uploadedBytes, 0)
 	send("uploaded_bytes", float64(uploadedBytes))
 
-	errors := atomic.LoadUint32(&u.stat.errors)
-	atomic.AddUint32(&u.stat.errors, -errors)
+	errors := atomic.SwapUint32(&u.stat.errors, 0)
 	send("errors", float64(errors))
 
 	delay := atomic.LoadInt64(&u.stat.delay)
