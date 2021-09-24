@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BINARY: ${{ github.event.repository.name }}
+      CGO_ENABLED: 0
 
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
@@ -22,6 +23,11 @@ jobs:
 
     - uses: actions/checkout@v2
       name: Checkout
+
+    - name: Test
+      run: make test
+      env:
+        CGO_ENABLED: 1
 
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
