@@ -19,6 +19,7 @@ import (
 	"github.com/lomik/zapwriter"
 )
 
+// App is an application object used in main
 type App struct {
 	sync.RWMutex
 	Config           *Config
@@ -214,7 +215,9 @@ func (app *App) Start() (err error) {
 		uploaders,
 		nil,
 	)
-	app.Writer.Start()
+	if err := app.Writer.Start(); err != nil {
+		return err
+	}
 	/* WRITER end */
 
 	/* UPLOADER start */
@@ -241,7 +244,9 @@ func (app *App) Start() (err error) {
 	}
 
 	for _, uploader := range app.Uploaders {
-		uploader.Start()
+		if err := uploader.Start(); err != nil {
+			return err
+		}
 	}
 	/* UPLOADER end */
 

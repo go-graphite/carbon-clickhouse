@@ -226,7 +226,7 @@ func (c *Collector) local(ctx context.Context) {
 func (c *Collector) chunked(ctx context.Context, chunkSize int, callback func([]byte)) {
 	for {
 		points := c.readData(ctx)
-		if points == nil || len(points) == 0 {
+		if len(points) == 0 {
 			// exit closed
 			return
 		}
