@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	// MetricEndpointLocal used to send metrics in the carbon-clickhouse itself
 	MetricEndpointLocal = "local"
 )
 
@@ -192,13 +193,14 @@ func NewConfig() *Config {
 	return cfg
 }
 
+// NewLoggingConfig returns the zapwriter.Config with logging into "/var/log/carbon-clickhouse/carbon-clickhouse.log"
 func NewLoggingConfig() zapwriter.Config {
 	cfg := zapwriter.NewConfig()
 	cfg.File = "/var/log/carbon-clickhouse/carbon-clickhouse.log"
 	return cfg
 }
 
-// PrintConfig ...
+// PrintDefaultConfig ...
 func PrintDefaultConfig() error {
 	cfg := NewConfig()
 	buf := new(bytes.Buffer)

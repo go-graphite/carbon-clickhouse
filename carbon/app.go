@@ -19,6 +19,7 @@ import (
 	"github.com/lomik/zapwriter"
 )
 
+// App is an application object used in main
 type App struct {
 	sync.RWMutex
 	Config           *Config
