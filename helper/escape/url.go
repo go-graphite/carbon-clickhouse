@@ -5,7 +5,7 @@
 // Package url parses URLs and implements query escaping.
 package escape
 
-import "github.com/msaf1980/stringutils"
+import "github.com/msaf1980/go-stringutils"
 
 // See RFC 3986. This package generally follows RFC 3986, except where
 // it deviates for compatibility reasons. When sending changes, first

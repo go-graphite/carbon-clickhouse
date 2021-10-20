@@ -35,9 +35,9 @@ github.com/lomik/stop
 # github.com/lomik/zapwriter v0.0.0-20170315193840-d4499a33b592
 ## explicit
 github.com/lomik/zapwriter
-# github.com/msaf1980/stringutils v0.0.2-0.20201020141843-69ada32f5dc0
+# github.com/msaf1980/go-stringutils v0.0.11
 ## explicit
-github.com/msaf1980/stringutils
+github.com/msaf1980/go-stringutils
 # github.com/pierrec/lz4 v2.5.2+incompatible
 ## explicit
 github.com/pierrec/lz4
