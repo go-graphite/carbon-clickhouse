@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/lomik/carbon-clickhouse/helper/escape"
-	"github.com/msaf1980/stringutils"
+	"github.com/msaf1980/go-stringutils"
 )
 
 type byKey []string

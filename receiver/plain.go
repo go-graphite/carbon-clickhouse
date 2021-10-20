@@ -11,7 +11,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
-	"github.com/msaf1980/stringutils"
+	"github.com/msaf1980/go-stringutils"
 )
 
 // https://github.com/golang/go/issues/2632#issuecomment-66061057

@@ -45,8 +45,8 @@ github.com/lomik/stop v0.0.0-20161127103810-188e98d969bd h1:hUNpVzZOYNANa5s8XMBE
 github.com/lomik/stop v0.0.0-20161127103810-188e98d969bd/go.mod h1:3pLqdYIrxHYk+VsfIlrTcBD9J34YkGq8iN9yzJuhrP0=
 github.com/lomik/zapwriter v0.0.0-20170315193840-d4499a33b592 h1:NEjGY17W0lNlYFX9i7GupGjrJojX2Ilhy4XebC+86+w=
 github.com/lomik/zapwriter v0.0.0-20170315193840-d4499a33b592/go.mod h1:8xn4WUTM35HWUh6BGz2NkXFmD2l4D420gb4lL8OPJcg=
-github.com/msaf1980/stringutils v0.0.2-0.20201020141843-69ada32f5dc0 h1:mECAdOf/jCR2l5KiE0QfiW/MxRKyMMQb3hjrX8Q1syk=
-github.com/msaf1980/stringutils v0.0.2-0.20201020141843-69ada32f5dc0/go.mod h1:PVF+ukHO/yBVWyAOLIeFJT5XyGoI2oR8y2S/8gOjJOw=
+github.com/msaf1980/go-stringutils v0.0.11 h1:gC9EcL3OGFlKaUNan7jibO081RZInuK5n9RZk4b7kSI=
+github.com/msaf1980/go-stringutils v0.0.11/go.mod h1:AxmV/6JuQUAtZJg5XmYATB5ZwCWgtpruVHY03dswRf8=
 github.com/pierrec/lz4 v2.5.2+incompatible h1:WCjObylUIOlKy/+7Abdn34TLIkXiA4UWUMhxq9m9ZXI=
 github.com/pierrec/lz4 v2.5.2+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
