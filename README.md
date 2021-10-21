@@ -10,6 +10,9 @@ Last releases are stable and ready for production use
 ## TL;DR
 [Preconfigured docker-compose](https://github.com/lomik/graphite-clickhouse-tldr)
 
+### Docker
+Docker images are available on [packages](https://github.com/lomik/carbon-clickhouse/pkgs/container/carbon-clickhouse) page.
+
 ## Build
 ```sh
 # build binary
