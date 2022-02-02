@@ -84,6 +84,7 @@ LineLoop:
 		n++
 
 		level = pathLevel(name)
+		days := reader.Days()
 
 		wb.Reset()
 
@@ -138,13 +139,13 @@ LineLoop:
 		}
 
 		// Direct path with date
-		wb.WriteUint16(reader.Days())
+		wb.WriteUint16(days)
 		wb.WriteUint32(uint32(level))
 		wb.WriteBytes(name)
 		wb.WriteUint32(version)
 
 		// Reverse path with date
-		wb.WriteUint16(reader.Days())
+		wb.WriteUint16(days)
 		wb.WriteUint32(uint32(level + ReverseLevelOffset))
 		wb.WriteBytes(reverseName)
 		wb.WriteUint32(version)
