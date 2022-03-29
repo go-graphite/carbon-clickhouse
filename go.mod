@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/frankban/quicktest v1.11.1 // indirect
-	github.com/gogo/protobuf v1.0.0
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.4.1
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049
 	github.com/lomik/graphite-pickle v0.0.0-20171221213606-614e8df42119
@@ -19,8 +19,7 @@ require (
 	github.com/zentures/cityhash v0.0.0-20131128155616-cdd6a94144ab
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.7.1
-	golang.org/x/net v0.0.0-20190311183353-d8887717615a
-	golang.org/x/text v0.3.3 // indirect
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	google.golang.org/genproto v0.0.0-20201014134559-03b6142f0dc9 // indirect
 	google.golang.org/grpc v1.27.0
 )
