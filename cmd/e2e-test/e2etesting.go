@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -124,11 +125,12 @@ func verifyOut(address string, verify Verify) []string {
 	}
 	for i := 0; i < max; i++ {
 		if i >= len(ss) {
-			errs = append(errs, "WANT '"+verify.Output[i]+"', GOT -")
+			errs = append(errs, "- "+verify.Output[i])
 		} else if i >= len(verify.Output) {
-			errs = append(errs, "WANT '-', GOT '"+ss[i]+"'")
+			errs = append(errs, "+ "+ss[i])
 		} else if ss[i] != verify.Output[i] {
-			errs = append(errs, "WANT '"+verify.Output[i]+"', GOT '"+ss[i]+"'")
+			errs = append(errs, "- "+verify.Output[i])
+			errs = append(errs, "+ "+ss[i])
 		}
 	}
 	return errs
@@ -213,7 +215,7 @@ func testCarbonClickhouse(
 					testSuccess = false
 					verifyFailed++
 					for _, e := range errs {
-						logger.Error(e)
+						fmt.Fprintln(os.Stderr, e)
 					}
 					logger.Error("verify records in clickhouse",
 						zap.String("config", test.name),
