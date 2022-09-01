@@ -8,6 +8,7 @@ import (
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/config"
+	"github.com/lomik/carbon-clickhouse/helper/tags"
 	"github.com/msaf1980/go-stringutils"
 	"github.com/pierrec/lz4"
 )
@@ -52,7 +53,7 @@ func generateMetrics() []point {
 			"stopped",
 		} {
 			pathPlain := "telegraph." + host + ".processes." + name
-			pathTagged := name + "?app=telegraph&host=" + host + "&scope=processes"
+			pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+"?app=telegraph&host="+host+"&scope=processes")
 			date := RowBinary.TimestampToDays(now)
 
 			points = append(points, point{
@@ -107,7 +108,7 @@ func generateMetricsLarge() []point {
 			"idle",
 		} {
 			pathPlain := "telegraph." + host + ".processes." + name
-			pathTagged := name + "?app=telegraph&host=" + host + "&scope=processes"
+			pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+"?app=telegraph&host="+host+"&scope=processes")
 			date := RowBinary.TimestampToDays(now)
 
 			points = append(points, point{
@@ -150,7 +151,7 @@ func generateMetricsLarge() []point {
 				"usage_idle",
 			} {
 				pathPlain := "telegraph." + host + "." + cpu + ".cpu." + name
-				pathTagged := name + "?app=telegraph&host=" + host + "&scope=cpu&cpu=" + cpu
+				pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+"?app=telegraph&host="+host+"&scope=cpu&cpu="+cpu)
 				date := RowBinary.TimestampToDays(now)
 
 				points = append(points, point{
@@ -193,7 +194,7 @@ func generateMetricsLarge() []point {
 				"iops_in_progress",
 			} {
 				pathPlain := "telegraph." + host + "." + dev + ".diskio." + name
-				pathTagged := name + "?app=telegraph&host=" + host + "&scope=diskio&dev=" + dev
+				pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+"?app=telegraph&host="+host+"&scope=diskio&dev="+dev)
 				date := RowBinary.TimestampToDays(now)
 
 				points = append(points, point{
@@ -226,7 +227,7 @@ func generateMetricsLarge() []point {
 			"total",
 		} {
 			pathPlain := "telegraph." + host + ".swap." + name
-			pathTagged := name + "?app=telegraph&host=" + host + "&scope=swap"
+			pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+"?app=telegraph&host="+host+"&scope=swap")
 			date := RowBinary.TimestampToDays(now)
 
 			points = append(points, point{
@@ -285,7 +286,7 @@ func generateMetricsLarge() []point {
 			"used_percent",
 		} {
 			pathPlain := "telegraph." + host + ".mem." + name
-			pathTagged := name + "?app=telegraph&host=" + host + "&scope=mem"
+			pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+"?app=telegraph&host="+host+"&scope=mem")
 			date := RowBinary.TimestampToDays(now)
 
 			points = append(points, point{
@@ -316,7 +317,7 @@ func generateMetricsLarge() []point {
 			"context_switches",
 		} {
 			pathPlain := "telegraph." + host + ".kernel." + name
-			pathTagged := name + "?app=telegraph&host=" + host + "&scope=kernel"
+			pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+"?app=telegraph&host="+host+"&scope=kernel")
 			date := RowBinary.TimestampToDays(now)
 
 			points = append(points, point{
@@ -355,7 +356,7 @@ func generateMetricsLarge() []point {
 				"used_percent",
 			} {
 				pathPlain := "telegraph." + host + "." + fs + ".disk." + name
-				pathTagged := name + "?app=telegraph&host=" + host + "&scope=disk&fs=" + fs
+				pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+"?app=telegraph&host="+host+"&scope=disk&fs="+fs)
 				date := RowBinary.TimestampToDays(now)
 
 				points = append(points, point{
@@ -401,13 +402,13 @@ func generateMetricsLarge() []point {
 									dev + "." +
 									namespace + "." + name
 
-								pathTagged := name +
-									"?cluster=" + cluster +
-									"&device=" + dev +
-									"&environment=" + env +
-									"&instance=" + host +
-									"&job=" + job +
-									"&kubernetes_namespace=" + namespace
+								pathTagged, _ := tags.Graphite(tags.DisabledTagConfig(), name+
+									"?cluster="+cluster+
+									"&device="+dev+
+									"&environment="+env+
+									"&instance="+host+
+									"&job="+job+
+									"&kubernetes_namespace="+namespace)
 
 								date := RowBinary.TimestampToDays(now)
 

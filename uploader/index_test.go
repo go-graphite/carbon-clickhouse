@@ -33,15 +33,15 @@ func (r *indexRecord) Read(rdr *reader.Reader) error {
 	}
 	r.level, err = rdr.ReadUint32()
 	if err != nil {
-		return err
+		return reader.CheckError(err)
 	}
 	r.name, err = rdr.ReadString()
 	if err != nil {
-		return err
+		return reader.CheckError(err)
 	}
 	r.version, err = rdr.ReadUint32()
 
-	return err
+	return reader.CheckError(err)
 }
 
 func TestIndexParseFileDedup(t *testing.T) {
@@ -134,41 +134,48 @@ func TestIndexParseFileDedup(t *testing.T) {
 	}
 	u := NewIndex(base)
 
-	var out bytes.Buffer
-	n, m, err := u.parseFile(filename, &out)
-	if err != nil {
-		t.Fatalf("Index.parseFile() got error: %v", err)
-	}
-	if n != 3 {
-		t.Errorf("Index.parseFile() got %d, want %d", n, 3)
-	}
+	for i := 0; i < 3; i++ {
+		t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
+			var out bytes.Buffer
+			n, m, err := u.parseFile(filename, &out)
+			if err != nil {
+				t.Fatalf("Index.parseFile() got error: %v", err)
+			}
+			if n != 3 {
+				t.Errorf("Index.parseFile() got %d, want %d", n, 3)
+			}
 
-	records := make([]indexRecord, 0, len(wantIndexRecords))
-	var rec indexRecord
-	br := reader.NewReader(&out)
-	for err = rec.Read(br); err != io.EOF; err = rec.Read(br) {
-		records = append(records, rec)
-	}
-	maxLen := tests.Max(len(wantIndexRecords), len(records))
-	for i := 0; i < maxLen; i++ {
-		if i >= len(records) {
-			t.Errorf("[%d]\n- %+v", i, wantIndexRecords[i])
-		} else if i >= len(wantIndexRecords) {
-			t.Errorf("[%d]\n+ %+v", i, records[i])
-		} else if wantIndexRecords[i] != records[i] {
-			t.Errorf("[%d]\n- %+v\n+ %+v", i, wantIndexRecords[i], records[i])
-		}
-	}
+			records := make([]indexRecord, 0, len(wantIndexRecords))
+			var rec indexRecord
+			br := reader.NewReader(&out)
+			for err = rec.Read(br); err == nil; err = rec.Read(br) {
+				records = append(records, rec)
+			}
+			if err != io.EOF {
+				t.Fatalf("indexRecord.Read() got error: %v", err)
+			}
+			maxLen := tests.Max(len(wantIndexRecords), len(records))
+			for i := 0; i < maxLen; i++ {
+				if i >= len(records) {
+					t.Errorf("[%d]\n- %+v", i, wantIndexRecords[i])
+				} else if i >= len(wantIndexRecords) {
+					t.Errorf("[%d]\n+ %+v", i, records[i])
+				} else if wantIndexRecords[i] != records[i] {
+					t.Errorf("[%d]\n- %+v\n+ %+v", i, wantIndexRecords[i], records[i])
+				}
+			}
 
-	for v := range cacheMap {
-		if _, exist := m[v]; !exist {
-			t.Errorf("Index.parseFile() got\n- map[%s]", v)
-		}
-	}
-	for v := range m {
-		if _, exist := cacheMap[v]; !exist {
-			t.Errorf("Index.parseFile() got\n+ map[%s]", v)
-		}
+			for v := range cacheMap {
+				if _, exist := m[v]; !exist {
+					t.Errorf("Index.parseFile() got\n- map[%s]", v)
+				}
+			}
+			for v := range m {
+				if _, exist := cacheMap[v]; !exist {
+					t.Errorf("Index.parseFile() got\n+ map[%s]", v)
+				}
+			}
+		})
 	}
 }
 
@@ -255,41 +262,45 @@ func TestIndexParseFileDedupNoDaily(t *testing.T) {
 	}
 	u := NewIndex(base)
 
-	var out bytes.Buffer
-	n, m, err := u.parseFile(filename, &out)
-	if err != nil {
-		t.Fatalf("Index.parseFile() got error: %v", err)
-	}
-	if n != 3 {
-		t.Errorf("Index.parseFile() got %d, want %d", n, 3)
-	}
+	for i := 0; i < 3; i++ {
+		t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
+			var out bytes.Buffer
+			n, m, err := u.parseFile(filename, &out)
+			if err != nil {
+				t.Fatalf("Index.parseFile() got error: %v", err)
+			}
+			if n != 3 {
+				t.Errorf("Index.parseFile() got %d, want %d", n, 3)
+			}
 
-	records := make([]indexRecord, 0, len(wantIndexRecords))
-	var rec indexRecord
-	br := reader.NewReader(&out)
-	for err = rec.Read(br); err != io.EOF; err = rec.Read(br) {
-		records = append(records, rec)
-	}
-	maxLen := tests.Max(len(wantIndexRecords), len(records))
-	for i := 0; i < maxLen; i++ {
-		if i >= len(records) {
-			t.Errorf("[%d]\n- %+v", i, wantIndexRecords[i])
-		} else if i >= len(wantIndexRecords) {
-			t.Errorf("[%d]\n+ %+v", i, records[i])
-		} else if wantIndexRecords[i] != records[i] {
-			t.Errorf("[%d]\n- %+v\n+ %+v", i, wantIndexRecords[i], records[i])
-		}
-	}
+			records := make([]indexRecord, 0, len(wantIndexRecords))
+			var rec indexRecord
+			br := reader.NewReader(&out)
+			for err = rec.Read(br); err != io.EOF; err = rec.Read(br) {
+				records = append(records, rec)
+			}
+			maxLen := tests.Max(len(wantIndexRecords), len(records))
+			for i := 0; i < maxLen; i++ {
+				if i >= len(records) {
+					t.Errorf("[%d]\n- %+v", i, wantIndexRecords[i])
+				} else if i >= len(wantIndexRecords) {
+					t.Errorf("[%d]\n+ %+v", i, records[i])
+				} else if wantIndexRecords[i] != records[i] {
+					t.Errorf("[%d]\n- %+v\n+ %+v", i, wantIndexRecords[i], records[i])
+				}
+			}
 
-	for v := range cacheMap {
-		if _, exist := m[v]; !exist {
-			t.Errorf("Index.parseFile() got\n- map[%s]", v)
-		}
-	}
-	for v := range m {
-		if _, exist := cacheMap[v]; !exist {
-			t.Errorf("Index.parseFile() got\n+ map[%s]", v)
-		}
+			for v := range cacheMap {
+				if _, exist := m[v]; !exist {
+					t.Errorf("Index.parseFile() got\n- map[%s]", v)
+				}
+			}
+			for v := range m {
+				if _, exist := cacheMap[v]; !exist {
+					t.Errorf("Index.parseFile() got\n+ map[%s]", v)
+				}
+			}
+		})
 	}
 }
 
@@ -441,43 +452,45 @@ func TestIndexParseFile(t *testing.T) {
 	}
 	logger := zapwriter.Logger("upload")
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			filename, err := writeFile(points, tt.compress, tt.compressLevel)
-			if err != nil {
-				t.Fatalf("writeFile() got error: %v", err)
-			}
-			defer os.Remove(filename)
+		filename, err := writeFile(points, tt.compress, tt.compressLevel)
+		if err != nil {
+			t.Fatalf("writeFile() got error: %v", err)
+		}
+		defer os.Remove(filename)
 
-			base := &Base{
-				queue:   make(chan string, 1024),
-				inQueue: make(map[string]bool),
-				logger:  logger,
-				config:  &Config{TableName: "test", DisableDailyIndex: tt.disableDailyIndex},
-			}
-			u := NewIndex(base)
+		base := &Base{
+			queue:   make(chan string, 1024),
+			inQueue: make(map[string]bool),
+			logger:  logger,
+			config:  &Config{TableName: "test", DisableDailyIndex: tt.disableDailyIndex},
+		}
+		u := NewIndex(base)
 
-			var out bytes.Buffer
-			now32 := uint32(time.Now().Unix())
-			n, m, err := u.parseFile(filename, &out)
-			if err != nil {
-				t.Fatalf("Index.parseFile() got error: %v", err)
-			}
-			if n != wantPoints {
-				t.Errorf("Index.parseFile() got %d, want %d", n, wantPoints)
-			}
-			for v := range cacheMap {
-				if _, exist := m[v]; !exist {
-					t.Errorf("Index.parseFile() got\n- map[%s]", v)
+		for i := 0; i < 3; i++ {
+			t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
+				var out bytes.Buffer
+				now32 := uint32(time.Now().Unix())
+				n, m, err := u.parseFile(filename, &out)
+				if err != nil {
+					t.Fatalf("Index.parseFile() got error: %v", err)
 				}
-			}
-			for v := range m {
-				if _, exist := cacheMap[v]; !exist {
-					t.Errorf("Index.parseFile() got\n+ map[%s]", v)
+				if n != wantPoints {
+					t.Errorf("Index.parseFile() got %d, want %d", n, wantPoints)
 				}
-			}
+				for v := range cacheMap {
+					if _, exist := m[v]; !exist {
+						t.Errorf("Index.parseFile() got\n- map[%s]", v)
+					}
+				}
+				for v := range m {
+					if _, exist := cacheMap[v]; !exist {
+						t.Errorf("Index.parseFile() got\n+ map[%s]", v)
+					}
+				}
 
-			verifyIndexUploaded(t, &out, points, now32, tt.disableDailyIndex)
-		})
+				verifyIndexUploaded(t, &out, points, now32, tt.disableDailyIndex)
+			})
+		}
 	}
 }
 

@@ -9,6 +9,14 @@ import (
 )
 
 var ErrUvarintOverflow = errors.New("varint overflow")
+var ErrUnexpectedEnd = errors.New("unexpected end")
+
+func CheckError(err error) error {
+	if err == io.EOF {
+		return ErrUnexpectedEnd
+	}
+	return err
+}
 
 const (
 	SIZE_INT8  = 1
