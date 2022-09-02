@@ -3,6 +3,7 @@ package receiver
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,20 +29,79 @@ func BenchmarkPlainParseBuffer(b *testing.B) {
 		buf2.Write([]byte(msg2))
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case b := <-out:
+				b.Release()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	b.ResetTimer()
 
 	base := &Base{writeChan: out}
 
-	var wb *RowBinary.WriteBuffer
 	for i := 0; i < b.N; i += 100 {
 		base.PlainParseBuffer(context.Background(), buf)
-		wb = <-out
-		wb.Release()
-
 		base.PlainParseBuffer(context.Background(), buf2)
-		wb = <-out
-		wb.Release()
 	}
+
+	b.StopTimer()
+	cancel()
+}
+
+func BenchmarkPlainParseBufferTagged(b *testing.B) {
+	out := make(chan *RowBinary.WriteBuffer, 1)
+
+	now := time.Now().Unix()
+
+	msg := fmt.Sprintf("cpu.loadavg;env=test2;host=host1;env=test 21.4 %d\n", now)
+	buf := GetBuffer()
+	buf.Time = uint32(now)
+	for i := 0; i < 50; i++ {
+		buf.Write([]byte(msg))
+	}
+
+	msg2 := fmt.Sprintf("cpu.loadavg;env=test;host=host1 %d\n", now)
+	buf2 := GetBuffer()
+	buf2.Time = uint32(now)
+	for i := 0; i < 50; i++ {
+		buf2.Write([]byte(msg2))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case b := <-out:
+				b.Release()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	b.ResetTimer()
+
+	base := &Base{writeChan: out}
+
+	for i := 0; i < b.N; i += 100 {
+		base.PlainParseBuffer(context.Background(), buf)
+		base.PlainParseBuffer(context.Background(), buf2)
+	}
+
+	b.StopTimer()
+	cancel()
 }
 
 func TestRemoveDoubleDot(t *testing.T) {
@@ -89,6 +149,7 @@ func TestPlainParseLine(t *testing.T) {
 		{"metric.name 42.15 1422642189\r\n", "metric.name", 42.15, 1422642189},
 		{"metric.name;tag=value;k=v 42.15 1422642189\r\n", "metric.name?k=v&tag=value", 42.15, 1422642189},
 		{"metric..name 42.15 -1\n", "metric.name", 42.15, now},
+		{"cpu.loadavg;env=test2;host=host1;env=test 21.4 1422642189\n", "cpu.loadavg?env=test&host=host1", 21.4, 1422642189},
 	}
 
 	base := &Base{}
