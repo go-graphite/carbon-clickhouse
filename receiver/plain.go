@@ -3,7 +3,7 @@ package receiver
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"math"
 	"strconv"
 	"sync/atomic"
@@ -53,12 +53,12 @@ func RemoveDoubleDot(p []byte) []byte {
 func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
-		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+		return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
 	}
 
 	i2 := bytes.IndexByte(p[i1+1:], ' ')
 	if i2 < 1 {
-		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+		return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
 	}
 	i2 += i1 + 1
 
@@ -72,7 +72,7 @@ func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32,
 
 	value, err := strconv.ParseFloat(unsafeString(p[i1+1:i2]), 64)
 	if err != nil || math.IsNaN(value) {
-		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+		return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
 	}
 
 	var timestamp uint32
@@ -82,7 +82,7 @@ func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32,
 	} else {
 		tsf, err := strconv.ParseFloat(unsafeString(p[i2+1:i3]), 64)
 		if err != nil || math.IsNaN(tsf) {
-			return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+			return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
 		}
 		timestamp = uint32(tsf)
 	}

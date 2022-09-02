@@ -69,7 +69,7 @@ func BenchmarkPlainParseBufferTagged(b *testing.B) {
 		buf.Write([]byte(msg))
 	}
 
-	msg2 := fmt.Sprintf("cpu.loadavg;env=test;host=host1 %d\n", now)
+	msg2 := fmt.Sprintf("cpu.loadavg;env=test;host=host1 13 %d\n", now)
 	buf2 := GetBuffer()
 	buf2.Time = uint32(now)
 	for i := 0; i < 50; i++ {
@@ -117,10 +117,32 @@ func TestRemoveDoubleDot(t *testing.T) {
 	}
 
 	for _, p := range table {
-		v := RemoveDoubleDot([]byte(p.input))
-		if string(v) != p.expected {
-			t.Fatalf("%#v != %#v", string(v), p.expected)
-		}
+		t.Run(p.input, func(b *testing.T) {
+			v := RemoveDoubleDot([]byte(p.input))
+			if string(v) != p.expected {
+				t.Fatalf("%#v != %#v", string(v), p.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRemoveDoubleDot(b *testing.B) {
+	benchmarks := []string{
+		"hello.world",
+		"hello..world",
+		"..hello..world..",
+		"hello.world.lon.metric.with..dots",
+		"hello.world.lon.metric.without.dots",
+	}
+
+	for _, bm := range benchmarks {
+		b.Run(bm, func(b *testing.B) {
+			input := []byte(bm)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = RemoveDoubleDot(input)
+			}
+		})
 	}
 }
 
