@@ -25,6 +25,14 @@ const (
 	SIZE_INT64 = 8
 )
 
+type Point struct {
+	Path      string
+	Value     float64
+	Timestamp uint32
+	Days      uint16
+	Version   uint32
+}
+
 func DateUint16(n uint16) time.Time {
 	return time.Unix(int64(n)*86400, 0).UTC()
 }
@@ -43,7 +51,7 @@ func NewReader(rdr io.Reader) *Reader {
 }
 
 func (r *Reader) read(want int) ([]byte, error) {
-	if n, err := r.wrapped.Read(r.buf[0:want]); err != nil {
+	if n, err := io.ReadFull(r.wrapped, r.buf[0:want]); err != nil {
 		return nil, err
 	} else if n < want {
 		return nil, io.EOF
@@ -169,4 +177,31 @@ func (r *Reader) ReadStringList() ([]string, error) {
 		}
 		return sList, nil
 	}
+}
+
+func (r *Reader) ReadGraphitePoint() (*Point, error) {
+	var err error
+	point := &Point{}
+	point.Path, err = r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	point.Value, err = r.ReadFloat64()
+	if err != nil {
+		return point, CheckError(err)
+	}
+	point.Timestamp, err = r.ReadUint32()
+	if err != nil {
+		return point, CheckError(err)
+	}
+	point.Days, err = r.ReadUint16()
+	if err != nil {
+		return point, CheckError(err)
+	}
+	point.Version, err = r.ReadUint32()
+	if err != nil {
+		return point, CheckError(err)
+	}
+
+	return point, nil
 }
