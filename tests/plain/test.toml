@@ -2,7 +2,7 @@
 config_template = "carbon-clickhouse.conf.tpl"
 input = [ 
     "test.host1.cpu.loadavg 10.2 1625478240",    
-    "cpu.loadavg;env=test;host=host1 21.4 1625478300",
+    "cpu.loadavg;env=test2;host=host1;env=test 21.4 1625478300",
     "test2.host1.cpu0.user 10.2 1625478240",
     "test2.host1.cpu0.idle 10.2 1625478240",
     "test2.host1.cpu0.system 10.2 1625478240",
@@ -86,8 +86,9 @@ input = [
     "test2.host32.cpu-total.idle 10.2 1625478240",
     "test2.host32.cpu-total.system 10.2 1625478240",
     "test2.host32.cpu-total.iowait 10.2 1625478240",
+    "cpu.loadavg;env=test;host=host1 2.1 1625478240",
     "test.host1.cpu.loadavg 9.4 1625478300",
-    "cpu.loadavg;env=test;host=host1 1.3 1625478360",
+    "cpu.loadavg;host=host1;env=test 1.3 1625478360",
 ]
 
 [[test.clickhouse]]
@@ -145,14 +146,16 @@ output = [
     "2021-07-05 host=host1 cpu.loadavg?env=test&host=host1 ['__name__=cpu.loadavg','env=test','host=host1']",
 ]
 [[test.verify]]
-query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite WHERE Path LIKE 'cpu.loadavg%' ORDER BY Time, Path"
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite WHERE Path LIKE 'cpu.loadavg?%' ORDER BY Time, Path"
 output = [
+    "cpu.loadavg?env=test&host=host1 2.1 1625478240 2021-07-05 0",
     "cpu.loadavg?env=test&host=host1 21.4 1625478300 2021-07-05 0",
     "cpu.loadavg?env=test&host=host1 1.3 1625478360 2021-07-05 0",
 ]
 [[test.verify]]
-query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite_reverse WHERE Path LIKE 'cpu.loadavg%' ORDER BY Time, Path"
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite_reverse WHERE Path LIKE 'cpu.loadavg?%' ORDER BY Time, Path"
 output = [
+    "cpu.loadavg?env=test&host=host1 2.1 1625478240 2021-07-05 0",
     "cpu.loadavg?env=test&host=host1 21.4 1625478300 2021-07-05 0",
     "cpu.loadavg?env=test&host=host1 1.3 1625478360 2021-07-05 0",
 ]

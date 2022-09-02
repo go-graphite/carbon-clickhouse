@@ -70,6 +70,7 @@ func main() {
 
 	config := flag.String("config", "", "toml configuration file or dir where toml files is searched (recursieve)")
 	verbose := flag.Bool("verbose", false, "verbose")
+	breakOnError := flag.Bool("break", false, "break and wait user response if request failed")
 	flag.Parse()
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -91,7 +92,7 @@ func main() {
 	failed := 0
 	total := 0
 	for _, config := range configs {
-		testFailed, testTotal := runTest(config, rootDir, *verbose, logger)
+		testFailed, testTotal := runTest(config, rootDir, *verbose, *breakOnError, logger)
 		failed += testFailed
 		total += testTotal
 	}
