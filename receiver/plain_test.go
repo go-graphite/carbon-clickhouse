@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/lomik/carbon-clickhouse/helper/tags"
 )
 
 func BenchmarkPlainParseBuffer(b *testing.B) {
@@ -47,10 +48,12 @@ func BenchmarkPlainParseBuffer(b *testing.B) {
 	b.ResetTimer()
 
 	base := &Base{writeChan: out}
+	var tagBuf tags.GraphiteBuf
+	tagBuf.Resize(128, 4096)
 
 	for i := 0; i < b.N; i += 100 {
-		base.PlainParseBuffer(context.Background(), buf)
-		base.PlainParseBuffer(context.Background(), buf2)
+		base.PlainParseBuffer(context.Background(), buf, &tagBuf)
+		base.PlainParseBuffer(context.Background(), buf2, &tagBuf)
 	}
 
 	b.StopTimer()
@@ -94,10 +97,12 @@ func BenchmarkPlainParseBufferTagged(b *testing.B) {
 	b.ResetTimer()
 
 	base := &Base{writeChan: out}
+	var tagBuf tags.GraphiteBuf
+	tagBuf.Resize(128, 4096)
 
 	for i := 0; i < b.N; i += 100 {
-		base.PlainParseBuffer(context.Background(), buf)
-		base.PlainParseBuffer(context.Background(), buf2)
+		base.PlainParseBuffer(context.Background(), buf, &tagBuf)
+		base.PlainParseBuffer(context.Background(), buf2, &tagBuf)
 	}
 
 	b.StopTimer()
@@ -175,9 +180,11 @@ func TestPlainParseLine(t *testing.T) {
 	}
 
 	base := &Base{}
+	var tagBuf tags.GraphiteBuf
+	tagBuf.Resize(128, 4096)
 
 	for _, p := range table {
-		name, value, timestamp, err := base.PlainParseLine([]byte(p.b), now)
+		name, value, timestamp, err := base.PlainParseLine([]byte(p.b), now, &tagBuf)
 		if p.name == "" {
 			// expected error
 			if err == nil {

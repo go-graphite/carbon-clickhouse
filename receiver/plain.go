@@ -50,7 +50,7 @@ func RemoveDoubleDot(p []byte) []byte {
 	return p[:len(p)-shift]
 }
 
-func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32, error) {
+func (base *Base) PlainParseLine(p []byte, now uint32, buf *tags.GraphiteBuf) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
 		return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
@@ -91,11 +91,11 @@ func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32,
 
 	// parse tagged
 	// @TODO: parse as bytes, don't cast to string and back
-	name, err := tags.Graphite(base.Tags, unsafeString(s))
+	name, err := tags.GraphiteBuffered(base.Tags, unsafeString(s), buf)
 	return stringutils.UnsafeStringBytes(&name), value, timestamp, err
 }
 
-func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer) {
+func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer, buf *tags.GraphiteBuf) {
 	offset := 0
 	metricCount := uint32(0)
 	errorCount := uint32(0)
@@ -115,7 +115,7 @@ MainLoop:
 			continue MainLoop
 		}
 
-		name, value, timestamp, err := base.PlainParseLine(b.Body[offset:offset+lineEnd+1], b.Time)
+		name, value, timestamp, err := base.PlainParseLine(b.Body[offset:offset+lineEnd+1], b.Time, buf)
 		offset += lineEnd + 1
 
 		// @TODO: check required buffer size, get new
@@ -156,12 +156,14 @@ MainLoop:
 }
 
 func (base *Base) PlainParser(ctx context.Context, in chan *Buffer) {
+	var tagBuf tags.GraphiteBuf
+	tagBuf.Resize(128, 4096)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case b := <-in:
-			base.PlainParseBuffer(ctx, b)
+			base.PlainParseBuffer(ctx, b, &tagBuf)
 			b.Release()
 		}
 	}
