@@ -5,6 +5,8 @@ import (
 	"os/exec"
 )
 
+var ClickhouseContainerName = "clickhouse-server-gch-test"
+
 type Clickhouse struct {
 	Version string `toml:"version"`
 	Dir     string `toml:"dir"`
@@ -35,7 +37,7 @@ func (c *Clickhouse) Start() (error, string) {
 		return err, ""
 	}
 
-	c.container = "carbon-clickhouse-clickhouse-server-test"
+	c.container = ClickhouseContainerName
 
 	chStart := []string{"run", "-d",
 		"--name", c.container,
