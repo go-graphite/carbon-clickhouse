@@ -2,6 +2,7 @@
 
 [data]
 path = "{{ .CCH_STORE_DIR }}"
+chunk-max-size = 128
 chunk-interval = "5s"
 chunk-auto-interval = ""
 
