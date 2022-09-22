@@ -88,7 +88,7 @@ func (u *Base) scanDir(ctx context.Context) {
 		files = append(files, fileName)
 	}
 
-	if delay > 0 {
+	if delay >= 0 {
 		atomic.StoreInt64(&u.stat.delay, delay)
 	}
 	atomic.StoreUint32(&u.stat.unhandled, uint32(len(files)))
