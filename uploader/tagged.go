@@ -52,39 +52,96 @@ func urlParse(rawurl string) (*url.URL, error) {
 	return m, err
 }
 
-func (u *Tagged) parseName(name string, days uint16,
+// don't unescape special symbols
+// escape also not needed (all is done in receiver/plain.go, Base.PlainParseLine)
+func tagsParse(path string) (string, map[string]string, error) {
+	delim := strings.IndexRune(path, '?')
+	if delim < 1 {
+		return "", nil, fmt.Errorf("incomplete tags in '%s'", path)
+	}
+	name := path[:delim]
+	args := path[delim+1:]
+	tags := make(map[string]string)
+	for {
+		if delim = strings.IndexRune(args, '='); delim == -1 {
+			// corrupted tag
+			break
+		} else {
+			key := args[0:delim]
+			v := args[delim+1:]
+			if end := strings.IndexRune(v, '&'); end == -1 {
+				tags[key] = args[0:]
+				break
+			} else {
+				end += delim + 1
+				tags[key] = args[0:end]
+				args = args[end+1:]
+			}
+		}
+	}
+	return name, tags, nil
+}
+
+// don't unescape special symbols
+// escape also not needed (all is done in receiver/plain.go, Base.PlainParseLine)
+// tags already sorted in in helper/tags/graphite.go, tags.Graphite
+func tagsParseToSlice(path string) (string, []string, error) {
+	delim := strings.IndexRune(path, '?')
+	if delim < 1 {
+		return "", nil, fmt.Errorf("incomplete tags in '%s'", path)
+	}
+	name := path[:delim]
+	args := path[delim+1:]
+	tags := make([]string, 0, 32)
+
+	for {
+		if delim = strings.IndexRune(args, '='); delim == -1 {
+			// corrupted tag
+			break
+		} else {
+			v := args[delim+1:]
+			if end := strings.IndexRune(v, '&'); end == -1 {
+				tags = append(tags, args[0:])
+				break
+			} else {
+				end += delim + 1
+				tags = append(tags, args[0:end])
+				args = args[end+1:]
+			}
+		}
+	}
+	return name, tags, nil
+}
+
+func (u *Tagged) parseName(name string, days uint16, version uint32,
 	// reusable buffers
 	tag1 []string, wb *RowBinary.WriteBuffer, tagsBuf *RowBinary.WriteBuffer) error {
 
-	m, err := urlParse(name)
+	mPath, tags, err := tagsParseToSlice(name)
 	if err != nil {
 		return err
 	}
-
-	version := uint32(time.Now().Unix())
 
 	wb.Reset()
 	tagsBuf.Reset()
 	tag1 = tag1[:0]
 
-	t := fmt.Sprintf("__name__=%s", m.Path)
+	t := "__name__=" + mPath
 	tag1 = append(tag1, t)
 	tagsBuf.WriteString(t)
+	tagsWritten := 1
 
 	// calc size for prevent buffer overflow
 	sizeTags := RowBinary.SIZE_INT16 /* days */ +
-		RowBinary.SIZE_INT64 + len(m.Path) +
+		RowBinary.SIZE_INT64 + len(mPath) +
 		RowBinary.SIZE_INT64 + len(name) +
 		RowBinary.SIZE_INT64 + //  tagsBuf.Len() not known at this step
 		RowBinary.SIZE_INT16 //version
 
 	// don't upload any other tag but __name__
 	// if either main metric (m.Path) or each metric (*) is ignored
-	ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
-	tagsWritten := 1
-	for k, v := range m.Query() {
-		t := fmt.Sprintf("%s=%s", k, v[0])
-
+	ignoreAllButName := u.ignoredMetrics[mPath] || u.ignoredMetrics["*"]
+	for _, t := range tags {
 		sizeTags += RowBinary.SIZE_INT16 /* days */ +
 			RowBinary.SIZE_INT64 + len(t) +
 			RowBinary.SIZE_INT64 + len(name) +
@@ -125,6 +182,8 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]b
 	var err error
 	var n uint64
 
+	version := uint32(time.Now().Unix())
+
 	reader, err = RowBinary.NewReader(filename, false)
 	if err != nil {
 		return n, nil, err
@@ -139,6 +198,11 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]b
 	defer tagsBuf.Release()
 
 	tag1 := make([]string, 0)
+
+	hashFunc := u.config.hashFunc
+	if hashFunc == nil {
+		hashFunc = keepOriginal
+	}
 
 LineLoop:
 	for {
@@ -155,7 +219,7 @@ LineLoop:
 		nameStr := unsafeString(name)
 
 		days := reader.Days()
-		key := strconv.Itoa(int(days)) + ":" + nameStr
+		key := strconv.Itoa(int(days)) + ":" + hashFunc(nameStr)
 		if u.existsCache.Exists(key) {
 			continue LineLoop
 		}
@@ -167,7 +231,7 @@ LineLoop:
 
 		n++
 
-		if err = u.parseName(nameStr, days, tag1, wb, tagsBuf); err != nil {
+		if err = u.parseName(nameStr, days, version, tag1, wb, tagsBuf); err != nil {
 			u.logger.Warn("parse",
 				zap.String("metric", nameStr), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
 			)
