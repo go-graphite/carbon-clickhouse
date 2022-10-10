@@ -12,7 +12,7 @@ require (
 	github.com/lomik/og-rek v0.0.0-20170411191824-628eefeb8d80 // indirect
 	github.com/lomik/stop v0.0.0-20161127103810-188e98d969bd // indirect
 	github.com/lomik/zapwriter v0.0.0-20170315193840-d4499a33b592
-	github.com/msaf1980/go-stringutils v0.0.11
+	github.com/msaf1980/go-stringutils v0.1.0
 	github.com/pierrec/lz4 v2.5.2+incompatible
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stretchr/testify v1.7.0

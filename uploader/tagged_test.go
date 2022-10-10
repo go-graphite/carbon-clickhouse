@@ -457,7 +457,7 @@ func TestTaggedParseFileDedup(t *testing.T) {
 					if !reflect.DeepEqual(wantTaggedRecords[i].tags, records[i].tags) {
 						t.Errorf("[%d].tags want %+v, got %+v", i, wantTaggedRecords[i].tags, records[i])
 					}
-					if wantTaggedRecords[i].version != records[i].version {
+					if records[i].version < wantTaggedRecords[i].version || records[i].version > wantTaggedRecords[i].version+1 {
 						t.Errorf("[%d].version want %d, got %+v", i, wantTaggedRecords[i].version, records[i])
 					}
 				}

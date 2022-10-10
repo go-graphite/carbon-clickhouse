@@ -3,7 +3,7 @@ package receiver
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"math"
 	"strconv"
 	"sync/atomic"
@@ -50,15 +50,15 @@ func RemoveDoubleDot(p []byte) []byte {
 	return p[:len(p)-shift]
 }
 
-func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32, error) {
+func (base *Base) PlainParseLine(p []byte, now uint32, buf *tags.GraphiteBuf) ([]byte, float64, uint32, error) {
 	i1 := bytes.IndexByte(p, ' ')
 	if i1 < 1 {
-		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+		return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
 	}
 
 	i2 := bytes.IndexByte(p[i1+1:], ' ')
 	if i2 < 1 {
-		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+		return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
 	}
 	i2 += i1 + 1
 
@@ -72,7 +72,7 @@ func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32,
 
 	value, err := strconv.ParseFloat(unsafeString(p[i1+1:i2]), 64)
 	if err != nil || math.IsNaN(value) {
-		return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+		return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
 	}
 
 	var timestamp uint32
@@ -82,7 +82,7 @@ func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32,
 	} else {
 		tsf, err := strconv.ParseFloat(unsafeString(p[i2+1:i3]), 64)
 		if err != nil || math.IsNaN(tsf) {
-			return nil, 0, 0, fmt.Errorf("bad message: %#v", string(p))
+			return nil, 0, 0, errors.New("bad message: '" + unsafeString(p) + "'")
 		}
 		timestamp = uint32(tsf)
 	}
@@ -91,11 +91,11 @@ func (base *Base) PlainParseLine(p []byte, now uint32) ([]byte, float64, uint32,
 
 	// parse tagged
 	// @TODO: parse as bytes, don't cast to string and back
-	name, err := tags.Graphite(base.Tags, unsafeString(s))
+	name, err := tags.GraphiteBuffered(base.Tags, unsafeString(s), buf)
 	return stringutils.UnsafeStringBytes(&name), value, timestamp, err
 }
 
-func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer) {
+func (base *Base) PlainParseBuffer(ctx context.Context, b *Buffer, buf *tags.GraphiteBuf) {
 	offset := 0
 	metricCount := uint32(0)
 	errorCount := uint32(0)
@@ -115,7 +115,7 @@ MainLoop:
 			continue MainLoop
 		}
 
-		name, value, timestamp, err := base.PlainParseLine(b.Body[offset:offset+lineEnd+1], b.Time)
+		name, value, timestamp, err := base.PlainParseLine(b.Body[offset:offset+lineEnd+1], b.Time, buf)
 		offset += lineEnd + 1
 
 		// @TODO: check required buffer size, get new
@@ -156,12 +156,14 @@ MainLoop:
 }
 
 func (base *Base) PlainParser(ctx context.Context, in chan *Buffer) {
+	var tagBuf tags.GraphiteBuf
+	tagBuf.Resize(128, 4096)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case b := <-in:
-			base.PlainParseBuffer(ctx, b)
+			base.PlainParseBuffer(ctx, b, &tagBuf)
 			b.Release()
 		}
 	}

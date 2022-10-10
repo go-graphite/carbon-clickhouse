@@ -1,6 +1,7 @@
 package tags
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -10,25 +11,65 @@ import (
 	"github.com/msaf1980/go-stringutils"
 )
 
-type byKey []string
+type GraphiteBuf struct {
+	KV KVSlice
+	B  stringutils.Builder
+}
 
-func (a byKey) Len() int      { return len(a) }
-func (a byKey) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a byKey) Less(i, j int) bool {
-	p1 := strings.Index(a[i], "=") - 1
-	if p1 < 0 {
-		p1 = len(a[i])
-	}
-	p2 := strings.Index(a[j], "=") - 1
-	if p2 < 0 {
-		p2 = len(a[j])
-	}
+func (b *GraphiteBuf) Resize(kvLen, builderLen int) {
+	b.KV = make(KVSlice, 0, kvLen)
+	b.B.Grow(builderLen)
+}
 
-	return strings.Compare(a[i][:p1+1], a[j][:p2+1]) < 0
+func (b *GraphiteBuf) ResizeKV(kvLen int) {
+	b.KV = make(KVSlice, 0, kvLen)
+}
+
+func (b *GraphiteBuf) ResizeBuilder(builderLen int) {
+	b.B.Grow(builderLen)
+}
+
+type kv struct {
+	key   string
+	value string
+}
+
+type KVSlice []kv
+
+func (a KVSlice) Len() int      { return len(a) }
+func (a KVSlice) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a KVSlice) Less(i, j int) bool {
+	return a[i].key < a[j].key
+}
+
+func kvParse(s string, buf *GraphiteBuf) (KVSlice, error) {
+	buf.KV = buf.KV[:0]
+	path := s
+	for {
+		seg := s
+		pos := strings.IndexByte(s, ';')
+		if pos == 0 {
+			return nil, errors.New("cannot parse path '" + path + "', empty segment")
+		} else if pos > 0 {
+			seg = s[:pos]
+		}
+
+		kpos := strings.IndexByte(seg, '=')
+		if kpos < 1 {
+			return nil, errors.New("cannot parse path '" + path + "', invalid segment '" + seg + "', no '='")
+		}
+
+		buf.KV = append(buf.KV, kv{key: seg[:kpos], value: seg[kpos+1:]})
+		if pos < 0 {
+			break
+		}
+		s = s[pos+1:]
+	}
+	return buf.KV, nil
 }
 
 func Graphite(config TagConfig, s string) (string, error) {
-	if strings.IndexByte(s, ';') < 0 && config.Enabled {
+	if config.Enabled && strings.IndexByte(s, ';') < 0 {
 		tagged, err := config.toGraphiteTagged(s)
 		if err != nil {
 			return "", err
@@ -36,62 +77,110 @@ func Graphite(config TagConfig, s string) (string, error) {
 		s = tagged
 	}
 
-	if strings.IndexByte(s, ';') < 0 {
+	pos := strings.IndexByte(s, ';')
+	if pos < 0 {
 		return s, nil
+	} else if pos == 0 {
+		return "", errors.New("cannot parse path '" + s + "', no metric found")
+	}
+	name := s[:pos]
+
+	var tagBuf GraphiteBuf
+	tagBuf.ResizeKV(strings.Count(s, ";") + 1)
+
+	arr, err := kvParse(s[pos+1:], &tagBuf)
+	if err != nil {
+		return "", err
 	}
 
-	arr := strings.Split(s, ";")
+	tagBuf.ResizeBuilder(len(s) + 10)
 
-	if len(arr[0]) == 0 {
-		return "", fmt.Errorf("cannot parse path %#v, no metric found", s)
-	}
-
-	// check tags
-	for i := 1; i < len(arr); i++ {
-		if strings.Index(arr[i], "=") < 1 {
-			return "", fmt.Errorf("cannot parse path %#v, invalid segment %#v", s, arr[i])
-		}
-	}
-
-	sort.Stable(byKey(arr[1:]))
+	sort.Stable(arr)
 
 	// uniq
 	toDel := 0
 	prevKey := ""
-	for i := 1; i < len(arr); i++ {
-		p := strings.Index(arr[i], "=")
-		key := arr[i][:p]
-		if key == prevKey {
+	for i := 0; i < len(arr); i++ {
+		if arr[i].key == prevKey {
 			toDel++
 		} else {
-			prevKey = key
+			prevKey = arr[i].key
 		}
 		if toDel > 0 {
 			arr[i-toDel] = arr[i]
 		}
 	}
 
-	var res stringutils.Builder
-	res.Grow(len(s) + 10)
+	arr = arr[:len(arr)-toDel]
+
+	escape.PathTo(name, &tagBuf.B)
+	tagBuf.B.WriteByte('?')
+	for i := 0; i < len(arr); i++ {
+		if i > 0 {
+			tagBuf.B.WriteByte('&')
+		}
+		escape.QueryTo(arr[i].key, &tagBuf.B)
+		tagBuf.B.WriteByte('=')
+		escape.QueryTo(arr[i].value, &tagBuf.B)
+	}
+
+	return tagBuf.B.String(), nil
+}
+
+func GraphiteBuffered(config TagConfig, s string, tagBuf *GraphiteBuf) (string, error) {
+	if config.Enabled && strings.IndexByte(s, ';') < 0 {
+		tagged, err := config.toGraphiteTagged(s)
+		if err != nil {
+			return "", err
+		}
+		s = tagged
+	}
+
+	pos := strings.IndexByte(s, ';')
+	if pos < 0 {
+		return s, nil
+	} else if pos == 0 {
+		return "", errors.New("cannot parse path '" + s + "', no metric found")
+	}
+	name := s[:pos]
+
+	arr, err := kvParse(s[pos+1:], tagBuf)
+	if err != nil {
+		return "", err
+	}
+
+	tagBuf.B.Reset()
+
+	sort.Stable(arr)
+
+	// uniq
+	toDel := 0
+	prevKey := ""
+	for i := 0; i < len(arr); i++ {
+		if arr[i].key == prevKey {
+			toDel++
+		} else {
+			prevKey = arr[i].key
+		}
+		if toDel > 0 {
+			arr[i-toDel] = arr[i]
+		}
+	}
 
 	arr = arr[:len(arr)-toDel]
 
-	if len(arr) > 0 {
-		escape.PathTo(arr[0], &res)
-		res.WriteByte('?')
-	}
-
-	for i := 1; i < len(arr); i++ {
-		if i > 1 {
-			res.WriteByte('&')
+	escape.PathTo(name, &tagBuf.B)
+	tagBuf.B.WriteByte('?')
+	for i := 0; i < len(arr); i++ {
+		if i > 0 {
+			tagBuf.B.WriteByte('&')
 		}
-		p := strings.Index(arr[i], "=")
-		escape.QueryTo(arr[i][:p], &res)
-		res.WriteByte('=')
-		escape.QueryTo(arr[i][p+1:], &res)
+		escape.QueryTo(arr[i].key, &tagBuf.B)
+		tagBuf.B.WriteByte('=')
+		escape.QueryTo(arr[i].value, &tagBuf.B)
 	}
 
-	return res.String(), nil
+	return tagBuf.B.String(), nil
 }
 
 type TemplateDesc struct {

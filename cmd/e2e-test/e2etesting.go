@@ -344,6 +344,15 @@ func runTest(config string, rootDir string, verbose, breakOnError bool, logger *
 	}
 
 	for _, clickhouse := range cfg.Test.Clickhouse {
+		if exist, out := containerExist(clickhouse.Docker, ClickhouseContainerName); exist {
+			logger.Error("clickhouse already exist",
+				zap.String("container", ClickhouseContainerName),
+				zap.String("out", out),
+			)
+			failed++
+			total++
+			continue
+		}
 		for _, inputType := range cfg.Test.InputTypes {
 			total++
 			if !testCarbonClickhouse(inputType, cfg.Test, clickhouse, testDir, rootDir, verbose, breakOnError, logger) {
