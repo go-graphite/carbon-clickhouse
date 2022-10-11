@@ -45,7 +45,6 @@ func (r *indexRecord) Read(rdr *reader.Reader) error {
 }
 
 func TestIndexParseFileDedup(t *testing.T) {
-	now32 := uint32(time.Now().Unix())
 	points := []point{
 		{
 			path:    "carbon.agents.carbon-clickhouse.writer.writtenBytes",
@@ -137,6 +136,7 @@ func TestIndexParseFileDedup(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
 			var out bytes.Buffer
+			now32 := uint32(time.Now().Unix())
 			n, m, err := u.parseFile(filename, &out)
 			if err != nil {
 				t.Fatalf("Index.parseFile() got error: %v", err)

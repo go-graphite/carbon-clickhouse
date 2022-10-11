@@ -91,12 +91,14 @@ func (u *Base) scanDir(ctx context.Context) {
 	if delay >= 0 {
 		atomic.StoreInt64(&u.stat.delay, delay)
 	}
-	atomic.StoreUint32(&u.stat.unhandled, uint32(len(files)))
+	n := uint32(len(files))
+	atomic.StoreUint32(&u.stat.unhandled, n)
 
 	if len(files) == 0 {
 		return
 	}
 
+	// TODO (msaf1980): maybe load newest files first ?
 	sort.Strings(files)
 
 	for _, fn := range files {
@@ -111,6 +113,8 @@ func (u *Base) scanDir(ctx context.Context) {
 
 		select {
 		case u.queue <- fn:
+			n--
+			atomic.StoreUint32(&u.stat.unhandled, n)
 			// pass
 		case <-ctx.Done():
 			return
