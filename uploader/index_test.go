@@ -90,28 +90,28 @@ func TestIndexParseFileDedup(t *testing.T) {
 
 	wantIndexRecords := []indexRecord{
 		// carbon.agents.carbon-clickhouse.writer.writtenBytes
-		{date: 42, level: TreeLevelOffset + 5, name: "carbon.agents.carbon-clickhouse.writer.writtenBytes", version: now32},
-		{date: 42, level: TreeLevelOffset + 4, name: "carbon.agents.carbon-clickhouse.writer.", version: now32},
-		{date: 42, level: TreeLevelOffset + 3, name: "carbon.agents.carbon-clickhouse.", version: now32},
-		{date: 42, level: TreeLevelOffset + 2, name: "carbon.agents.", version: now32},
-		{date: 42, level: TreeLevelOffset + 1, name: "carbon.", version: now32},
-		{date: 42, level: ReverseTreeLevelOffset + 5, name: "writtenBytes.writer.carbon-clickhouse.agents.carbon", version: now32},
-		{date: 18049, level: 5, name: "carbon.agents.carbon-clickhouse.writer.writtenBytes", version: now32},
-		{date: 18049, level: ReverseLevelOffset + 5, name: "writtenBytes.writer.carbon-clickhouse.agents.carbon", version: now32},
+		{date: 42, level: TreeLevelOffset + 5, name: "carbon.agents.carbon-clickhouse.writer.writtenBytes"},
+		{date: 42, level: TreeLevelOffset + 4, name: "carbon.agents.carbon-clickhouse.writer."},
+		{date: 42, level: TreeLevelOffset + 3, name: "carbon.agents.carbon-clickhouse."},
+		{date: 42, level: TreeLevelOffset + 2, name: "carbon.agents."},
+		{date: 42, level: TreeLevelOffset + 1, name: "carbon."},
+		{date: 42, level: ReverseTreeLevelOffset + 5, name: "writtenBytes.writer.carbon-clickhouse.agents.carbon"},
+		{date: 18049, level: 5, name: "carbon.agents.carbon-clickhouse.writer.writtenBytes"},
+		{date: 18049, level: ReverseLevelOffset + 5, name: "writtenBytes.writer.carbon-clickhouse.agents.carbon"},
 		// carbon.agents.carbon-clickhouse.tcp.errors
-		{date: 42, level: TreeLevelOffset + 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors", version: now32},
-		{date: 42, level: TreeLevelOffset + 5, name: "carbon.agents.carbon-clickhouse.tcp.receiver.", version: now32},
-		{date: 42, level: TreeLevelOffset + 4, name: "carbon.agents.carbon-clickhouse.tcp.", version: now32},
-		{date: 42, level: ReverseTreeLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon", version: now32},
-		{date: 18049, level: 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors", version: now32},
-		{date: 18049, level: ReverseLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon", version: now32},
+		{date: 42, level: TreeLevelOffset + 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors"},
+		{date: 42, level: TreeLevelOffset + 5, name: "carbon.agents.carbon-clickhouse.tcp.receiver."},
+		{date: 42, level: TreeLevelOffset + 4, name: "carbon.agents.carbon-clickhouse.tcp."},
+		{date: 42, level: ReverseTreeLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon"},
+		{date: 18049, level: 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors"},
+		{date: 18049, level: ReverseLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon"},
 		// next day
 		// TODO (msaf1980): maybe can deduplicated, but not at now
-		{date: 42, level: TreeLevelOffset + 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors", version: now32},
-		{date: 42, level: ReverseTreeLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon", version: now32},
+		{date: 42, level: TreeLevelOffset + 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors"},
+		{date: 42, level: ReverseTreeLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon"},
 		// next day - continue
-		{date: 19237, level: 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors", version: now32},
-		{date: 19237, level: ReverseLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon", version: now32},
+		{date: 19237, level: 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors"},
+		{date: 19237, level: ReverseLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon"},
 	}
 	cacheMap := map[string]bool{
 		"18049:carbon.agents.carbon-clickhouse.tcp.receiver.errors": true,
@@ -160,8 +160,19 @@ func TestIndexParseFileDedup(t *testing.T) {
 					t.Errorf("[%d]\n- %+v", i, wantIndexRecords[i])
 				} else if i >= len(wantIndexRecords) {
 					t.Errorf("[%d]\n+ %+v", i, records[i])
-				} else if wantIndexRecords[i] != records[i] {
-					t.Errorf("[%d]\n- %+v\n+ %+v", i, wantIndexRecords[i], records[i])
+				} else {
+					if wantIndexRecords[i].date != records[i].date {
+						t.Errorf("[%d].date want %d, got '%+v'", i, wantIndexRecords[i].date, records[i])
+					}
+					if wantIndexRecords[i].level != records[i].level {
+						t.Errorf("[%d].level want %d, got '%+v'", i, wantIndexRecords[i].level, records[i])
+					}
+					if wantIndexRecords[i].name != records[i].name {
+						t.Errorf("[%d].name want %q, got '%+v'", i, wantIndexRecords[i].name, records[i])
+					}
+					if records[i].version != now32 {
+						t.Errorf("[%d].veriosn want %d, got '%+v'", i, now32, records[i])
+					}
 				}
 			}
 
@@ -180,7 +191,6 @@ func TestIndexParseFileDedup(t *testing.T) {
 }
 
 func TestIndexParseFileDedupNoDaily(t *testing.T) {
-	now32 := uint32(time.Now().Unix())
 	points := []point{
 		{
 			path:    "carbon.agents.carbon-clickhouse.writer.writtenBytes",
@@ -225,20 +235,20 @@ func TestIndexParseFileDedupNoDaily(t *testing.T) {
 
 	wantIndexRecords := []indexRecord{
 		// carbon.agents.carbon-clickhouse.writer.writtenBytes
-		{date: 42, level: TreeLevelOffset + 5, name: "carbon.agents.carbon-clickhouse.writer.writtenBytes", version: now32},
-		{date: 42, level: TreeLevelOffset + 4, name: "carbon.agents.carbon-clickhouse.writer.", version: now32},
-		{date: 42, level: TreeLevelOffset + 3, name: "carbon.agents.carbon-clickhouse.", version: now32},
-		{date: 42, level: TreeLevelOffset + 2, name: "carbon.agents.", version: now32},
-		{date: 42, level: TreeLevelOffset + 1, name: "carbon.", version: now32},
-		{date: 42, level: ReverseTreeLevelOffset + 5, name: "writtenBytes.writer.carbon-clickhouse.agents.carbon", version: now32},
-		{date: 42, level: TreeLevelOffset + 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors", version: now32},
-		{date: 42, level: TreeLevelOffset + 5, name: "carbon.agents.carbon-clickhouse.tcp.receiver.", version: now32},
-		{date: 42, level: TreeLevelOffset + 4, name: "carbon.agents.carbon-clickhouse.tcp.", version: now32},
-		{date: 42, level: ReverseTreeLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon", version: now32},
+		{date: 42, level: TreeLevelOffset + 5, name: "carbon.agents.carbon-clickhouse.writer.writtenBytes"},
+		{date: 42, level: TreeLevelOffset + 4, name: "carbon.agents.carbon-clickhouse.writer."},
+		{date: 42, level: TreeLevelOffset + 3, name: "carbon.agents.carbon-clickhouse."},
+		{date: 42, level: TreeLevelOffset + 2, name: "carbon.agents."},
+		{date: 42, level: TreeLevelOffset + 1, name: "carbon."},
+		{date: 42, level: ReverseTreeLevelOffset + 5, name: "writtenBytes.writer.carbon-clickhouse.agents.carbon"},
+		{date: 42, level: TreeLevelOffset + 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors"},
+		{date: 42, level: TreeLevelOffset + 5, name: "carbon.agents.carbon-clickhouse.tcp.receiver."},
+		{date: 42, level: TreeLevelOffset + 4, name: "carbon.agents.carbon-clickhouse.tcp."},
+		{date: 42, level: ReverseTreeLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon"},
 		// next day
 		// TODO (msaf1980): maybe can deduplicated, but not at now
-		{date: 42, level: TreeLevelOffset + 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors", version: now32},
-		{date: 42, level: ReverseTreeLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon", version: now32},
+		{date: 42, level: TreeLevelOffset + 6, name: "carbon.agents.carbon-clickhouse.tcp.receiver.errors"},
+		{date: 42, level: ReverseTreeLevelOffset + 6, name: "errors.receiver.tcp.carbon-clickhouse.agents.carbon"},
 	}
 	// @TODO(msaf1980): may be 42 as date prefix ?
 	cacheMap := map[string]bool{
@@ -265,6 +275,7 @@ func TestIndexParseFileDedupNoDaily(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
 			var out bytes.Buffer
+			now32 := uint32(time.Now().Unix())
 			n, m, err := u.parseFile(filename, &out)
 			if err != nil {
 				t.Fatalf("Index.parseFile() got error: %v", err)
@@ -285,8 +296,19 @@ func TestIndexParseFileDedupNoDaily(t *testing.T) {
 					t.Errorf("[%d]\n- %+v", i, wantIndexRecords[i])
 				} else if i >= len(wantIndexRecords) {
 					t.Errorf("[%d]\n+ %+v", i, records[i])
-				} else if wantIndexRecords[i] != records[i] {
-					t.Errorf("[%d]\n- %+v\n+ %+v", i, wantIndexRecords[i], records[i])
+				} else {
+					if wantIndexRecords[i].date != records[i].date {
+						t.Errorf("[%d].date want %d, got '%+v'", i, wantIndexRecords[i].date, records[i])
+					}
+					if wantIndexRecords[i].level != records[i].level {
+						t.Errorf("[%d].level want %d, got '%+v'", i, wantIndexRecords[i].level, records[i])
+					}
+					if wantIndexRecords[i].name != records[i].name {
+						t.Errorf("[%d].name want %q, got '%+v'", i, wantIndexRecords[i].name, records[i])
+					}
+					if records[i].version != now32 {
+						t.Errorf("[%d].veriosn want %d, got '%+v'", i, now32, records[i])
+					}
 				}
 			}
 

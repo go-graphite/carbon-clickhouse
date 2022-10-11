@@ -263,7 +263,6 @@ func (r *taggedRecord) Read(rdr *reader.Reader) error {
 }
 
 func TestTaggedParseFileDedup(t *testing.T) {
-	now32 := uint32(time.Now().Unix())
 	points := []point{
 		{
 			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
@@ -308,97 +307,84 @@ func TestTaggedParseFileDedup(t *testing.T) {
 	wantTaggedRecords := []taggedRecord{
 		// "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer"
 		{
-			days:    18049,
-			tag1:    "__name__=writtenBytes",
-			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
-			tags:    []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
-			version: now32,
+			days: 18049,
+			tag1: "__name__=writtenBytes",
+			path: "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
+			tags: []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
 		},
 		{
-			days:    18049,
-			tag1:    "app=carbon-clickhouse",
-			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
-			tags:    []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
-			version: now32,
+			days: 18049,
+			tag1: "app=carbon-clickhouse",
+			path: "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
+			tags: []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
 		},
 		{
-			days:    18049,
-			tag1:    "project=carbon",
-			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
-			tags:    []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
-			version: now32,
+			days: 18049,
+			tag1: "project=carbon",
+			path: "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
+			tags: []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
 		},
 		{
-			days:    18049,
-			tag1:    "subsystem=writer",
-			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
-			tags:    []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
-			version: now32,
+			days: 18049,
+			tag1: "subsystem=writer",
+			path: "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
+			tags: []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
 		},
 		// next day
 		{
-			days:    19237,
-			tag1:    "__name__=writtenBytes",
-			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
-			tags:    []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
-			version: now32,
+			days: 19237,
+			tag1: "__name__=writtenBytes",
+			path: "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
+			tags: []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
 		},
 		{
-			days:    19237,
-			tag1:    "app=carbon-clickhouse",
-			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
-			tags:    []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
-			version: now32,
+			days: 19237,
+			tag1: "app=carbon-clickhouse",
+			path: "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
+			tags: []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
 		},
 		{
-			days:    19237,
-			tag1:    "project=carbon",
-			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
-			tags:    []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
-			version: now32,
+			days: 19237,
+			tag1: "project=carbon",
+			path: "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
+			tags: []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
 		},
 		{
-			days:    19237,
-			tag1:    "subsystem=writer",
-			path:    "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
-			tags:    []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
-			version: now32,
+			days: 19237,
+			tag1: "subsystem=writer",
+			path: "writtenBytes?app=carbon-clickhouse&project=carbon&subsystem=writer",
+			tags: []string{"__name__=writtenBytes", "app=carbon-clickhouse", "project=carbon", "subsystem=writer"},
 		},
 		// "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp"
 		{
-			days:    18049,
-			tag1:    "__name__=errors",
-			path:    "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
-			tags:    []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
-			version: now32,
+			days: 18049,
+			tag1: "__name__=errors",
+			path: "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
+			tags: []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
 		},
 		{
-			days:    18049,
-			tag1:    "app=carbon-clickhouse",
-			path:    "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
-			tags:    []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
-			version: now32,
+			days: 18049,
+			tag1: "app=carbon-clickhouse",
+			path: "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
+			tags: []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
 		},
 		{
-			days:    18049,
-			tag1:    "project=carbon",
-			path:    "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
-			tags:    []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
-			version: now32,
+			days: 18049,
+			tag1: "project=carbon",
+			path: "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
+			tags: []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
 		},
 		{
-			days:    18049,
-			tag1:    "subsystem=receiver",
-			path:    "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
-			tags:    []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
-			version: now32,
+			days: 18049,
+			tag1: "subsystem=receiver",
+			path: "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
+			tags: []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
 		},
 		{
-			days:    18049,
-			tag1:    "type=tcp",
-			path:    "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
-			tags:    []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
-			version: now32,
+			days: 18049,
+			tag1: "type=tcp",
+			path: "errors?app=carbon-clickhouse&project=carbon&subsystem=receiver&type=tcp",
+			tags: []string{"__name__=errors", "app=carbon-clickhouse", "project=carbon", "subsystem=receiver", "type=tcp"},
 		},
 	}
 	cacheMap := map[string]bool{
@@ -425,6 +411,7 @@ func TestTaggedParseFileDedup(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
 			var out bytes.Buffer
+			now32 := uint32(time.Now().Unix())
 			n, m, err := u.parseFile(filename, &out)
 			if err != nil {
 				t.Fatalf("Tagged.parseFile() got error: %v", err)
@@ -457,8 +444,8 @@ func TestTaggedParseFileDedup(t *testing.T) {
 					if !reflect.DeepEqual(wantTaggedRecords[i].tags, records[i].tags) {
 						t.Errorf("[%d].tags want %+v, got %+v", i, wantTaggedRecords[i].tags, records[i])
 					}
-					if records[i].version < wantTaggedRecords[i].version || records[i].version > wantTaggedRecords[i].version+1 {
-						t.Errorf("[%d].version want %d, got %+v", i, wantTaggedRecords[i].version, records[i])
+					if records[i].version != now32 {
+						t.Errorf("[%d].version want %d, got %+v", i, now32, records[i])
 					}
 				}
 			}
