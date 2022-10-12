@@ -411,8 +411,9 @@ func TestTaggedParseFileDedup(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
 			var out bytes.Buffer
-			now32 := uint32(time.Now().Unix())
+			start := uint32(time.Now().Unix())
 			n, m, err := u.parseFile(filename, &out)
+			end := uint32(time.Now().Unix())
 			if err != nil {
 				t.Fatalf("Tagged.parseFile() got error: %v", err)
 			}
@@ -444,8 +445,8 @@ func TestTaggedParseFileDedup(t *testing.T) {
 					if !reflect.DeepEqual(wantTaggedRecords[i].tags, records[i].tags) {
 						t.Errorf("[%d].tags want %+v, got %+v", i, wantTaggedRecords[i].tags, records[i])
 					}
-					if records[i].version != now32 {
-						t.Errorf("[%d].version want %d, got %+v", i, now32, records[i])
+					if records[i].version < start || records[i].version > end {
+						t.Errorf("[%d].verion want beetween %d and %d, got '%+v'", i, start, end, records[i])
 					}
 				}
 			}
@@ -464,7 +465,7 @@ func TestTaggedParseFileDedup(t *testing.T) {
 	}
 }
 
-func verifyTaggedUploaded(t *testing.T, b io.Reader, points []point, version uint32) {
+func verifyTaggedUploaded(t *testing.T, b io.Reader, points []point, start, end uint32) {
 	var (
 		rec taggedRecord
 		err error
@@ -491,11 +492,10 @@ func verifyTaggedUploaded(t *testing.T, b io.Reader, points []point, version uin
 			}
 
 			want := taggedRecord{
-				days:    point.date,
-				tag1:    tags[i],
-				path:    point.path,
-				tags:    tags,
-				version: version,
+				days: point.date,
+				tag1: tags[i],
+				path: point.path,
+				tags: tags,
 			}
 
 			if tags[i] != want.tag1 {
@@ -504,8 +504,8 @@ func verifyTaggedUploaded(t *testing.T, b io.Reader, points []point, version uin
 			if !reflect.DeepEqual(want.tags, rec.tags) {
 				t.Errorf("[%d].tags want %+v, got %+v", i, want.tags, rec)
 			}
-			if want.version != rec.version {
-				t.Errorf("[%d].version want %d, got %+v", i, want.version, rec)
+			if rec.version < start || rec.version > end {
+				t.Errorf("[%d].verion want beetween %d and %d, got '%+v'", i, start, end, rec)
 			}
 		}
 	}
@@ -557,8 +557,9 @@ func TestTaggedParseFile(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			t.Run(tt.name+"#"+strconv.Itoa(i), func(t *testing.T) {
 				var out bytes.Buffer
-				now32 := uint32(time.Now().Unix())
+				start := uint32(time.Now().Unix())
 				n, m, err := u.parseFile(filename, &out)
+				end := uint32(time.Now().Unix())
 				if err != nil {
 					t.Fatalf("Tagged.parseFile() got error: %v", err)
 				}
@@ -576,7 +577,7 @@ func TestTaggedParseFile(t *testing.T) {
 					}
 				}
 
-				verifyTaggedUploaded(t, &out, points, now32)
+				verifyTaggedUploaded(t, &out, points, start, end)
 			})
 		}
 	}

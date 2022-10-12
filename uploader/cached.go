@@ -36,8 +36,7 @@ func (u *cached) Stat(send func(metric string, value float64)) {
 
 	send("cacheSize", float64(u.existsCache.Count()))
 
-	expired := atomic.LoadUint32(&u.expired)
-	atomic.AddUint32(&u.expired, -expired)
+	expired := atomic.SwapUint32(&u.expired, 0)
 	send("expired", float64(expired))
 }
 

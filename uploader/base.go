@@ -35,6 +35,7 @@ type Base struct {
 	stat struct {
 		uploaded        uint32
 		uploadedMetrics uint64
+		uploadTime      uint64
 		errors          uint32
 		delay           int64
 		unhandled       uint32 // @TODO: maxUnhandled
@@ -47,6 +48,9 @@ func (u *Base) Stat(send func(metric string, value float64)) {
 
 	uploadedMetrics := atomic.SwapUint64(&u.stat.uploadedMetrics, 0)
 	send("uploaded_metrics", float64(uploadedMetrics))
+
+	uploadTime := atomic.SwapUint64(&u.stat.uploadTime, 0)
+	send("upload_time", float64(uploadTime))
 
 	errors := atomic.SwapUint32(&u.stat.errors, 0)
 	send("errors", float64(errors))
@@ -179,12 +183,15 @@ func (u *Base) uploadWorker(ctx context.Context) {
 
 			n, err := u.handler(ctx, logger, filename)
 
+			duration := time.Since(startTime)
+			atomic.AddUint64(&u.stat.uploadTime, uint64(duration.Milliseconds()))
+
 			if err != nil {
 				atomic.AddUint32(&u.stat.errors, 1)
 				logger.Error("handle failed",
 					zap.Uint64("metrics", n),
 					zap.Error(err),
-					zap.Duration("time", time.Since(startTime)),
+					zap.Duration("time", duration),
 				)
 
 				time.Sleep(time.Second)
@@ -193,7 +200,7 @@ func (u *Base) uploadWorker(ctx context.Context) {
 				atomic.AddUint64(&u.stat.uploadedMetrics, n)
 				logger.Info("handle success",
 					zap.Uint64("metrics", n),
-					zap.Duration("time", time.Since(startTime)),
+					zap.Duration("time", duration),
 				)
 			}
 

@@ -44,6 +44,22 @@ func (r *indexRecord) Read(rdr *reader.Reader) error {
 	return reader.CheckError(err)
 }
 
+func verifyIndexRecord(want, got *indexRecord, start, end uint32) (errs []string) {
+	if want.date != got.date {
+		errs = append(errs, fmt.Sprintf("date want %d, got %d", want.date, got.date))
+	}
+	if want.level != got.level {
+		errs = append(errs, fmt.Sprintf("level want %d, got %d", want.level, got.level))
+	}
+	if want.name != got.name {
+		errs = append(errs, fmt.Sprintf("name want %q, got %q", want.name, got.name))
+	}
+	if got.version < start || got.version > end {
+		errs = append(errs, fmt.Sprintf("version want beetween %d and %d, got %d", start, end, got.version))
+	}
+	return
+}
+
 func TestIndexParseFileDedup(t *testing.T) {
 	points := []point{
 		{
@@ -136,8 +152,9 @@ func TestIndexParseFileDedup(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
 			var out bytes.Buffer
-			now32 := uint32(time.Now().Unix())
+			start := uint32(time.Now().Unix())
 			n, m, err := u.parseFile(filename, &out)
+			end := uint32(time.Now().Unix())
 			if err != nil {
 				t.Fatalf("Index.parseFile() got error: %v", err)
 			}
@@ -160,19 +177,8 @@ func TestIndexParseFileDedup(t *testing.T) {
 					t.Errorf("[%d]\n- %+v", i, wantIndexRecords[i])
 				} else if i >= len(wantIndexRecords) {
 					t.Errorf("[%d]\n+ %+v", i, records[i])
-				} else {
-					if wantIndexRecords[i].date != records[i].date {
-						t.Errorf("[%d].date want %d, got '%+v'", i, wantIndexRecords[i].date, records[i])
-					}
-					if wantIndexRecords[i].level != records[i].level {
-						t.Errorf("[%d].level want %d, got '%+v'", i, wantIndexRecords[i].level, records[i])
-					}
-					if wantIndexRecords[i].name != records[i].name {
-						t.Errorf("[%d].name want %q, got '%+v'", i, wantIndexRecords[i].name, records[i])
-					}
-					if records[i].version != now32 {
-						t.Errorf("[%d].veriosn want %d, got '%+v'", i, now32, records[i])
-					}
+				} else if errs := verifyIndexRecord(&wantIndexRecords[i], &records[i], start, end); len(errs) > 0 {
+					t.Errorf("[%d] %+v\n%s", i, records[i], strings.Join(errs, "\n"))
 				}
 			}
 
@@ -275,8 +281,9 @@ func TestIndexParseFileDedupNoDaily(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
 			var out bytes.Buffer
-			now32 := uint32(time.Now().Unix())
+			start := uint32(time.Now().Unix())
 			n, m, err := u.parseFile(filename, &out)
+			end := uint32(time.Now().Unix())
 			if err != nil {
 				t.Fatalf("Index.parseFile() got error: %v", err)
 			}
@@ -296,19 +303,8 @@ func TestIndexParseFileDedupNoDaily(t *testing.T) {
 					t.Errorf("[%d]\n- %+v", i, wantIndexRecords[i])
 				} else if i >= len(wantIndexRecords) {
 					t.Errorf("[%d]\n+ %+v", i, records[i])
-				} else {
-					if wantIndexRecords[i].date != records[i].date {
-						t.Errorf("[%d].date want %d, got '%+v'", i, wantIndexRecords[i].date, records[i])
-					}
-					if wantIndexRecords[i].level != records[i].level {
-						t.Errorf("[%d].level want %d, got '%+v'", i, wantIndexRecords[i].level, records[i])
-					}
-					if wantIndexRecords[i].name != records[i].name {
-						t.Errorf("[%d].name want %q, got '%+v'", i, wantIndexRecords[i].name, records[i])
-					}
-					if records[i].version != now32 {
-						t.Errorf("[%d].veriosn want %d, got '%+v'", i, now32, records[i])
-					}
+				} else if errs := verifyIndexRecord(&wantIndexRecords[i], &records[i], start, end); len(errs) > 0 {
+					t.Errorf("[%d] %+v\n%s", i, records[i], strings.Join(errs, "\n"))
 				}
 			}
 
@@ -326,7 +322,7 @@ func TestIndexParseFileDedupNoDaily(t *testing.T) {
 	}
 }
 
-func verifyIndexUploaded(t *testing.T, b io.Reader, points []point, version uint32, disableDailyIndex bool) {
+func verifyIndexUploaded(t *testing.T, b io.Reader, points []point, start, end uint32, disableDailyIndex bool) {
 	var (
 		rec indexRecord
 		err error
@@ -349,18 +345,18 @@ func verifyIndexUploaded(t *testing.T, b io.Reader, points []point, version uint
 		}
 
 		wantRecord := indexRecord{
-			date:    DefaultTreeDate,
-			level:   uint32(TreeLevelOffset + level),
-			name:    point.path,
-			version: version,
+			date:  DefaultTreeDate,
+			level: uint32(TreeLevelOffset + level),
+			name:  point.path,
 		}
-		if wantRecord != rec {
-			t.Fatalf("verify [%d] tree[%d]: got\n%+v\nwant\n%+v", i, level+TreeLevelOffset, rec, wantRecord)
+
+		if errs := verifyIndexRecord(&wantRecord, &rec, start, end); len(errs) > 0 {
+			t.Fatalf("verify [%d] tree[%d]: +%v\n%s", i, level+TreeLevelOffset, rec, strings.Join(errs, "\n"))
 		}
 		p := bpath
 		for l := level - 1; l > 0; l-- {
-			end := bytes.LastIndexByte(p, '.')
-			s := unsafeString(p[:end+1])
+			dot := bytes.LastIndexByte(p, '.')
+			s := unsafeString(p[:dot+1])
 			if newUniq[s] {
 				break
 			}
@@ -370,15 +366,14 @@ func verifyIndexUploaded(t *testing.T, b io.Reader, points []point, version uint
 				t.Fatalf("read [%d] tree[%d]: %v,\nwant\n%+v", i, l+TreeLevelOffset, err, point)
 			}
 			wantRecord := indexRecord{
-				date:    DefaultTreeDate,
-				level:   uint32(l + TreeLevelOffset),
-				name:    s,
-				version: version,
+				date:  DefaultTreeDate,
+				level: uint32(l + TreeLevelOffset),
+				name:  s,
 			}
-			if wantRecord != rec {
-				t.Fatalf("verify [%d] tree[%d]: got\n%+v\nwant\n%+v", i, l+TreeLevelOffset, rec, wantRecord)
+			if errs := verifyIndexRecord(&wantRecord, &rec, start, end); len(errs) > 0 {
+				t.Fatalf("verify [%d] tree[%d]: +%v\n%s", i, i+TreeLevelOffset, rec, strings.Join(errs, "\n"))
 			}
-			p = p[:end]
+			p = p[:dot]
 		}
 
 		// Reverse path without date
@@ -389,13 +384,12 @@ func verifyIndexUploaded(t *testing.T, b io.Reader, points []point, version uint
 		rpath := RowBinary.ReverseBytes(bpath)
 
 		wantRecord = indexRecord{
-			date:    DefaultTreeDate,
-			level:   uint32(level + ReverseTreeLevelOffset),
-			name:    string(rpath),
-			version: version,
+			date:  DefaultTreeDate,
+			level: uint32(level + ReverseTreeLevelOffset),
+			name:  string(rpath),
 		}
-		if wantRecord != rec {
-			t.Fatalf("verify [%d] tree_reverse[%d]: got\n%+v\nwant\n%+v", i, level+ReverseTreeLevelOffset, rec, wantRecord)
+		if errs := verifyIndexRecord(&wantRecord, &rec, start, end); len(errs) > 0 {
+			t.Fatalf("verify [%d] tree_reverse[%d]: +%v\n%s", i, level+ReverseTreeLevelOffset, rec, strings.Join(errs, "\n"))
 		}
 
 		if disableDailyIndex {
@@ -407,13 +401,12 @@ func verifyIndexUploaded(t *testing.T, b io.Reader, points []point, version uint
 			t.Fatalf("read [%d] daily[%d]: %v,\nwant\n%+v", i, level, err, point)
 		}
 		wantRecord = indexRecord{
-			date:    point.date,
-			level:   uint32(level),
-			name:    point.path,
-			version: version,
+			date:  point.date,
+			level: uint32(level),
+			name:  point.path,
 		}
-		if wantRecord != rec {
-			t.Fatalf("verify [%d] daily[%d]: got\n%+v\nwant\n%+v", i, level, rec, wantRecord)
+		if errs := verifyIndexRecord(&wantRecord, &rec, start, end); len(errs) > 0 {
+			t.Fatalf("verify [%d] daily[%d]: +%v\n%s", i, level, rec, strings.Join(errs, "\n"))
 		}
 
 		// Reverse path with date
@@ -421,13 +414,12 @@ func verifyIndexUploaded(t *testing.T, b io.Reader, points []point, version uint
 			t.Fatalf("read [%d] daily_reverse[%d]: %v,\nwant\n%+v", i, level+ReverseLevelOffset, err, point)
 		}
 		wantRecord = indexRecord{
-			date:    point.date,
-			level:   uint32(level + ReverseLevelOffset),
-			name:    unsafeString(rpath),
-			version: version,
+			date:  point.date,
+			level: uint32(level + ReverseLevelOffset),
+			name:  unsafeString(rpath),
 		}
-		if wantRecord != rec {
-			t.Fatalf("verify [%d] daily_reverse[%d]: got\n%+v\nwant\n%+v", i, level+ReverseLevelOffset, rec, wantRecord)
+		if errs := verifyIndexRecord(&wantRecord, &rec, start, end); len(errs) > 0 {
+			t.Fatalf("verify [%d] daily_reverse[%d]: +%v\n%s", i, level+ReverseLevelOffset, rec, strings.Join(errs, "\n"))
 		}
 	}
 
@@ -491,8 +483,9 @@ func TestIndexParseFile(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			t.Run("#"+strconv.Itoa(i), func(t *testing.T) {
 				var out bytes.Buffer
-				now32 := uint32(time.Now().Unix())
+				start := uint32(time.Now().Unix())
 				n, m, err := u.parseFile(filename, &out)
+				end := uint32(time.Now().Unix())
 				if err != nil {
 					t.Fatalf("Index.parseFile() got error: %v", err)
 				}
@@ -510,7 +503,7 @@ func TestIndexParseFile(t *testing.T) {
 					}
 				}
 
-				verifyIndexUploaded(t, &out, points, now32, tt.disableDailyIndex)
+				verifyIndexUploaded(t, &out, points, start, end, tt.disableDailyIndex)
 			})
 		}
 	}
