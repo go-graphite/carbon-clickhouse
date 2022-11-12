@@ -17,10 +17,6 @@ func init() {
 }
 
 func TimestampToDays(timestamp uint32) uint16 {
-	if int64(timestamp) < daysTimestampStart[0] {
-		return 0
-	}
-
 	i := int(timestamp / 86400)
 	ts := int64(timestamp)
 
@@ -28,7 +24,6 @@ func TimestampToDays(timestamp uint32) uint16 {
 		// fallback to slow method
 		return SlowTimestampToDays(timestamp)
 	}
-
 FindLoop:
 	for {
 		if ts < daysTimestampStart[i] {
@@ -46,4 +41,23 @@ FindLoop:
 func SlowTimestampToDays(timestamp uint32) uint16 {
 	t := time.Unix(int64(timestamp), 0)
 	return uint16(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix() / 86400)
+}
+
+// TimestampToDaysFormat is pair for SlowTimestampToDays and broken also for symmetric
+func TimestampToDaysFormat(timestamp int64) string {
+	t := time.Unix(timestamp, 0)
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+}
+
+// TimeToDaysFormat like TimestampDaysFormat, but for time.Time
+func TimeToDaysFormat(t time.Time) string {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+}
+
+func UTCTimestampToDays(timestamp uint32) uint16 {
+	return uint16(timestamp / 86400)
+}
+
+func UTCTimestampToDaysFormat(timestamp uint32) string {
+	return time.Unix(int64(timestamp), 0).UTC().Format("2006-01-02")
 }

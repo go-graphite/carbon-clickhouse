@@ -50,6 +50,34 @@ jobs:
       env:
         CGO_ENABLED: 1
 
+    - name: Test
+      run: make test
+      env:
+        CGO_ENABLED: 1
+
+    - name: Test (with GMT+5)
+      run: |
+        go clean -testcache
+        TZ=Etc/GMT+5 make test
+      env:
+        CGO_ENABLED: 1
+
+# Some tests are broen in GMT-5
+# --- FAIL: TestProm1UnpackFast (1.34s)
+#     prometheus_test.go:74: 
+#         	Error Trace:	prometheus_test.go:74
+#         	Error:      	Not equal: 
+#         	            	expected:
+#         	Test:       	TestProm1UnpackFast
+# FAIL
+# FAIL	github.com/lomik/carbon-clickhouse/receiver	2.515s
+    # - name: Test (with GMT-5)
+    #   run: |
+    #     go clean -testcache
+    #     TZ=Etc/GMT-5 make test
+    #   env:
+    #     CGO_ENABLED: 1
+
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
