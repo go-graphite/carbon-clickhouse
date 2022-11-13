@@ -2,6 +2,18 @@ package RowBinary
 
 import "time"
 
+var TimestampToDays func(timestamp uint32) uint16
+
+// UTCTimestampToDays is always UTC, but mismatch SlowTimestampToDays and need points/index/tags table rebuild (with Date recalc)
+func SetUTCDate() {
+	TimestampToDays = UTCTimestampToDays
+}
+
+// PrecalcTimestampToDays is broken, not always UTC, like SlowTimestampToDays, but used from start of project
+func SetDefaultDate() {
+	TimestampToDays = PrecalcTimestampToDays
+}
+
 var daysTimestampStart []int64
 
 func init() {
@@ -14,9 +26,11 @@ func init() {
 		daysTimestampStart = append(daysTimestampStart, ts)
 		t = t.Add(24 * time.Hour)
 	}
+	SetDefaultDate()
 }
 
-func TimestampToDays(timestamp uint32) uint16 {
+// PrecalcTimestampToDays is broken, not always UTC, like SlowTimestampToDays
+func PrecalcTimestampToDays(timestamp uint32) uint16 {
 	i := int(timestamp / 86400)
 	ts := int64(timestamp)
 
@@ -38,6 +52,7 @@ FindLoop:
 	}
 }
 
+// SlowTimestampToDays is broken, not always UTC
 func SlowTimestampToDays(timestamp uint32) uint16 {
 	t := time.Unix(int64(timestamp), 0)
 	return uint16(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix() / 86400)
