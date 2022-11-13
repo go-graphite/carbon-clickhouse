@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	rb "github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/config"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
 	"github.com/lomik/carbon-clickhouse/uploader"
@@ -93,6 +94,7 @@ type dataConfig struct {
 	AutoInterval *config.ChunkAutoInterval `toml:"chunk-auto-interval"`
 	CompAlgo     *config.Compression       `toml:"compression"`
 	CompLevel    int                       `toml:"compression-level"`
+	UTCDate      bool                      `toml:"utc-date"`
 }
 
 // Config ...
@@ -284,6 +286,10 @@ func ReadConfig(filename string) (*Config, error) {
 		if err := u.Parse(); err != nil {
 			return nil, err
 		}
+	}
+
+	if cfg.Data.UTCDate {
+		rb.SetUTCDate()
 	}
 
 	return cfg, nil

@@ -4,7 +4,7 @@ WORKDIR /go/src/github.com/lomik/carbon-clickhouse
 
 COPY . .
 
-RUN apk --no-cache add make git
+RUN apk --no-cache add make git tzdata
 
 RUN make
 

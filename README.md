@@ -74,6 +74,11 @@ Usage of carbon-clickhouse:
   -version=false: Print version
 ```
 
+Date are broken by default (not always in UTC), but this used from start of project, and can produce some bugs.  
+Change to UTC requires points/index/tags tables rebuild (Date recalc to true UTC) or queries with wide Date range.  
+Set `data.utc-date = true` for this.  
+Without UTC date is required to run carbon-clickhouse and graphite-clickhouse in one timezone.
+
 ```toml
 [common]
 # Prefix for store all internal carbon-clickhouse graphs. Supported macroses: {host}
@@ -114,6 +119,9 @@ compression = "none"
 # Compression level to use.
 # For "lz4" 0 means use normal LZ4, >=1 use LZ4HC with this depth (the higher - the better compression, but slower)
 compression-level = 0
+
+# Date are broken by default (not always in UTC)
+#utc-date = false
 
 [upload.graphite]
 type = "points"
