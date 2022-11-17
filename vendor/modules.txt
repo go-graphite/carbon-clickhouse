@@ -49,6 +49,7 @@ github.com/pmezard/go-difflib/difflib
 # github.com/stretchr/testify v1.7.0
 ## explicit
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/require
 # github.com/zentures/cityhash v0.0.0-20131128155616-cdd6a94144ab
 ## explicit
 github.com/zentures/cityhash

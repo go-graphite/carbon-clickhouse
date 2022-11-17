@@ -89,6 +89,8 @@ input = [
     "cpu.loadavg;env=test;host=host1 2.1 1625478240",
     "test.host1.cpu.loadavg 9.4 1625478300",
     "cpu.loadavg;host=host1;env=test 1.3 1625478360",
+    "spec_symbols;minus=-;plus=+;percent=%;underscore=_;colon=:;hash=#;forward=/ 5.1 1625478360",
+    "non-ascii.иван;tagged=true 1.2 1625478240"
 ]
 
 [[test.clickhouse]]
@@ -158,4 +160,38 @@ output = [
     "cpu.loadavg?env=test&host=host1 2.1 1625478240 2021-07-05 0",
     "cpu.loadavg?env=test&host=host1 21.4 1625478300 2021-07-05 0",
     "cpu.loadavg?env=test&host=host1 1.3 1625478360 2021-07-05 0",
+]
+
+# Tests for issue #116
+# spec_symbols;minus=-;plus=+;percent=%;underscore=_;colon=:;hash=#;forward=/ 5.1 1625478360
+[[test.verify]]
+query = "SELECT Date, Tag1, Path, arraySort(Tags) as Tags FROM graphite_tags WHERE Path LIKE 'spec_symbols?%' ORDER BY Date, Tag1, Path"
+output = [
+    "2021-07-05 __name__=spec_symbols spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ ['__name__=spec_symbols','colon=:','forward=/','hash=#','minus=-','percent=%','plus=+','underscore=_']",
+    "2021-07-05 colon=: spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ ['__name__=spec_symbols','colon=:','forward=/','hash=#','minus=-','percent=%','plus=+','underscore=_']",
+    "2021-07-05 forward=/ spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ ['__name__=spec_symbols','colon=:','forward=/','hash=#','minus=-','percent=%','plus=+','underscore=_']",
+    "2021-07-05 hash=# spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ ['__name__=spec_symbols','colon=:','forward=/','hash=#','minus=-','percent=%','plus=+','underscore=_']",
+    "2021-07-05 minus=- spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ ['__name__=spec_symbols','colon=:','forward=/','hash=#','minus=-','percent=%','plus=+','underscore=_']",
+    "2021-07-05 percent=% spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ ['__name__=spec_symbols','colon=:','forward=/','hash=#','minus=-','percent=%','plus=+','underscore=_']",
+    "2021-07-05 plus=+ spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ ['__name__=spec_symbols','colon=:','forward=/','hash=#','minus=-','percent=%','plus=+','underscore=_']",
+    "2021-07-05 underscore=_ spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ ['__name__=spec_symbols','colon=:','forward=/','hash=#','minus=-','percent=%','plus=+','underscore=_']"
+]
+[[test.verify]]
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite WHERE Path LIKE 'spec_symbols?%' ORDER BY Time, Path"
+output = [
+    "spec_symbols?colon=%3A&forward=%2F&hash=%23&minus=-&percent=%25&plus=%2B&underscore=_ 5.1 1625478360 2021-07-05 0"
+]
+
+# Tests for non-ASCII symbols in path
+# non-ascii.иван;tagged=true 1.2 1625478240
+[[test.verify]]
+query = "SELECT Date, Tag1, Path, arraySort(Tags) as Tags FROM graphite_tags WHERE Path LIKE 'non-ascii.%?%' ORDER BY Date, Tag1, Path"
+output = [
+    "2021-07-05 __name__=non-ascii.иван non-ascii.%D0%B8%D0%B2%D0%B0%D0%BD?tagged=true ['__name__=non-ascii.иван','tagged=true']",
+    "2021-07-05 tagged=true non-ascii.%D0%B8%D0%B2%D0%B0%D0%BD?tagged=true ['__name__=non-ascii.иван','tagged=true']"
+]
+[[test.verify]]
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite WHERE Path LIKE 'non-ascii.%?%' ORDER BY Time, Path"
+output = [
+    "non-ascii.%D0%B8%D0%B2%D0%B0%D0%BD?tagged=true 1.2 1625478240 2021-07-05 0"
 ]
