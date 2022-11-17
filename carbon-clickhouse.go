@@ -22,7 +22,7 @@ import (
 )
 
 // Version of carbon-clickhouse
-const Version = "0.11.3"
+const Version = "0.11.4"
 
 func httpServe(addr string) (func(), error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
