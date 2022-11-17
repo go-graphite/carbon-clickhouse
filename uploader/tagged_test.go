@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -19,49 +20,59 @@ import (
 	"github.com/lomik/carbon-clickhouse/helper/tests"
 	"github.com/lomik/zapwriter"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUrlParse(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	// make metric name as receiver
-	metric := escape.Path("instance:cpu_utilization:ratio_avg") +
-		"?" + escape.Query("dc") + "=" + escape.Query("qwe") +
-		"&" + escape.Query("fqdn") + "=" + escape.Query("asd") +
+	metric := escape.Path("instance:cpu_utilization?ratio_avg") +
+		"?" + escape.Query("dc") + "=" + escape.Query("qwe+1") +
+		"&" + escape.Query("fqdn") + "=" + escape.Query("asd&a") +
 		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
-		"&" + escape.Query("job") + "=" + escape.Query("node")
+		"&" + escape.Query("job") + "=" + escape.Query("node&a")
 
-	assert.Equal("instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10%3A9100&job=node", metric)
+	assert.Equal("instance:cpu_utilization%3Fratio_avg?dc=qwe%2B1&fqdn=asd%26a&instance=10.33.10.10%3A9100&job=node%26a", metric)
 
 	// original url.Parse
-	m, err := url.Parse(metric)
-	assert.NotNil(m)
-	assert.NoError(err)
-	assert.Equal("", m.Path)
+	mu, err := url.Parse(metric)
+	require.NoError(err)
+	require.NotNil(mu)
+	assert.Equal("", mu.Path)
 
 	// from tagged uploader
-	m, err = urlParse(metric)
-	assert.NotNil(m)
-	assert.NoError(err)
-	assert.Equal("instance:cpu_utilization:ratio_avg", m.Path)
+	m, err := urlParse(metric)
+	require.NoError(err)
+	require.NotNil(m)
+	assert.Equal("instance:cpu_utilization?ratio_avg", m.Path)
+	assert.Equal(mu.Query(), m.Query())
+	assert.Equal(url.Values{
+		"dc":       []string{"qwe+1"},
+		"fqdn":     []string{"asd&a"},
+		"instance": []string{"10.33.10.10:9100"},
+		"job":      []string{"node&a"},
+	}, m.Query())
 }
 
 func TestTagsParse(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	// make metric name as receiver
-	metric := escape.Path("instance:cpu_utilization:ratio_avg") +
-		"?" + escape.Query("dc") + "=" + escape.Query("qwe") +
-		"&" + escape.Query("fqdn") + "=" + escape.Query("asd") +
-		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10_9100") +
-		"&" + escape.Query("job") + "=" + escape.Query("node")
+	metric := escape.Path("instance:cpu_utilization?ratio_avg") +
+		"?" + escape.Query("dc") + "=" + escape.Query("qwe+1") +
+		"&" + escape.Query("fqdn") + "=" + escape.Query("asd&a") +
+		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
+		"&" + escape.Query("job") + "=" + escape.Query("node&a")
 
-	assert.Equal("instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node", metric)
+	assert.Equal("instance:cpu_utilization%3Fratio_avg?dc=qwe%2B1&fqdn=asd%26a&instance=10.33.10.10%3A9100&job=node%26a", metric)
 
 	m, err := urlParse(metric)
-	assert.NotNil(m)
-	assert.NoError(err)
-	assert.Equal("instance:cpu_utilization:ratio_avg", m.Path)
+	require.NoError(err)
+	require.NotNil(m)
+	assert.Equal("instance:cpu_utilization?ratio_avg", m.Path)
 
 	mapTags := m.Query()
 	mTags := make(map[string]string)
@@ -78,13 +89,20 @@ func TestTagsParse(t *testing.T) {
 }
 
 func TestTagsParseToSlice(t *testing.T) {
-	assert := assert.New(t)
-
 	tests := []struct {
 		metric   string
 		wantName string
 		wantTags []string
 	}{
+		{
+			metric: escape.Path("instance:cpu_utilization?ratio_avg") +
+				"?" + escape.Query("dc") + "=" + escape.Query("qwe+1") +
+				"&" + escape.Query("fqdn") + "=" + escape.Query("asd&a") +
+				"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
+				"&" + escape.Query("job") + "=" + escape.Query("node&a"),
+			wantName: "instance:cpu_utilization?ratio_avg",
+			wantTags: []string{"dc=qwe+1", "fqdn=asd&a", "instance=10.33.10.10:9100", "job=node&a"},
+		},
 		{
 			metric:   "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node",
 			wantName: "instance:cpu_utilization:ratio_avg",
@@ -92,13 +110,29 @@ func TestTagsParseToSlice(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.metric, func(t *testing.T) {
+	for i, tt := range tests {
+		t.Run(tt.metric+" ["+strconv.Itoa(i)+"]", func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+
+			m, err := urlParse(tt.metric)
+			require.NoError(err)
+			require.NotNil(m)
+			assert.Equal(tt.wantName, m.Path)
+
+			mapTags := m.Query()
+			mTags := make([]string, 0, len(mapTags))
+			for k, v := range mapTags {
+				mTags = append(mTags, k+"="+v[0])
+			}
+			sort.Strings(mTags)
+
 			name, tags, err := tagsParseToSlice(tt.metric)
 			if err != nil {
-				t.Errorf("tagParse: %s", err.Error())
+				t.Errorf("tagParseToSlice: %s", err.Error())
 			}
 			assert.Equal(tt.wantName, name)
+			assert.Equal(mTags, tags)
 			assert.Equal(tt.wantTags, tags)
 		})
 	}
@@ -674,4 +708,50 @@ func TestTagged_parseName_Overflow(t *testing.T) {
 	u := NewTagged(base)
 	err := u.parseName(sb.String(), 10, 1, tag1, wb, tagsBuf)
 	assert.Equal(t, errBufOverflow, err)
+}
+
+func Test_unescape(t *testing.T) {
+	var tests = []struct {
+		in   string
+		want string
+	}{
+		{
+			"", ""},
+		{"abc", "abc"},
+		{"1%41", "1A"},
+		{"1%41%42%43", "1ABC"},
+		{"%4a", "J"},
+		{"%6F", "o"},
+		{
+			"%", // not enough characters after %
+			"%",
+		},
+		{
+			"%a", // not enough characters after %
+			"%a",
+		},
+		{
+			"%1", // not enough characters after %
+			"%1",
+		},
+		{
+			"123%45%6", // not enough characters after %
+			"123E%6",
+		},
+		{
+			"%zzzzz", // invalid hex digits
+			"%zzzzz",
+		},
+		{"a+b", "a+b"},
+		{"a%20b", "a b"},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.in+"["+strconv.Itoa(i)+"]", func(t *testing.T) {
+			assert := assert.New(t)
+
+			got := unescape(tt.in)
+			assert.Equal(tt.want, got)
+		})
+	}
 }

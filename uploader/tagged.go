@@ -52,14 +52,77 @@ func urlParse(rawurl string) (*url.URL, error) {
 	return m, err
 }
 
-// don't unescape special symbols
-// escape also not needed (all is done in receiver/plain.go, Base.PlainParseLine)
+func ishex(c byte) bool {
+	switch {
+	case '0' <= c && c <= '9':
+		return true
+	case 'a' <= c && c <= 'f':
+		return true
+	case 'A' <= c && c <= 'F':
+		return true
+	}
+	return false
+}
+
+func unhex(c byte) byte {
+	switch {
+	case '0' <= c && c <= '9':
+		return c - '0'
+	case 'a' <= c && c <= 'f':
+		return c - 'a' + 10
+	case 'A' <= c && c <= 'F':
+		return c - 'A' + 10
+	}
+	return 0
+}
+
+func isPercentEscape(s string, i int) bool {
+	return i+2 < len(s) && ishex(s[i+1]) && ishex(s[i+2])
+}
+
+// unescape unescapes a string; the mode specifies
+// which section of the URL string is being unescaped.
+func unescape(s string) string {
+	first := strings.IndexByte(s, '%')
+	if first == -1 {
+		return s
+	}
+	var t strings.Builder
+	t.Grow(len(s))
+	t.WriteString(s[:first])
+
+LOOP:
+	for i := first; i < len(s); i++ {
+		switch s[i] {
+		case '%':
+			if len(s) < i+3 {
+				t.WriteString(s[i:])
+				break LOOP
+			}
+			if !isPercentEscape(s, i) {
+				t.WriteString(s[i : i+3])
+			} else {
+				t.WriteByte(unhex(s[i+1])<<4 | unhex(s[i+2]))
+			}
+			i += 2
+		default:
+			t.WriteByte(s[i])
+		}
+	}
+
+	return t.String()
+}
+
+// Unescape is needed, tags already sorted in in helper/tags/graphite.go, tags.Graphite
 func tagsParse(path string) (string, map[string]string, error) {
 	delim := strings.IndexRune(path, '?')
 	if delim < 1 {
 		return "", nil, fmt.Errorf("incomplete tags in '%s'", path)
 	}
-	name := path[:delim]
+	name, err := url.PathUnescape(path[:delim])
+	if err != nil {
+		return "", nil, fmt.Errorf("invalid name tag in '%s'", path)
+	}
 	args := path[delim+1:]
 	tags := make(map[string]string)
 	for {
@@ -67,30 +130,29 @@ func tagsParse(path string) (string, map[string]string, error) {
 			// corrupted tag
 			break
 		} else {
-			key := args[0:delim]
+			key := unescape(args[0:delim])
 			v := args[delim+1:]
 			if end := strings.IndexRune(v, '&'); end == -1 {
-				tags[key] = args[0:]
+				tags[key] = unescape(args[0:])
 				break
 			} else {
 				end += delim + 1
-				tags[key] = args[0:end]
+				tags[key] = unescape(args[0:end])
 				args = args[end+1:]
 			}
+
 		}
 	}
 	return name, tags, nil
 }
 
-// don't unescape special symbols
-// escape also not needed (all is done in receiver/plain.go, Base.PlainParseLine)
-// tags already sorted in in helper/tags/graphite.go, tags.Graphite
+// Unescape is needed, tags already sorted in in helper/tags/graphite.go, tags.Graphite
 func tagsParseToSlice(path string) (string, []string, error) {
 	delim := strings.IndexRune(path, '?')
 	if delim < 1 {
 		return "", nil, fmt.Errorf("incomplete tags in '%s'", path)
 	}
-	name := path[:delim]
+	name := unescape(path[:delim])
 	args := path[delim+1:]
 	tags := make([]string, 0, 32)
 
@@ -101,11 +163,11 @@ func tagsParseToSlice(path string) (string, []string, error) {
 		} else {
 			v := args[delim+1:]
 			if end := strings.IndexRune(v, '&'); end == -1 {
-				tags = append(tags, args[0:])
+				tags = append(tags, unescape(args[0:]))
 				break
 			} else {
+				tags = append(tags, unescape(args[0:end+delim+1]))
 				end += delim + 1
-				tags = append(tags, args[0:end])
 				args = args[end+1:]
 			}
 		}
