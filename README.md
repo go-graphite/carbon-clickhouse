@@ -14,6 +14,9 @@ Last releases are stable and ready for production use
 Docker images are available on [packages](https://github.com/lomik/carbon-clickhouse/pkgs/container/carbon-clickhouse) page.
 
 ## Build
+
+Required golang 1.18+
+
 ```sh
 # build binary
 git clone https://github.com/lomik/carbon-clickhouse.git

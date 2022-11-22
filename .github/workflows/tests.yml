@@ -16,11 +16,7 @@ jobs:
     strategy:
       matrix:
         go:
-          - ^1.15
-          - ^1.16
-          - ^1.17
           - ^1.18
-          - ^1.19
           - ^1
     steps:
 
@@ -131,4 +127,4 @@ jobs:
     - name: Integration tests
       run: |
         make e2e-test
-        ./e2e-test -config tests
+        ./e2e-test -config tests -abort -rmi

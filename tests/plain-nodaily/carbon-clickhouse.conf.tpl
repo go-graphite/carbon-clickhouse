@@ -9,7 +9,7 @@ chunk-auto-interval = ""
 [upload.graphite_index]
 type = "index"
 table = "graphite_index"
-url = "http://{{ .CLICKHOUSE_ADDR }}/"
+url = "{{ .CLICKHOUSE_URL }}/"
 timeout = "2m30s"
 cache-ttl = "1h"
 disable-daily-index = true
@@ -18,21 +18,21 @@ disable-daily-index = true
 type = "tagged"
 table = "graphite_tags"
 threads = 3
-url = "http://{{ .CLICKHOUSE_ADDR }}/"
+url = "{{ .CLICKHOUSE_URL }}/"
 timeout = "2m30s"
 cache-ttl = "1h"
 
 [upload.graphite_reverse]
 type = "points-reverse"
 table = "graphite_reverse"
-url = "http://{{ .CLICKHOUSE_ADDR }}/"
+url = "{{ .CLICKHOUSE_URL }}/"
 timeout = "2m30s"
 zero-timestamp = true
 
 [upload.graphite]
 type = "points"
 table = "graphite"
-url = "http://{{ .CLICKHOUSE_ADDR }}/"
+url = "{{ .CLICKHOUSE_URL }}/"
 timeout = "2m30s"
 zero-timestamp = true
 
