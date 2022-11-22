@@ -23,7 +23,16 @@ const (
 	InputPlainTCP InputType = iota
 )
 
-var inputStrings []string = []string{"tcp_plain"}
+var (
+	inputStrings []string = []string{"tcp_plain"}
+
+	preSQL = []string{
+		"TRUNCATE TABLE IF EXISTS graphite_reverse",
+		"TRUNCATE TABLE IF EXISTS graphite",
+		"TRUNCATE TABLE IF EXISTS graphite_index",
+		"TRUNCATE TABLE IF EXISTS graphite_tags",
+	}
+)
 
 func (a *InputType) String() string {
 	return inputStrings[*a]
@@ -57,7 +66,9 @@ type TestSchema struct {
 
 	Verify []Verify `yaml:"verify"`
 
-	name string `yaml:"-"` // test alias (from config name)
+	dir        string          `yaml:"-"`
+	name       string          `yaml:"-"` // test alias (from config name)
+	chVersions map[string]bool `toml:"-"`
 }
 
 func getFreeTCPPort(name string) (string, error) {
@@ -93,11 +104,11 @@ func sendPlain(network, address string, input []string) error {
 	}
 }
 
-func verifyOut(address string, verify Verify) []string {
+func verifyOut(chURL string, verify Verify) []string {
 	var errs []string
 
 	q := []byte(verify.Query)
-	req, err := http.NewRequest("POST", "http://"+address+"/", bytes.NewBuffer(q))
+	req, err := http.NewRequest("POST", chURL, bytes.NewBuffer(q))
 
 	client := &http.Client{Timeout: time.Second * 5}
 	resp, err := client.Do(req)
@@ -136,43 +147,29 @@ func verifyOut(address string, verify Verify) []string {
 }
 
 func testCarbonClickhouse(
-	inputType InputType, test *TestSchema, clickhouse Clickhouse,
+	inputType InputType, test *TestSchema, clickhouse *Clickhouse,
 	testDir, rootDir string,
 	verbose, breakOnError bool, logger *zap.Logger) (testSuccess bool) {
 
 	testSuccess = true
 
-	clickhouseDir := clickhouse.Dir // for logging
-	if !strings.HasPrefix(clickhouse.Dir, "/") {
-		clickhouse.Dir = rootDir + "/" + clickhouse.Dir
-	}
-	err, out := clickhouse.Start()
+	err := clickhouse.CheckConfig(rootDir)
 	if err != nil {
-		logger.Error("starting clickhouse",
-			zap.String("config", test.name),
-			zap.String("input", inputType.String()),
-			zap.Any("clickhouse version", clickhouse.Version),
-			zap.String("clickhouse config", clickhouseDir),
-			zap.Error(err),
-			zap.String("out", out),
-		)
 		testSuccess = false
-		clickhouse.Stop(true)
 		return
 	}
 
 	cch := CarbonClickhouse{
 		ConfigTpl: testDir + "/" + test.ConfigTpl,
 	}
-	err = cch.Start(clickhouse.Address())
+	err = cch.Start(clickhouse.URL())
 	if err != nil {
 		logger.Error("starting carbon-clickhouse",
 			zap.String("config", test.name),
 			zap.String("input", inputType.String()),
 			zap.String("clickhouse version", clickhouse.Version),
-			zap.String("clickhouse config", clickhouseDir),
+			zap.String("clickhouse config", clickhouse.Dir),
 			zap.Error(err),
-			zap.String("out", out),
 		)
 		testSuccess = false
 	}
@@ -182,7 +179,7 @@ func testCarbonClickhouse(
 			zap.String("config", test.name),
 			zap.String("input", inputType.String()),
 			zap.String("clickhouse version", clickhouse.Version),
-			zap.String("clickhouse config", clickhouseDir),
+			zap.String("clickhouse config", clickhouse.Dir),
 		)
 		time.Sleep(2 * time.Second)
 		// Run test
@@ -199,12 +196,12 @@ func testCarbonClickhouse(
 					zap.String("config", test.name),
 					zap.String("input", inputType.String()),
 					zap.String("clickhouse version", clickhouse.Version),
-					zap.String("clickhouse config", clickhouseDir),
+					zap.String("clickhouse config", clickhouse.Dir),
 					zap.Error(err),
 				)
 				testSuccess = false
 				if breakOnError {
-					debug(test, &clickhouse, &cch)
+					debug(test, clickhouse, &cch)
 				}
 			}
 		}
@@ -213,7 +210,7 @@ func testCarbonClickhouse(
 			verifyFailed := 0
 			time.Sleep(10 * time.Second)
 			for _, verify := range test.Verify {
-				if errs := verifyOut(clickhouse.Address(), verify); len(errs) > 0 {
+				if errs := verifyOut(clickhouse.URL(), verify); len(errs) > 0 {
 					testSuccess = false
 					verifyFailed++
 					for _, e := range errs {
@@ -223,18 +220,18 @@ func testCarbonClickhouse(
 						zap.String("config", test.name),
 						zap.String("input", inputType.String()),
 						zap.String("clickhouse version", clickhouse.Version),
-						zap.String("clickhouse config", clickhouseDir),
+						zap.String("clickhouse config", clickhouse.Dir),
 						zap.String("verify", verify.Query),
 					)
 					if breakOnError {
-						debug(test, &clickhouse, &cch)
+						debug(test, clickhouse, &cch)
 					}
 				} else if verbose {
 					logger.Info("verify records in clickhouse",
 						zap.String("config", test.name),
 						zap.String("input", inputType.String()),
 						zap.String("clickhouse version", clickhouse.Version),
-						zap.String("clickhouse config", clickhouseDir),
+						zap.String("clickhouse config", clickhouse.Dir),
 						zap.String("verify", verify.Query),
 					)
 				}
@@ -244,7 +241,7 @@ func testCarbonClickhouse(
 					zap.String("config", test.name),
 					zap.String("input", inputType.String()),
 					zap.String("clickhouse version", clickhouse.Version),
-					zap.String("clickhouse config", clickhouseDir),
+					zap.String("clickhouse config", clickhouse.Dir),
 					zap.Int("verify failed", verifyFailed),
 					zap.Int("verify total", len(test.Verify)),
 				)
@@ -253,7 +250,7 @@ func testCarbonClickhouse(
 					zap.String("config", test.name),
 					zap.String("input", inputType.String()),
 					zap.String("clickhouse version", clickhouse.Version),
-					zap.String("clickhouse config", clickhouseDir),
+					zap.String("clickhouse config", clickhouse.Dir),
 					zap.Int("verify success", len(test.Verify)),
 					zap.Int("verify total", len(test.Verify)),
 				)
@@ -268,22 +265,8 @@ func testCarbonClickhouse(
 			zap.String("config", test.name),
 			zap.String("input", inputType.String()),
 			zap.String("clickhouse version", clickhouse.Version),
-			zap.String("clickhouse config", clickhouseDir),
+			zap.String("clickhouse config", clickhouse.Dir),
 			zap.Error(err),
-			zap.String("out", out),
-		)
-		testSuccess = false
-	}
-
-	err, out = clickhouse.Stop(true)
-	if err != nil {
-		logger.Error("stoping clickhouse",
-			zap.String("config", test.name),
-			zap.String("input", inputType.String()),
-			zap.String("clickhouse version", clickhouse.Version),
-			zap.String("clickhouse config", clickhouseDir),
-			zap.Error(err),
-			zap.String("out", out),
 		)
 		testSuccess = false
 	}
@@ -294,7 +277,7 @@ func testCarbonClickhouse(
 			zap.String("input", inputType.String()),
 			zap.String("status", "success"),
 			zap.String("clickhouse version", clickhouse.Version),
-			zap.String("clickhouse config", clickhouseDir),
+			zap.String("clickhouse config", clickhouse.Dir),
 		)
 	} else {
 		logger.Error("end e2e test",
@@ -302,62 +285,97 @@ func testCarbonClickhouse(
 			zap.String("input", inputType.String()),
 			zap.String("status", "failed"),
 			zap.String("clickhouse version", clickhouse.Version),
-			zap.String("clickhouse config", clickhouseDir),
+			zap.String("clickhouse config", clickhouse.Dir),
 		)
 	}
 
 	return
 }
 
-func runTest(config string, rootDir string, verbose, breakOnError bool, logger *zap.Logger) (failed, total int) {
-	testDir := path.Dir(config)
+func clickhouseStart(clickhouse *Clickhouse, logger *zap.Logger) bool {
+	out, err := clickhouse.Start()
+	if err != nil {
+		logger.Error("starting clickhouse",
+			zap.Any("clickhouse version", clickhouse.Version),
+			zap.String("clickhouse config", clickhouse.Dir),
+			zap.Error(err),
+			zap.String("out", out),
+		)
+		clickhouse.Stop(true)
+		return false
+	}
+	return true
+}
+
+func clickhouseStop(clickhouse *Clickhouse, logger *zap.Logger) (result bool) {
+	result = true
+	if !clickhouse.Alive() {
+		clickhouse.CopyLog(os.TempDir(), 10)
+		result = false
+	}
+
+	out, err := clickhouse.Stop(true)
+	if err != nil {
+		logger.Error("stoping clickhouse",
+			zap.String("clickhouse version", clickhouse.Version),
+			zap.String("clickhouse config", clickhouse.Dir),
+			zap.Error(err),
+			zap.String("out", out),
+		)
+		result = false
+	}
+	return result
+}
+
+func loadConfig(config string, rootDir string) (*MainConfig, error) {
 	d, err := ioutil.ReadFile(config)
 	if err != nil {
-		logger.Error("failed to read config",
-			zap.String("config", config),
-			zap.Error(err),
-		)
-		failed++
-		total++
-		return
+		return nil, err
 	}
 
-	confShort := strings.ReplaceAll(config, rootDir+"/", "")
-
-	var cfg = MainConfig{}
-	if _, err := toml.Decode(string(d), &cfg); err != nil {
-		logger.Fatal("failed to decode config",
-			zap.String("config", confShort),
-			zap.Error(err),
-		)
+	var cfg = &MainConfig{}
+	if _, err := toml.Decode(string(d), cfg); err != nil {
+		return nil, err
 	}
 
-	cfg.Test.name = confShort
+	cfg.Test.dir = path.Dir(config)
+	cfg.Test.name = strings.ReplaceAll(config, rootDir+"/", "")
 	if len(cfg.Test.InputTypes) == 0 {
 		cfg.Test.InputTypes = []InputType{InputPlainTCP}
 	}
 
 	if len(cfg.Test.Input) == 0 {
-		logger.Fatal("input not set",
-			zap.String("config", confShort),
-		)
+		return nil, ErrNoInput
 	}
 
-	for _, clickhouse := range cfg.Test.Clickhouse {
-		if exist, out := containerExist(clickhouse.Docker, ClickhouseContainerName); exist {
-			logger.Error("clickhouse already exist",
-				zap.String("container", ClickhouseContainerName),
+	cfg.Test.chVersions = make(map[string]bool)
+	for i := range cfg.Test.Clickhouse {
+		if err := cfg.Test.Clickhouse[i].CheckConfig(rootDir); err == nil {
+			cfg.Test.chVersions[cfg.Test.Clickhouse[i].Key()] = true
+		} else {
+			return nil, fmt.Errorf("[%d] %s", i, err.Error())
+		}
+	}
+	return cfg, nil
+}
+
+func runTest(cfg *MainConfig, clickhouse *Clickhouse, rootDir string, verbose, breakOnError bool, logger *zap.Logger) (failed, total int) {
+	for _, sql := range preSQL {
+		if success, out := clickhouse.Exec(sql); !success {
+			logger.Error("pre-execute",
+				zap.String("config", cfg.Test.name),
+				zap.Any("clickhouse version", clickhouse.Version),
+				zap.String("clickhouse config", clickhouse.Dir),
+				zap.String("sql", sql),
 				zap.String("out", out),
 			)
-			failed++
-			total++
-			continue
+			return
 		}
-		for _, inputType := range cfg.Test.InputTypes {
-			total++
-			if !testCarbonClickhouse(inputType, cfg.Test, clickhouse, testDir, rootDir, verbose, breakOnError, logger) {
-				failed++
-			}
+	}
+	for _, inputType := range cfg.Test.InputTypes {
+		total++
+		if !testCarbonClickhouse(inputType, cfg.Test, clickhouse, cfg.Test.dir, rootDir, verbose, breakOnError, logger) {
+			failed++
 		}
 	}
 
