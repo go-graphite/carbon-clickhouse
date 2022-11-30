@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	// MetricEndpointLocal used to send metrics in the carbon-clickhouse itself
 	MetricEndpointLocal = "local"
 )
 
@@ -28,7 +29,7 @@ type commonConfig struct {
 }
 
 type clickhouseConfig struct {
-	Url string `toml:"url"`
+	URL string `toml:"url"`
 }
 
 type udpConfig struct {
@@ -73,7 +74,7 @@ type promConfig struct {
 	DropLongerThan uint16           `toml:"drop-longer-than"`
 }
 
-type telegrafHttpJsonConfig struct {
+type telegrafHTTPJSONConfig struct {
 	Listen         string           `toml:"listen"`
 	Enabled        bool             `toml:"enabled"`
 	DropFuture     *config.Duration `toml:"drop-future"`
@@ -102,12 +103,12 @@ type Config struct {
 	Common           commonConfig                `toml:"common"`
 	Data             dataConfig                  `toml:"data"`
 	Upload           map[string]*uploader.Config `toml:"upload"`
-	Udp              udpConfig                   `toml:"udp"`
-	Tcp              tcpConfig                   `toml:"tcp"`
+	UDP              udpConfig                   `toml:"udp"`
+	TCP              tcpConfig                   `toml:"tcp"`
 	Pickle           pickleConfig                `toml:"pickle"`
 	Grpc             grpcConfig                  `toml:"grpc"`
 	Prometheus       promConfig                  `toml:"prometheus"`
-	TelegrafHttpJson telegrafHttpJsonConfig      `toml:"telegraf_http_json"`
+	TelegrafHTTPJSON telegrafHTTPJSONConfig      `toml:"telegraf_http_json"`
 	Pprof            pprofConfig                 `toml:"pprof"`
 	Logging          []zapwriter.Config          `toml:"logging"`
 	TagDesc          tags.TagConfig              `toml:"convert_to_tagged"`
@@ -127,7 +128,7 @@ func NewConfig() *Config {
 		},
 		Logging: nil,
 		Data: dataConfig{
-			Path: "/data/carbon-clickhouse/",
+			Path: "/var/lib/carbon-clickhouse/",
 			FileInterval: &config.Duration{
 				Duration: time.Second,
 			},
@@ -135,7 +136,7 @@ func NewConfig() *Config {
 			CompAlgo:     &config.Compression{CompAlgo: config.CompAlgoNone},
 			CompLevel:    0,
 		},
-		Udp: udpConfig{
+		UDP: udpConfig{
 			Listen:         ":2003",
 			Enabled:        true,
 			LogIncomplete:  false,
@@ -143,7 +144,7 @@ func NewConfig() *Config {
 			DropPast:       &config.Duration{},
 			DropLongerThan: 0,
 		},
-		Tcp: tcpConfig{
+		TCP: tcpConfig{
 			Listen:         ":2003",
 			Enabled:        true,
 			DropFuture:     &config.Duration{},
@@ -174,7 +175,7 @@ func NewConfig() *Config {
 			DropPast:       &config.Duration{},
 			DropLongerThan: 0,
 		},
-		TelegrafHttpJson: telegrafHttpJsonConfig{
+		TelegrafHTTPJSON: telegrafHTTPJSONConfig{
 			Listen:         ":2007",
 			Enabled:        false,
 			DropFuture:     &config.Duration{},
@@ -194,13 +195,14 @@ func NewConfig() *Config {
 	return cfg
 }
 
+// NewLoggingConfig returns the zapwriter.Config with logging into "/var/log/carbon-clickhouse/carbon-clickhouse.log"
 func NewLoggingConfig() zapwriter.Config {
 	cfg := zapwriter.NewConfig()
 	cfg.File = "/var/log/carbon-clickhouse/carbon-clickhouse.log"
 	return cfg
 }
 
-// PrintConfig ...
+// PrintDefaultConfig ...
 func PrintDefaultConfig() error {
 	cfg := NewConfig()
 	buf := new(bytes.Buffer)
@@ -214,7 +216,7 @@ func PrintDefaultConfig() error {
 	}
 
 	cfg.Upload = map[string]*uploader.Config{
-		"graphite": &uploader.Config{
+		"graphite": {
 			Type: "points",
 			Timeout: &config.Duration{
 				Duration: time.Minute,
@@ -223,7 +225,7 @@ func PrintDefaultConfig() error {
 			TableName: "graphite",
 			URL:       "http://localhost:8123/",
 		},
-		"graphite_tree": &uploader.Config{
+		"graphite_tree": {
 			Type: "tree",
 			Timeout: &config.Duration{
 				Duration: time.Minute,

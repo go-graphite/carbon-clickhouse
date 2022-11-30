@@ -56,6 +56,12 @@ func sendInt64Gauge(send func(metric string, value float64), metric string, valu
 	send(metric, float64(atomic.LoadInt64(value)))
 }
 
+func (base *Base) applyOptions(opts ...Option) {
+	for _, applyOption := range opts {
+		applyOption(base)
+	}
+}
+
 func (base *Base) isDrop(nowTime uint32, metricTime uint32) bool {
 	if base.dropFutureSeconds != 0 && (metricTime > (nowTime + base.dropFutureSeconds)) {
 		atomic.AddUint64(&base.stat.futureDropped, 1)

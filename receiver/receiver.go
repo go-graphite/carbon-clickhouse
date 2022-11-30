@@ -97,11 +97,7 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		return nil, err
 	}
 
-	base := NewBase(zapwriter.Logger(strings.Replace(u.Scheme, "+", "_", -1)), config)
-
-	for _, optApply := range opts {
-		optApply(&base)
-	}
+	logger := zapwriter.Logger(strings.Replace(u.Scheme, "+", "_", -1))
 
 	if u.Scheme == "tcp" {
 		addr, err := net.ResolveTCPAddr("tcp", u.Host)
@@ -110,9 +106,10 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		r := &TCP{
-			Base:      base,
+			Base:      NewBase(logger, config),
 			parseChan: make(chan *Buffer),
 		}
+		r.applyOptions(opts...)
 
 		if err = r.Listen(addr); err != nil {
 			return nil, err
@@ -128,9 +125,10 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		r := &Pickle{
-			Base:      base,
+			Base:      NewBase(logger, config),
 			parseChan: make(chan []byte),
 		}
+		r.applyOptions(opts...)
 
 		if err = r.Listen(addr); err != nil {
 			return nil, err
@@ -146,9 +144,10 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		r := &UDP{
-			Base:      base,
+			Base:      NewBase(logger, config),
 			parseChan: make(chan *Buffer),
 		}
+		r.applyOptions(opts...)
 
 		if err = r.Listen(addr); err != nil {
 			return nil, err
@@ -164,8 +163,9 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		r := &GRPC{
-			Base: base,
+			Base: NewBase(logger, config),
 		}
+		r.applyOptions(opts...)
 
 		if err = r.Listen(addr); err != nil {
 			return nil, err
@@ -181,8 +181,9 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		r := &PrometheusRemoteWrite{
-			Base: base,
+			Base: NewBase(logger, config),
 		}
+		r.applyOptions(opts...)
 
 		if err = r.Listen(addr); err != nil {
 			return nil, err
@@ -197,9 +198,10 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 			return nil, err
 		}
 
-		r := &TelegrafHttpJson{
-			Base: base,
+		r := &TelegrafHTTPJSON{
+			Base: NewBase(logger, config),
 		}
+		r.applyOptions(opts...)
 
 		if err = r.Listen(addr); err != nil {
 			return nil, err
