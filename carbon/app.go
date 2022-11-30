@@ -19,6 +19,7 @@ import (
 	"github.com/lomik/zapwriter"
 )
 
+// App is an application object used in main
 type App struct {
 	sync.RWMutex
 	Config           *Config
@@ -29,7 +30,7 @@ type App struct {
 	Pickle           receiver.Receiver
 	Grpc             receiver.Receiver
 	Prometheus       receiver.Receiver
-	TelegrafHttpJson receiver.Receiver
+	TelegrafHTTPJSON receiver.Receiver
 	Collector        *Collector // (!!!) Should be re-created on every change config/modules
 	writeChan        chan *RowBinary.WriteBuffer
 	exit             chan bool
@@ -129,9 +130,9 @@ func (app *App) stopListeners() {
 		logger.Debug("finished", zap.String("module", "prometheus"))
 	}
 
-	if app.TelegrafHttpJson != nil {
-		app.TelegrafHttpJson.Stop()
-		app.TelegrafHttpJson = nil
+	if app.TelegrafHTTPJSON != nil {
+		app.TelegrafHTTPJSON.Stop()
+		app.TelegrafHTTPJSON = nil
 		logger.Debug("finished", zap.String("module", "telegraf_http_json"))
 	}
 }
@@ -214,7 +215,9 @@ func (app *App) Start() (err error) {
 		uploaders,
 		nil,
 	)
-	app.Writer.Start()
+	if err := app.Writer.Start(); err != nil {
+		return err
+	}
 	/* WRITER end */
 
 	/* UPLOADER start */
@@ -241,21 +244,23 @@ func (app *App) Start() (err error) {
 	}
 
 	for _, uploader := range app.Uploaders {
-		uploader.Start()
+		if err := uploader.Start(); err != nil {
+			return err
+		}
 	}
 	/* UPLOADER end */
 
 	/* RECEIVER start */
-	if conf.Tcp.Enabled {
+	if conf.TCP.Enabled {
 		app.TCP, err = receiver.New(
-			"tcp://"+conf.Tcp.Listen,
+			"tcp://"+conf.TCP.Listen,
 			app.Config.TagDesc,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
-			receiver.DropFuture(uint32(conf.Tcp.DropFuture.Value().Seconds())),
-			receiver.DropPast(uint32(conf.Tcp.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Tcp.DropLongerThan),
-			receiver.ReadTimeout(uint32(conf.Tcp.ReadTimeout.Value().Seconds())),
+			receiver.DropFuture(uint32(conf.TCP.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.TCP.DropPast.Value().Seconds())),
+			receiver.DropLongerThan(conf.TCP.DropLongerThan),
+			receiver.ReadTimeout(uint32(conf.TCP.ReadTimeout.Value().Seconds())),
 		)
 
 		if err != nil {
@@ -265,15 +270,15 @@ func (app *App) Start() (err error) {
 		http.HandleFunc("/debug/receive/tcp/dropped/", app.TCP.DroppedHandler)
 	}
 
-	if conf.Udp.Enabled {
+	if conf.UDP.Enabled {
 		app.UDP, err = receiver.New(
-			"udp://"+conf.Udp.Listen,
+			"udp://"+conf.UDP.Listen,
 			app.Config.TagDesc,
 			receiver.ParseThreads(runtime.GOMAXPROCS(-1)*2),
 			receiver.WriteChan(app.writeChan),
-			receiver.DropFuture(uint32(conf.Udp.DropFuture.Value().Seconds())),
-			receiver.DropPast(uint32(conf.Udp.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.Udp.DropLongerThan),
+			receiver.DropFuture(uint32(conf.UDP.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.UDP.DropPast.Value().Seconds())),
+			receiver.DropLongerThan(conf.UDP.DropLongerThan),
 		)
 
 		if err != nil {
@@ -335,22 +340,22 @@ func (app *App) Start() (err error) {
 		http.HandleFunc("/debug/receive/prometheus/dropped/", app.Prometheus.DroppedHandler)
 	}
 
-	if conf.TelegrafHttpJson.Enabled {
-		app.TelegrafHttpJson, err = receiver.New(
-			"telegraf+http+json://"+conf.TelegrafHttpJson.Listen,
+	if conf.TelegrafHTTPJSON.Enabled {
+		app.TelegrafHTTPJSON, err = receiver.New(
+			"telegraf+http+json://"+conf.TelegrafHTTPJSON.Listen,
 			app.Config.TagDesc,
 			receiver.WriteChan(app.writeChan),
-			receiver.DropFuture(uint32(conf.TelegrafHttpJson.DropFuture.Value().Seconds())),
-			receiver.DropPast(uint32(conf.TelegrafHttpJson.DropPast.Value().Seconds())),
-			receiver.DropLongerThan(conf.TelegrafHttpJson.DropLongerThan),
-			receiver.ConcatChar(conf.TelegrafHttpJson.Concat),
+			receiver.DropFuture(uint32(conf.TelegrafHTTPJSON.DropFuture.Value().Seconds())),
+			receiver.DropPast(uint32(conf.TelegrafHTTPJSON.DropPast.Value().Seconds())),
+			receiver.DropLongerThan(conf.TelegrafHTTPJSON.DropLongerThan),
+			receiver.ConcatChar(conf.TelegrafHTTPJSON.Concat),
 		)
 
 		if err != nil {
 			return
 		}
 
-		http.HandleFunc("/debug/receive/telegraf_http_json/dropped/", app.TelegrafHttpJson.DroppedHandler)
+		http.HandleFunc("/debug/receive/telegraf_http_json/dropped/", app.TelegrafHTTPJSON.DroppedHandler)
 	}
 	/* RECEIVER end */
 

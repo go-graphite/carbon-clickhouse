@@ -101,8 +101,8 @@ func NewCollector(app *App) *Collector {
 		c.stats = append(c.stats, moduleCallback("prometheus", app.Prometheus))
 	}
 
-	if app.TelegrafHttpJson != nil {
-		c.stats = append(c.stats, moduleCallback("telegraf_http_json", app.TelegrafHttpJson))
+	if app.TelegrafHTTPJSON != nil {
+		c.stats = append(c.stats, moduleCallback("telegraf_http_json", app.TelegrafHTTPJSON))
 	}
 
 	for n, u := range app.Uploaders {
@@ -226,7 +226,7 @@ func (c *Collector) local(ctx context.Context) {
 func (c *Collector) chunked(ctx context.Context, chunkSize int, callback func([]byte)) {
 	for {
 		points := c.readData(ctx)
-		if points == nil || len(points) == 0 {
+		if len(points) == 0 {
 			// exit closed
 			return
 		}
