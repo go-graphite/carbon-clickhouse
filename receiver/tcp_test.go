@@ -47,21 +47,18 @@ func TestTCP(t *testing.T) {
 			Value:     1.0,
 			Timestamp: 1559465760,
 			Days:      18049,
-			Version:   now,
 		},
 		{
 			Path:      "carbon.agents.carbon-clickhouse.writer.writtenBytes",
 			Value:     2.0,
 			Timestamp: 1559465800,
 			Days:      18049,
-			Version:   now,
 		},
 		{
 			Path:      "carbon.agents.carbon-clickhouse.tcp.receiver.errors",
 			Value:     2.0,
 			Timestamp: 1559465800,
 			Days:      18049,
-			Version:   now,
 		},
 		{
 			// next day
@@ -69,7 +66,6 @@ func TestTCP(t *testing.T) {
 			Value:     1.0,
 			Timestamp: 1662098177,
 			Days:      19237,
-			Version:   now,
 		},
 		{
 			// tagged metric
@@ -77,7 +73,6 @@ func TestTCP(t *testing.T) {
 			Value:     1.0,
 			Timestamp: 1662098177,
 			Days:      19237,
-			Version:   now,
 		},
 	}
 	for _, p := range points_part1 {
@@ -96,7 +91,6 @@ func TestTCP(t *testing.T) {
 		Value:     2.0,
 		Timestamp: 1662098177,
 		Days:      19237,
-		Version:   now + 1,
 	}
 	pointToBuf(&sb, &points_part3)
 
@@ -106,21 +100,18 @@ func TestTCP(t *testing.T) {
 			Value:     1.1,
 			Timestamp: 1559465761,
 			Days:      18049,
-			Version:   now + 1,
 		},
 		{
 			Path:      "carbon.agents.carbon-clickhouse.writer.writtenBytes",
 			Value:     2.1,
 			Timestamp: 1559465801,
 			Days:      18049,
-			Version:   now + 1,
 		},
 		{
 			Path:      "carbon.agents.carbon-clickhouse.tcp.receiver.errors",
 			Value:     2.1,
 			Timestamp: 1559465801,
 			Days:      18049,
-			Version:   now + 1,
 		},
 		{
 			// next day
@@ -128,7 +119,6 @@ func TestTCP(t *testing.T) {
 			Value:     1.1,
 			Timestamp: 1662098178,
 			Days:      19237,
-			Version:   now + 1,
 		},
 		{
 			// tagged metric
@@ -136,7 +126,6 @@ func TestTCP(t *testing.T) {
 			Value:     1.1,
 			Timestamp: 1662098178,
 			Days:      19237,
-			Version:   now + 1,
 		},
 	}
 	for _, p := range points_part4 {
@@ -207,5 +196,5 @@ func TestTCP(t *testing.T) {
 	cancel()
 	wg.Wait()
 
-	verifyIndexUploaded(t, &rawBuf, wantPoints)
+	verifyIndexUploaded(t, &rawBuf, wantPoints, now, uint32(time.Now().Unix()))
 }
