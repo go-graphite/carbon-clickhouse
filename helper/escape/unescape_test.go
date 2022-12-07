@@ -2,12 +2,13 @@ package escape
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_unescape(t *testing.T) {
+func TestUnescape(t *testing.T) {
 	var tests = []struct {
 		in   string
 		want string
@@ -49,6 +50,15 @@ func Test_unescape(t *testing.T) {
 
 			got := Unescape(tt.in)
 			assert.Equal(tt.want, got)
+
+			var sb strings.Builder
+
+			got = UnescapeTo(tt.in, &sb)
+			assert.Equal(tt.want, got)
+
+			gotName, gotNameTag := UnescapeNameTo(tt.in, &sb)
+			assert.Equal(tt.want, gotName)
+			assert.Equal("__name__="+tt.want, gotNameTag)
 		})
 	}
 }

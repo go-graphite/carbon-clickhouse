@@ -30,31 +30,11 @@ func isPercentEscape(s string, i int) bool {
 	return i+2 < len(s) && ishex(s[i+1]) && ishex(s[i+2])
 }
 
-// unescape unescapes a string; the mode specifies
-// which section of the URL string is being unescaped.
-func Unescape(s string) string {
-	var sb strings.Builder
-	return UnescapeTo(s, true, &sb)
-}
-
-// unescape unescapes a string; the mode specifies
-// which section of the URL string is being unescaped.
-func UnescapeTo(s string, noCopy bool, sb *strings.Builder) string {
-	var (
-		first int
-		pos   int
-	)
-	if noCopy {
-		first = strings.IndexAny(s, "%+")
-		if first == -1 {
-			return s
-		}
-		pos = sb.Len()
-		sb.Grow(pos + len(s))
-		sb.WriteString(s[:first])
-	} else {
-		pos = sb.Len()
-	}
+// unescape unescapes a string
+func unescape(s string, first int, sb *strings.Builder) string {
+	pos := sb.Len()
+	sb.Grow(pos + len(s))
+	sb.WriteString(s[:first])
 
 LOOP:
 	for i := first; i < len(s); i++ {
@@ -78,4 +58,41 @@ LOOP:
 	}
 
 	return sb.String()[pos:]
+}
+
+func Unescape(s string) string {
+	var sb strings.Builder
+	return UnescapeTo(s, &sb)
+}
+
+// unescape unescapes a string; the mode specifies
+// which section of the URL string is being unescaped.
+func UnescapeTo(s string, sb *strings.Builder) string {
+	first := strings.IndexAny(s, "%+")
+	if first == -1 {
+		return s
+	}
+
+	return unescape(s, first, sb)
+}
+
+// unescape unescapes a string; the mode specifies
+// which section of the URL string is being unescaped.
+func UnescapeNameTo(s string, sb *strings.Builder) (name string, nameTag string) {
+	first := strings.IndexAny(s, "%+")
+	if first == -1 {
+		pos := sb.Len()
+		sb.WriteString("__name__=")
+		end := sb.Len()
+		sb.WriteString(s)
+		name = sb.String()[end:]
+		nameTag = sb.String()[pos:]
+		return
+	}
+
+	pos := sb.Len()
+	sb.WriteString("__name__=")
+	name = unescape(s, first, sb)
+	nameTag = sb.String()[pos:]
+	return
 }
