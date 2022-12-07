@@ -32,9 +32,9 @@ func TestUrlParse(t *testing.T) {
 		"?" + escape.Query("dc") + "=" + escape.Query("qwe+1") +
 		"&" + escape.Query("fqdn") + "=" + escape.Query("asd&a") +
 		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
-		"&" + escape.Query("job") + "=" + escape.Query("node&a")
+		"&" + escape.Query("job") + "=" + escape.Query("node&a b")
 
-	assert.Equal("instance:cpu_utilization%3Fratio_avg?dc=qwe%2B1&fqdn=asd%26a&instance=10.33.10.10%3A9100&job=node%26a", metric)
+	assert.Equal("instance:cpu_utilization%3Fratio_avg?dc=qwe%2B1&fqdn=asd%26a&instance=10.33.10.10%3A9100&job=node%26a+b", metric)
 
 	// original url.Parse
 	mu, err := url.Parse(metric)
@@ -52,7 +52,7 @@ func TestUrlParse(t *testing.T) {
 		"dc":       []string{"qwe+1"},
 		"fqdn":     []string{"asd&a"},
 		"instance": []string{"10.33.10.10:9100"},
-		"job":      []string{"node&a"},
+		"job":      []string{"node&a b"},
 	}, m.Query())
 }
 
@@ -65,9 +65,9 @@ func TestTagsParse(t *testing.T) {
 		"?" + escape.Query("dc") + "=" + escape.Query("qwe+1") +
 		"&" + escape.Query("fqdn") + "=" + escape.Query("asd&a") +
 		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
-		"&" + escape.Query("job") + "=" + escape.Query("node&a")
+		"&" + escape.Query("job") + "=" + escape.Query("node&a b")
 
-	assert.Equal("instance:cpu_utilization%3Fratio_avg?dc=qwe%2B1&fqdn=asd%26a&instance=10.33.10.10%3A9100&job=node%26a", metric)
+	assert.Equal("instance:cpu_utilization%3Fratio_avg?dc=qwe%2B1&fqdn=asd%26a&instance=10.33.10.10%3A9100&job=node%26a+b", metric)
 
 	m, err := urlParse(metric)
 	require.NoError(err)
@@ -99,9 +99,9 @@ func TestTagsParseToSlice(t *testing.T) {
 				"?" + escape.Query("dc") + "=" + escape.Query("qwe+1") +
 				"&" + escape.Query("fqdn") + "=" + escape.Query("asd&a") +
 				"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
-				"&" + escape.Query("job") + "=" + escape.Query("node&a"),
+				"&" + escape.Query("job") + "=" + escape.Query("node&a b"),
 			wantName: "instance:cpu_utilization?ratio_avg",
-			wantTags: []string{"dc=qwe+1", "fqdn=asd&a", "instance=10.33.10.10:9100", "job=node&a"},
+			wantTags: []string{"dc=qwe+1", "fqdn=asd&a", "instance=10.33.10.10:9100", "job=node&a b"},
 		},
 		{
 			metric:   "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node",
@@ -708,50 +708,4 @@ func TestTagged_parseName_Overflow(t *testing.T) {
 	u := NewTagged(base)
 	err := u.parseName(sb.String(), 10, 1, tag1, wb, tagsBuf)
 	assert.Equal(t, errBufOverflow, err)
-}
-
-func Test_unescape(t *testing.T) {
-	var tests = []struct {
-		in   string
-		want string
-	}{
-		{
-			"", ""},
-		{"abc", "abc"},
-		{"1%41", "1A"},
-		{"1%41%42%43", "1ABC"},
-		{"%4a", "J"},
-		{"%6F", "o"},
-		{
-			"%", // not enough characters after %
-			"%",
-		},
-		{
-			"%a", // not enough characters after %
-			"%a",
-		},
-		{
-			"%1", // not enough characters after %
-			"%1",
-		},
-		{
-			"123%45%6", // not enough characters after %
-			"123E%6",
-		},
-		{
-			"%zzzzz", // invalid hex digits
-			"%zzzzz",
-		},
-		{"a+b", "a+b"},
-		{"a%20b", "a b"},
-	}
-
-	for i, tt := range tests {
-		t.Run(tt.in+"["+strconv.Itoa(i)+"]", func(t *testing.T) {
-			assert := assert.New(t)
-
-			got := unescape(tt.in)
-			assert.Equal(tt.want, got)
-		})
-	}
 }

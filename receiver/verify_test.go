@@ -17,7 +17,7 @@ func pointToBuf(sb *stringutils.Builder, p *reader.Point) {
 	sb.WriteString("\n")
 }
 
-func verifyIndexUploaded(t *testing.T, b io.Reader, points []reader.Point) {
+func verifyIndexUploaded(t *testing.T, b io.Reader, points []reader.Point, start, end uint32) {
 	var (
 		p   *reader.Point
 		err error
@@ -29,6 +29,10 @@ func verifyIndexUploaded(t *testing.T, b io.Reader, points []reader.Point) {
 		if p, err = br.ReadGraphitePoint(); err != nil {
 			t.Fatalf("read [%d]: %v,\nwant\n%+v", i, err, point)
 		}
+		if p.Version < start || p.Version > end {
+			t.Errorf("read [%d] version: got %d, want >= %d, <= %d", i, p.Version, start, end)
+		}
+		p.Version = point.Version
 		if *p != point {
 			t.Errorf("read [%d]: got\n%+v,\nwant\n%+v", i, *p, point)
 		}

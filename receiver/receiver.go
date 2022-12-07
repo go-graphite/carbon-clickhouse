@@ -119,9 +119,8 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		return r, err
-	}
 
-	if u.Scheme == "pickle" {
+	} else if u.Scheme == "pickle" {
 		addr, err := net.ResolveTCPAddr("tcp", u.Host)
 		if err != nil {
 			return nil, err
@@ -137,9 +136,8 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		return r, err
-	}
 
-	if u.Scheme == "udp" {
+	} else if u.Scheme == "udp" {
 		addr, err := net.ResolveUDPAddr("udp", u.Host)
 		if err != nil {
 			return nil, err
@@ -155,9 +153,8 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		return r, err
-	}
 
-	if u.Scheme == "grpc" {
+	} else if u.Scheme == "grpc" {
 		addr, err := net.ResolveTCPAddr("tcp", u.Host)
 		if err != nil {
 			return nil, err
@@ -172,9 +169,8 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		return r, err
-	}
 
-	if u.Scheme == "prometheus" {
+	} else if u.Scheme == "prometheus" {
 		addr, err := net.ResolveTCPAddr("tcp", u.Host)
 		if err != nil {
 			return nil, err
@@ -189,9 +185,8 @@ func New(dsn string, config tags.TagConfig, opts ...Option) (Receiver, error) {
 		}
 
 		return r, err
-	}
 
-	if u.Scheme == "telegraf+http+json" {
+	} else if u.Scheme == "telegraf+http+json" {
 		addr, err := net.ResolveTCPAddr("tcp", u.Host)
 		if err != nil {
 			return nil, err

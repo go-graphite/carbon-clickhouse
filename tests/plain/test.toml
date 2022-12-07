@@ -1,7 +1,7 @@
 [test]
 config_template = "carbon-clickhouse.conf.tpl"
 input = [ 
-    "test.host1.cpu.loadavg 10.2 1625478240",    
+    "test.host1.cpu.loadavg 10.2 1625478240",
     "cpu.loadavg;env=test2;host=host1;env=test 21.4 1625478300",
     "test2.host1.cpu0.user 10.2 1625478240",
     "test2.host1.cpu0.idle 10.2 1625478240",
