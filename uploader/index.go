@@ -3,10 +3,11 @@ package uploader
 import (
 	"bytes"
 	"io"
-	"strconv"
+	"sync"
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
+	"github.com/msaf1980/go-stringutils"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +31,7 @@ func NewIndex(base *Base) *Index {
 	return u
 }
 
-func (u *Index) parseName(name, reverseName []byte, treeDate, days uint16, version uint32, disableDailyIndex bool, newUniq map[string]bool, wb *RowBinary.WriteBuffer) error {
+func (u *Index) parseName(name, reverseName []byte, treeDate, days uint16, version uint32, disableDailyIndex bool, indexBuf *indexBuffers) error {
 	var index, l int
 	var p []byte
 
@@ -38,24 +39,25 @@ func (u *Index) parseName(name, reverseName []byte, treeDate, days uint16, versi
 		RowBinary.SIZE_INT32 + len(name) +
 		RowBinary.SIZE_INT32) //  version
 
-	if sizeIndex >= wb.FreeSize() {
+	if sizeIndex >= indexBuf.wb.FreeSize() {
 		return errBufOverflow
 	}
+	indexBuf.wb.Reset()
 
 	level := pathLevel(name)
 
 	// Tree
-	wb.WriteUint16(treeDate)
-	wb.WriteUint32(uint32(level + TreeLevelOffset))
-	wb.WriteBytes(name)
-	wb.WriteUint32(version)
+	indexBuf.wb.WriteUint16(treeDate)
+	indexBuf.wb.WriteUint32(uint32(level + TreeLevelOffset))
+	indexBuf.wb.WriteBytes(name)
+	indexBuf.wb.WriteUint32(version)
 
 	p = name
 	l = level
 	for l--; l > 0; l-- {
 		index = bytes.LastIndexByte(p, '.')
 		segment := p[:index+1]
-		if newUniq[unsafeString(segment)] {
+		if indexBuf.newUniq[unsafeString(segment)] {
 			break
 		}
 
@@ -63,42 +65,75 @@ func (u *Index) parseName(name, reverseName []byte, treeDate, days uint16, versi
 			RowBinary.SIZE_INT32 + len(segment) +
 			RowBinary.SIZE_INT32 //  version
 
-		if sizeIndex >= wb.FreeSize() {
+		if sizeIndex >= indexBuf.wb.FreeSize() {
 			return errBufOverflow
 		}
 
-		newUniq[string(p[:index+1])] = true
+		indexBuf.newUniq[string(p[:index+1])] = true
 
-		wb.WriteUint16(treeDate)
-		wb.WriteUint32(uint32(l + TreeLevelOffset))
-		wb.WriteBytes(p[:index+1])
-		wb.WriteUint32(version)
+		indexBuf.wb.WriteUint16(treeDate)
+		indexBuf.wb.WriteUint32(uint32(l + TreeLevelOffset))
+		indexBuf.wb.WriteBytes(p[:index+1])
+		indexBuf.wb.WriteUint32(version)
 
 		p = p[:index]
 	}
 
 	// Write data with treeDate
-	wb.WriteUint16(treeDate)
-	wb.WriteUint32(uint32(level + ReverseTreeLevelOffset))
-	wb.WriteBytes(reverseName)
-	wb.WriteUint32(version)
+	indexBuf.wb.WriteUint16(treeDate)
+	indexBuf.wb.WriteUint32(uint32(level + ReverseTreeLevelOffset))
+	indexBuf.wb.WriteBytes(reverseName)
+	indexBuf.wb.WriteUint32(version)
 
 	// Skip daily index
 	if !disableDailyIndex {
 		// Direct path with date
-		wb.WriteUint16(days)
-		wb.WriteUint32(uint32(level))
-		wb.WriteBytes(name)
-		wb.WriteUint32(version)
+		indexBuf.wb.WriteUint16(days)
+		indexBuf.wb.WriteUint32(uint32(level))
+		indexBuf.wb.WriteBytes(name)
+		indexBuf.wb.WriteUint32(version)
 
 		// Reverse path with date
-		wb.WriteUint16(days)
-		wb.WriteUint32(uint32(level + ReverseLevelOffset))
-		wb.WriteBytes(reverseName)
-		wb.WriteUint32(version)
+		indexBuf.wb.WriteUint16(days)
+		indexBuf.wb.WriteUint32(uint32(level + ReverseLevelOffset))
+		indexBuf.wb.WriteBytes(reverseName)
+		indexBuf.wb.WriteUint32(version)
 	}
 
 	return nil
+}
+
+type indexBuffers struct {
+	wb          RowBinary.WriteBuffer
+	newUniq     map[string]bool
+	reverseName []byte
+	key         stringutils.Builder
+}
+
+var indexBufferPool = sync.Pool{
+	New: func() interface{} {
+		b := &indexBuffers{
+			wb:          RowBinary.WriteBuffer{},
+			newUniq:     make(map[string]bool),
+			reverseName: make([]byte, 256),
+		}
+		b.key.Grow(128)
+		return b
+	},
+}
+
+func getIndexBuffer() *indexBuffers {
+	b := indexBufferPool.Get().(*indexBuffers)
+	b.wb.Reset()
+	for k := range b.newUniq {
+		delete(b.newUniq, k)
+	}
+
+	return b
+}
+
+func releaseIndexBuffer(b *indexBuffers) {
+	indexBufferPool.Put(b)
 }
 
 func (u *Index) parseFile(filename string, out io.Writer) (uint64, map[string]bool, error) {
@@ -114,15 +149,13 @@ func (u *Index) parseFile(filename string, out io.Writer) (uint64, map[string]bo
 
 	version := uint32(time.Now().Unix())
 	newSeries := make(map[string]bool)
-	newUniq := make(map[string]bool)
-	wb := RowBinary.GetWriteBuffer()
+	indexBuf := getIndexBuffer()
+	defer releaseIndexBuffer(indexBuf)
 
 	treeDate := uint16(DefaultTreeDate)
 	if !u.config.TreeDate.IsZero() {
 		treeDate = RowBinary.TimestampToDays(uint32(u.config.TreeDate.Unix()))
 	}
-
-	reverseNameBuf := make([]byte, 256)
 
 	hashFunc := u.config.hashFunc
 	if hashFunc == nil {
@@ -142,7 +175,11 @@ LineLoop:
 		}
 
 		nameStr := unsafeString(name)
-		key := hashFunc(strconv.Itoa(int(reader.Days())) + ":" + nameStr)
+		indexBuf.key.Reset()
+		indexBuf.key.WriteUint(uint64(reader.Days()), 10)
+		indexBuf.key.WriteByte(':')
+		indexBuf.key.WriteString(hashFunc(nameStr))
+		key := indexBuf.key.String()
 
 		if u.existsCache.Exists(key) {
 			continue LineLoop
@@ -152,20 +189,19 @@ LineLoop:
 			continue LineLoop
 		}
 
-		newSeries[key] = true
+		newSeries[stringutils.Clone(key)] = true
 
 		n++
 		days := reader.Days()
-		wb.Reset()
 
 		l := len(name)
-		if l > len(reverseNameBuf) {
-			reverseNameBuf = make([]byte, len(name)*2)
+		if l > len(indexBuf.reverseName) {
+			indexBuf.reverseName = make([]byte, len(name)*2)
 		}
-		reverseName := reverseNameBuf[:len(name)]
+		reverseName := indexBuf.reverseName[:len(name)]
 		RowBinary.ReverseBytesTo(reverseName, name)
 
-		err = u.parseName(name, reverseName, treeDate, days, version, u.config.DisableDailyIndex, newUniq, wb)
+		err = u.parseName(name, reverseName, treeDate, days, version, u.config.DisableDailyIndex, indexBuf)
 		if err != nil {
 			u.logger.Warn("parse",
 				zap.String("metric", nameStr), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
@@ -174,13 +210,11 @@ LineLoop:
 		}
 
 		// Write data
-		_, err = out.Write(wb.Bytes())
+		_, err = out.Write(indexBuf.wb.Bytes())
 		if err != nil {
 			return n, nil, err
 		}
 	}
-
-	wb.Release()
 
 	return n, newSeries, nil
 }
