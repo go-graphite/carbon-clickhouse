@@ -743,3 +743,52 @@ func TestTagged_parseName_Overflow(t *testing.T) {
 	err := u.parseName(sb.String(), 10, 1, tag1, tagsParseBuf, wb, tagsBuf, &nameBuf)
 	assert.Equal(t, errBufOverflow, err)
 }
+
+func benchmarkTaggedParseFileParallel(b *testing.B, bm *taggedBench, points []point, wantPoints uint64) {
+	b.Run(bm.name, func(b *testing.B) {
+		logger := zapwriter.Logger("upload")
+		var out bytes.Buffer
+		out.Grow(524288)
+
+		filename, err := writeFile(points, bm.compress, bm.compressLevel)
+		if err != nil {
+			b.Fatalf("writeFile() got error: %v", err)
+		}
+		defer os.Remove(filename)
+
+		base := &Base{
+			queue:   make(chan string, 1024),
+			inQueue: make(map[string]bool),
+			logger:  logger,
+			config:  &Config{TableName: "test"},
+		}
+		u := NewTagged(base)
+
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				out.Reset()
+
+				n, _, err := u.parseFile(filename, &out)
+				if err != nil {
+					b.Fatalf("Tagged.parseFile() got error: %v", err)
+				}
+				if n != wantPoints {
+					b.Fatalf("Tagged.parseFile() got %d, want %d", n, wantPoints)
+				}
+			}
+		})
+	})
+}
+
+func BenchmarkTaggedParseFileUncompressedParallel(b *testing.B) {
+	points := generateMetricsLarge()
+	wantPoints := uint64(len(points) / 2)
+	wantPointsStr := strconv.FormatUint(wantPoints, 10)
+	bm := taggedBench{
+		name:          fmt.Sprintf("%40s", "Uncompressed "+wantPointsStr),
+		compress:      config.CompAlgoNone,
+		compressLevel: 0,
+	}
+
+	benchmarkTaggedParseFileParallel(b, &bm, points, wantPoints)
+}
