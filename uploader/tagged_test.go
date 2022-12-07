@@ -177,8 +177,8 @@ func BenchmarkTagParseToSlice(b *testing.B) {
 	metric := escape.Path("instance:cpu_utilization:ratio_avg") +
 		"?" + escape.Query("dc") + "=" + escape.Query("qwe") +
 		"&" + escape.Query("fqdn") + "=" + escape.Query("asd") +
-		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10_9100") +
-		"&" + escape.Query("job") + "=" + escape.Query("node")
+		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
+		"&" + escape.Query("job") + "=" + escape.Query("node b")
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -230,6 +230,8 @@ func BenchmarkTaggedParseNameShort(b *testing.B) {
 	u := NewTagged(base)
 
 	name := "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node"
+	b.ReportAllocs()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		version := uint32(time.Now().Unix())
 		if err := u.parseName(name, uint16(i), version, tag1, wb, tagsBuf); err != nil {
@@ -256,6 +258,8 @@ func BenchmarkTaggedParseNameLong(b *testing.B) {
 	u := NewTagged(base)
 
 	name := "k8s.production-cl1.nginx_ingress_controller_response_size_bucket?app_kubernetes_io_component=controller&app_kubernetes_io_instance=ingress-nginx&app_kubernetes_io_managed_by=Helm&app_kubernetes_io_name=ingress-nginx&app_kubernetes_io_version=0_32_0&controller_class=nginx&controller_namespace=ingress-nginx&controller_pod=ingress-nginx-controller-d2ppr&helm_sh_chart=ingress-nginx-2_3_0&host=vm1_test_int&ingress=web-ingress&instance=192_168_0.10&job=kubernetes-service-endpoints&kubernetes_name=ingress-nginx-controller-metrics&kubernetes_namespace=ingress-nginx&kubernetes_node=k8s-n03&le=10&method=GET&namespace=web-app&path=_&service=web-app&status=500"
+	b.ReportAllocs()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		version := uint32(time.Now().Unix())
 		if err := u.parseName(name, uint16(i), version, tag1, wb, tagsBuf); err != nil {
