@@ -90,9 +90,10 @@ func TestTagsParse(t *testing.T) {
 
 func TestTagsParseToSlice(t *testing.T) {
 	tests := []struct {
-		metric   string
-		wantName string
-		wantTags []string
+		metric      string
+		wantName    string
+		wantNameTag string
+		wantTags    []string
 	}{
 		{
 			metric: escape.Path("instance:cpu_utilization?ratio_avg") +
@@ -100,16 +101,20 @@ func TestTagsParseToSlice(t *testing.T) {
 				"&" + escape.Query("fqdn") + "=" + escape.Query("asd&a") +
 				"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
 				"&" + escape.Query("job") + "=" + escape.Query("node&a b"),
-			wantName: "instance:cpu_utilization?ratio_avg",
-			wantTags: []string{"dc=qwe+1", "fqdn=asd&a", "instance=10.33.10.10:9100", "job=node&a b"},
+			wantName:    "instance:cpu_utilization?ratio_avg",
+			wantNameTag: "__name__=instance:cpu_utilization?ratio_avg",
+			wantTags:    []string{"dc=qwe+1", "fqdn=asd&a", "instance=10.33.10.10:9100", "job=node&a b"},
 		},
 		{
-			metric:   "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node",
-			wantName: "instance:cpu_utilization:ratio_avg",
-			wantTags: []string{"dc=qwe", "fqdn=asd", "instance=10.33.10.10_9100", "job=node"},
+			metric:      "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node",
+			wantName:    "instance:cpu_utilization:ratio_avg",
+			wantNameTag: "__name__=instance:cpu_utilization:ratio_avg",
+			wantTags:    []string{"dc=qwe", "fqdn=asd", "instance=10.33.10.10_9100", "job=node"},
 		},
 	}
 
+	var nameBuf strings.Builder
+	tagsParseBuf := make([]string, 0, 64)
 	for i, tt := range tests {
 		t.Run(tt.metric+" ["+strconv.Itoa(i)+"]", func(t *testing.T) {
 			assert := assert.New(t)
@@ -127,12 +132,14 @@ func TestTagsParseToSlice(t *testing.T) {
 			}
 			sort.Strings(mTags)
 
-			name, tags, err := tagsParseToSlice(tt.metric)
+			nameBuf.Reset()
+			name, nameTag, tags, err := tagsParseToSlice(tt.metric, tagsParseBuf, &nameBuf)
 			if err != nil {
 				t.Errorf("tagParseToSlice: %s", err.Error())
 			}
 			assert.Equal(tt.wantName, name)
 			assert.Equal(mTags, tags)
+			assert.Equal(tt.wantNameTag, nameTag)
 			assert.Equal(tt.wantTags, tags)
 		})
 	}
@@ -180,11 +187,16 @@ func BenchmarkTagParseToSlice(b *testing.B) {
 		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
 		"&" + escape.Query("job") + "=" + escape.Query("node b")
 
+	var nameBuf strings.Builder
+	nameBuf.Grow(512)
+	tagsParseBuf := make([]string, 0, 64)
+
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _, _ = tagsParseToSlice(metric)
+		nameBuf.Reset()
+		_, _, _, _ = tagsParseToSlice(metric, tagsParseBuf, &nameBuf)
 	}
 }
 
@@ -230,11 +242,15 @@ func BenchmarkTaggedParseNameShort(b *testing.B) {
 	u := NewTagged(base)
 
 	name := "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node"
+	var nameBuf strings.Builder
+	nameBuf.Grow(512)
+	tagsParseBuf := make([]string, 0, 64)
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		version := uint32(time.Now().Unix())
-		if err := u.parseName(name, uint16(i), version, tag1, wb, tagsBuf); err != nil {
+		if err := u.parseName(name, uint16(i), version, tag1, tagsParseBuf, wb, tagsBuf, &nameBuf); err != nil {
 			b.Fatalf("Tagged.parseName() error = %v", err)
 		}
 	}
@@ -258,11 +274,15 @@ func BenchmarkTaggedParseNameLong(b *testing.B) {
 	u := NewTagged(base)
 
 	name := "k8s.production-cl1.nginx_ingress_controller_response_size_bucket?app_kubernetes_io_component=controller&app_kubernetes_io_instance=ingress-nginx&app_kubernetes_io_managed_by=Helm&app_kubernetes_io_name=ingress-nginx&app_kubernetes_io_version=0_32_0&controller_class=nginx&controller_namespace=ingress-nginx&controller_pod=ingress-nginx-controller-d2ppr&helm_sh_chart=ingress-nginx-2_3_0&host=vm1_test_int&ingress=web-ingress&instance=192_168_0.10&job=kubernetes-service-endpoints&kubernetes_name=ingress-nginx-controller-metrics&kubernetes_namespace=ingress-nginx&kubernetes_node=k8s-n03&le=10&method=GET&namespace=web-app&path=_&service=web-app&status=500"
+	var nameBuf strings.Builder
+	nameBuf.Grow(512)
+	tagsParseBuf := make([]string, 0, 64)
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		version := uint32(time.Now().Unix())
-		if err := u.parseName(name, uint16(i), version, tag1, wb, tagsBuf); err != nil {
+		if err := u.parseName(name, uint16(i), version, tag1, tagsParseBuf, wb, tagsBuf, &nameBuf); err != nil {
 			b.Fatalf("Tagged.parseName() error = %v", err)
 		}
 	}
@@ -510,16 +530,21 @@ func verifyTaggedUploaded(t *testing.T, b io.Reader, points []point, start, end 
 	)
 
 	br := reader.NewReader(b)
-
+	tagsParseBuf := make([]string, 0, 64)
+	var nameBuf strings.Builder
 	for i, point := range points {
 		if strings.IndexByte(point.path, '?') == -1 {
 			continue
 		}
-		name, tags, err := tagsParseToSlice(point.path)
+		nameBuf.Reset()
+		name, nameTag, tags, err := tagsParseToSlice(point.path, tagsParseBuf, &nameBuf)
 		if err != nil {
 			t.Fatalf("urlParse [%d]: %v,\nwant\n%+v", i, err, point)
 		}
-		nameTag := "__name__=" + name
+		wantNameTag := "__name__=" + name
+		if wantNameTag != nameTag {
+			t.Fatalf("nameTag [%d]: %q, want %q", i, nameTag, wantNameTag)
+		}
 		tags = append([]string{nameTag}, tags...)
 		for i := 0; i < len(tags); i++ {
 			if err = rec.Read(br); err != nil {
@@ -701,7 +726,11 @@ func TestTagged_parseName_Overflow(t *testing.T) {
 		logger:  logger,
 		config:  &Config{TableName: "test"},
 	}
-	var sb strings.Builder
+	var (
+		sb      strings.Builder
+		nameBuf strings.Builder
+	)
+	tagsParseBuf := make([]string, 0, 64)
 	sb.WriteString("very_long_name_field1.very_long_name_field2.very_long_name_field3.very_long_name_field4?")
 	for i := 0; i < 100; i++ {
 		if i > 0 {
@@ -710,6 +739,7 @@ func TestTagged_parseName_Overflow(t *testing.T) {
 		sb.WriteString(fmt.Sprintf("very_long_tag%d=very_long_value%d", i, i))
 	}
 	u := NewTagged(base)
-	err := u.parseName(sb.String(), 10, 1, tag1, wb, tagsBuf)
+	nameBuf.Reset()
+	err := u.parseName(sb.String(), 10, 1, tag1, tagsParseBuf, wb, tagsBuf, &nameBuf)
 	assert.Equal(t, errBufOverflow, err)
 }

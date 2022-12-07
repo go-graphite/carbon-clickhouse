@@ -87,14 +87,18 @@ func tagsParse(path string) (string, map[string]string, error) {
 }
 
 // Unescape is needed, tags already sorted in in helper/tags/graphite.go, tags.Graphite
-func tagsParseToSlice(path string) (string, []string, error) {
+func tagsParseToSlice(path string, tags []string, sb *strings.Builder) (string, string, []string, error) {
 	delim := strings.IndexRune(path, '?')
 	if delim < 1 {
-		return "", nil, fmt.Errorf("incomplete tags in '%s'", path)
+		return "", "", nil, fmt.Errorf("incomplete tags in '%s'", path)
 	}
-	name := escape.Unescape(path[:delim])
+	tags = tags[:0]
+	pos := sb.Len()
+	sb.Grow(pos + len(path))
+	sb.WriteString("__name__=")
+	name := escape.UnescapeTo(path[:delim], false, sb)
+	nameTag := sb.String()[pos:]
 	args := path[delim+1:]
-	tags := make([]string, 0, 32)
 
 	for {
 		if delim = strings.IndexRune(args, '='); delim == -1 {
@@ -103,23 +107,24 @@ func tagsParseToSlice(path string) (string, []string, error) {
 		} else {
 			v := args[delim+1:]
 			if end := strings.IndexRune(v, '&'); end == -1 {
-				tags = append(tags, escape.Unescape(args[0:]))
+				tags = append(tags, escape.UnescapeTo(args[0:], true, sb))
 				break
 			} else {
-				tags = append(tags, escape.Unescape(args[0:end+delim+1]))
+				tags = append(tags, escape.UnescapeTo(args[0:end+delim+1], true, sb))
 				end += delim + 1
 				args = args[end+1:]
 			}
 		}
 	}
-	return name, tags, nil
+	return name, nameTag, tags, nil
 }
 
 func (u *Tagged) parseName(name string, days uint16, version uint32,
 	// reusable buffers
-	tag1 []string, wb *RowBinary.WriteBuffer, tagsBuf *RowBinary.WriteBuffer) error {
+	tag1, tagsParseBuf []string, wb *RowBinary.WriteBuffer, tagsBuf *RowBinary.WriteBuffer, nameBuf *strings.Builder) error {
 
-	mPath, tags, err := tagsParseToSlice(name)
+	nameBuf.Reset()
+	mPath, nameTag, tags, err := tagsParseToSlice(name, tagsParseBuf, nameBuf)
 	if err != nil {
 		return err
 	}
@@ -128,9 +133,8 @@ func (u *Tagged) parseName(name string, days uint16, version uint32,
 	tagsBuf.Reset()
 	tag1 = tag1[:0]
 
-	t := "__name__=" + mPath
-	tag1 = append(tag1, t)
-	tagsBuf.WriteString(t)
+	tag1 = append(tag1, nameTag)
+	tagsBuf.WriteString(nameTag)
 	tagsWritten := 1
 
 	// calc size for prevent buffer overflow
@@ -194,12 +198,15 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]b
 
 	newTagged := make(map[string]bool)
 
+	var nameBuf strings.Builder
+	nameBuf.Grow(512)
 	wb := RowBinary.GetWriteBuffer()
 	tagsBuf := RowBinary.GetWriteBuffer()
 	defer wb.Release()
 	defer tagsBuf.Release()
 
-	tag1 := make([]string, 0)
+	tag1 := make([]string, 0, 64)
+	tagsParseBuf := make([]string, 0, 64)
 
 	hashFunc := u.config.hashFunc
 	if hashFunc == nil {
@@ -233,7 +240,7 @@ LineLoop:
 
 		n++
 
-		if err = u.parseName(nameStr, days, version, tag1, wb, tagsBuf); err != nil {
+		if err = u.parseName(nameStr, days, version, tag1, tagsParseBuf, wb, tagsBuf, &nameBuf); err != nil {
 			u.logger.Warn("parse",
 				zap.String("metric", nameStr), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
 			)

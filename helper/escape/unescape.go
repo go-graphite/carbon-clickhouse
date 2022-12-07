@@ -33,34 +33,49 @@ func isPercentEscape(s string, i int) bool {
 // unescape unescapes a string; the mode specifies
 // which section of the URL string is being unescaped.
 func Unescape(s string) string {
-	first := strings.IndexAny(s, "%+")
-	if first == -1 {
-		return s
+	var sb strings.Builder
+	return UnescapeTo(s, true, &sb)
+}
+
+// unescape unescapes a string; the mode specifies
+// which section of the URL string is being unescaped.
+func UnescapeTo(s string, noCopy bool, sb *strings.Builder) string {
+	var (
+		first int
+		pos   int
+	)
+	if noCopy {
+		first = strings.IndexAny(s, "%+")
+		if first == -1 {
+			return s
+		}
+		pos = sb.Len()
+		sb.Grow(pos + len(s))
+		sb.WriteString(s[:first])
+	} else {
+		pos = sb.Len()
 	}
-	var t strings.Builder
-	t.Grow(len(s))
-	t.WriteString(s[:first])
 
 LOOP:
 	for i := first; i < len(s); i++ {
 		switch s[i] {
 		case '%':
 			if len(s) < i+3 {
-				t.WriteString(s[i:])
+				sb.WriteString(s[i:])
 				break LOOP
 			}
 			if !isPercentEscape(s, i) {
-				t.WriteString(s[i : i+3])
+				sb.WriteString(s[i : i+3])
 			} else {
-				t.WriteByte(unhex(s[i+1])<<4 | unhex(s[i+2]))
+				sb.WriteByte(unhex(s[i+1])<<4 | unhex(s[i+2]))
 			}
 			i += 2
 		case '+':
-			t.WriteByte(' ')
+			sb.WriteByte(' ')
 		default:
-			t.WriteByte(s[i])
+			sb.WriteByte(s[i])
 		}
 	}
 
-	return t.String()
+	return sb.String()[pos:]
 }
