@@ -3,7 +3,6 @@ package receiver
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io/ioutil"
 	"math"
 	"net"
@@ -12,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	json "github.com/json-iterator/go"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/escape"
 	"go.uber.org/zap"
