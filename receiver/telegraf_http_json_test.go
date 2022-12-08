@@ -14,6 +14,7 @@ import (
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary/reader"
 	"github.com/lomik/carbon-clickhouse/helper/tags"
 	"github.com/lomik/carbon-clickhouse/helper/tests"
+	"github.com/lomik/zapwriter"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -137,4 +138,78 @@ func TestTelegrafHttpJson(t *testing.T) {
 	_ = r
 
 	verifyIndexUploaded(t, &rawBuf, wantPoints, start, uint32(time.Now().Unix()))
+}
+
+func BenchmarkTelegrafHttpJson5(b *testing.B) {
+	writeChan := make(chan *RowBinary.WriteBuffer)
+	// simulate writer
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case b := <-writeChan:
+				b.Release()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	r := &TelegrafHttpJson{}
+	r.Init(zapwriter.Logger("telegraf"), tags.DisabledTagConfig())
+
+	r.Base.writeChan = writeChan
+
+	payload := TelegrafHttpPayload{
+		Metrics: []TelegrafHttpMetric{
+			{
+				Name:      "name with space1.",
+				Fields:    map[string]interface{}{"counter": 3538944},
+				Tags:      map[string]string{"key with space": "value with space", "name": "name_value"},
+				Timestamp: 1670348700,
+			},
+			{
+				Name:      "name with space2.",
+				Fields:    map[string]interface{}{"gauge": 3538945},
+				Tags:      map[string]string{"key2": "value2", "key1": "value2"},
+				Timestamp: 1670348702,
+			},
+			{
+				Name:      "name with space3.",
+				Fields:    map[string]interface{}{"gauge": 3538945},
+				Tags:      map[string]string{"key2": "value2", "key1": "value2"},
+				Timestamp: 1670348702,
+			},
+			{
+				Name:      "name with space4.",
+				Fields:    map[string]interface{}{"gauge": 3538945},
+				Tags:      map[string]string{"key2": "value2", "key1": "value2"},
+				Timestamp: 1670348702,
+			},
+			{
+				Name:      "name with space5.",
+				Fields:    map[string]interface{}{"gauge": 3538945},
+				Tags:      map[string]string{"key2": "value2", "key1": "value2"},
+				Timestamp: 1670348702,
+			},
+		},
+	}
+	out, err := json.Marshal(&payload)
+	if err != nil {
+		b.Fatal("payload marshal", err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := r.process(context.Background(), out); err != nil {
+			b.Fatal("process", err)
+		}
+	}
+	b.StopTimer()
+
+	cancel()
+	wg.Wait()
 }

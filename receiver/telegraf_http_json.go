@@ -3,7 +3,6 @@ package receiver
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io/ioutil"
 	"math"
 	"net"
@@ -12,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	json "github.com/json-iterator/go"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/escape"
 	"go.uber.org/zap"
@@ -73,21 +73,14 @@ func TelegrafEncodeTags(tags map[string]string) string {
 	return res.String()
 }
 
-func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+func (rcv *TelegrafHttpJson) process(ctx context.Context, body []byte) (err error) {
 	var data TelegrafHttpPayload
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	writer := RowBinary.NewWriter(r.Context(), rcv.writeChan)
+	writer := RowBinary.NewWriter(ctx, rcv.writeChan)
 
 	var pathBuf bytes.Buffer
 
@@ -140,6 +133,19 @@ metricsLoop:
 
 	if writeErrors := writer.WriteErrors(); writeErrors > 0 {
 		atomic.AddUint64(&rcv.stat.errors, uint64(writeErrors))
+	}
+
+	return
+}
+
+func (rcv *TelegrafHttpJson) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err = rcv.process(r.Context(), body); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
