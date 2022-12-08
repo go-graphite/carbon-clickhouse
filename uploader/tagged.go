@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -87,14 +88,16 @@ func tagsParse(path string) (string, map[string]string, error) {
 }
 
 // Unescape is needed, tags already sorted in in helper/tags/graphite.go, tags.Graphite
-func tagsParseToSlice(path string) (string, []string, error) {
+func tagsParseToSlice(path string, tagsBuff *tagsBuffers) (string, string, []string, error) {
 	delim := strings.IndexRune(path, '?')
 	if delim < 1 {
-		return "", nil, fmt.Errorf("incomplete tags in '%s'", path)
+		return "", "", nil, fmt.Errorf("incomplete tags in '%s'", path)
 	}
-	name := escape.Unescape(path[:delim])
+	tagsBuff.nameBuf.Reset()
+	tagsBuff.tagsParse = tagsBuff.tagsParse[:0]
+	tagsBuff.nameBuf.Grow(len(path))
+	name, nameTag := escape.UnescapeNameTo(path[:delim], &tagsBuff.nameBuf)
 	args := path[delim+1:]
-	tags := make([]string, 0, 32)
 
 	for {
 		if delim = strings.IndexRune(args, '='); delim == -1 {
@@ -103,34 +106,33 @@ func tagsParseToSlice(path string) (string, []string, error) {
 		} else {
 			v := args[delim+1:]
 			if end := strings.IndexRune(v, '&'); end == -1 {
-				tags = append(tags, escape.Unescape(args[0:]))
+				tagsBuff.tagsParse = append(tagsBuff.tagsParse, escape.UnescapeTo(args[0:], &tagsBuff.nameBuf))
 				break
 			} else {
-				tags = append(tags, escape.Unescape(args[0:end+delim+1]))
+				tagsBuff.tagsParse = append(tagsBuff.tagsParse, escape.UnescapeTo(args[0:end+delim+1], &tagsBuff.nameBuf))
 				end += delim + 1
 				args = args[end+1:]
 			}
 		}
 	}
-	return name, tags, nil
+	return name, nameTag, tagsBuff.tagsParse, nil
 }
 
 func (u *Tagged) parseName(name string, days uint16, version uint32,
 	// reusable buffers
-	tag1 []string, wb *RowBinary.WriteBuffer, tagsBuf *RowBinary.WriteBuffer) error {
+	tagsBuff *tagsBuffers) error {
 
-	mPath, tags, err := tagsParseToSlice(name)
+	mPath, nameTag, tags, err := tagsParseToSlice(name, tagsBuff)
 	if err != nil {
 		return err
 	}
 
-	wb.Reset()
-	tagsBuf.Reset()
-	tag1 = tag1[:0]
+	tagsBuff.wb.Reset()
+	tagsBuff.tagsBuf.Reset()
+	tagsBuff.tag1 = tagsBuff.tag1[:0]
 
-	t := "__name__=" + mPath
-	tag1 = append(tag1, t)
-	tagsBuf.WriteString(t)
+	tagsBuff.tag1 = append(tagsBuff.tag1, nameTag)
+	tagsBuff.tagsBuf.WriteString(nameTag)
 	tagsWritten := 1
 
 	// calc size for prevent buffer overflow
@@ -150,33 +152,66 @@ func (u *Tagged) parseName(name string, days uint16, version uint32,
 			RowBinary.SIZE_INT64 + // tagsBuf.Len() not known at this step
 			RowBinary.SIZE_INT16 //version
 
-		if sizeTags >= wb.FreeSize() {
+		if sizeTags >= tagsBuff.wb.FreeSize() {
 			return errBufOverflow
 		}
 
-		tagsBuf.WriteString(t)
+		tagsBuff.tagsBuf.WriteString(t)
 		tagsWritten++
 
 		if !ignoreAllButName {
-			tag1 = append(tag1, t)
+			tagsBuff.tag1 = append(tagsBuff.tag1, t)
 		}
 	}
 
-	sizeTags += len(tag1) * tagsBuf.Len()
-	if sizeTags >= wb.FreeSize() {
+	sizeTags += len(tagsBuff.tag1) * tagsBuff.tagsBuf.Len()
+	if sizeTags >= tagsBuff.wb.FreeSize() {
 		return errBufOverflow
 	}
 
-	for i := 0; i < len(tag1); i++ {
-		wb.WriteUint16(days)
-		wb.WriteString(tag1[i])
-		wb.WriteString(name)
-		wb.WriteUVarint(uint64(tagsWritten))
-		wb.Write(tagsBuf.Bytes())
-		wb.WriteUint32(version)
+	for i := 0; i < len(tagsBuff.tag1); i++ {
+		tagsBuff.wb.WriteUint16(days)
+		tagsBuff.wb.WriteString(tagsBuff.tag1[i])
+		tagsBuff.wb.WriteString(name)
+		tagsBuff.wb.WriteUVarint(uint64(tagsWritten))
+		tagsBuff.wb.Write(tagsBuff.tagsBuf.Bytes())
+		tagsBuff.wb.WriteUint32(version)
 	}
 
 	return nil
+}
+
+type tagsBuffers struct {
+	wb        RowBinary.WriteBuffer
+	tagsBuf   RowBinary.WriteBuffer
+	nameBuf   strings.Builder
+	tag1      []string
+	tagsParse []string
+}
+
+var tagsBufferPool = sync.Pool{
+	New: func() interface{} {
+		b := &tagsBuffers{
+			wb:        RowBinary.WriteBuffer{},
+			tagsBuf:   RowBinary.WriteBuffer{},
+			tag1:      make([]string, 0, 64),
+			tagsParse: make([]string, 0, 64),
+		}
+		b.nameBuf.Grow(512)
+		return b
+	},
+}
+
+func getTagsBuffer() *tagsBuffers {
+	b := tagsBufferPool.Get().(*tagsBuffers)
+	b.wb.Reset()
+	b.tagsBuf.Reset()
+
+	return b
+}
+
+func releaseTagsBuffer(b *tagsBuffers) {
+	tagsBufferPool.Put(b)
 }
 
 func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]bool, error) {
@@ -194,12 +229,8 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (uint64, map[string]b
 
 	newTagged := make(map[string]bool)
 
-	wb := RowBinary.GetWriteBuffer()
-	tagsBuf := RowBinary.GetWriteBuffer()
-	defer wb.Release()
-	defer tagsBuf.Release()
-
-	tag1 := make([]string, 0)
+	tagsBuf := getTagsBuffer()
+	defer releaseTagsBuffer(tagsBuf)
 
 	hashFunc := u.config.hashFunc
 	if hashFunc == nil {
@@ -233,14 +264,16 @@ LineLoop:
 
 		n++
 
-		if err = u.parseName(nameStr, days, version, tag1, wb, tagsBuf); err != nil {
+		if err = u.parseName(nameStr, days, version, tagsBuf); err != nil {
 			u.logger.Warn("parse",
 				zap.String("metric", nameStr), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
 			)
 			continue LineLoop
-		} else if _, err = out.Write(wb.Bytes()); err != nil {
+		} else if _, err = out.Write(tagsBuf.wb.Bytes()); err != nil {
 			return n, nil, err
 		}
+		// tagsBuf.wb.Reset()
+		// tagsBuf.tagsBuf.Reset()
 		newTagged[key] = true
 	}
 

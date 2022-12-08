@@ -30,37 +30,69 @@ func isPercentEscape(s string, i int) bool {
 	return i+2 < len(s) && ishex(s[i+1]) && ishex(s[i+2])
 }
 
-// unescape unescapes a string; the mode specifies
-// which section of the URL string is being unescaped.
-func Unescape(s string) string {
-	first := strings.IndexAny(s, "%+")
-	if first == -1 {
-		return s
-	}
-	var t strings.Builder
-	t.Grow(len(s))
-	t.WriteString(s[:first])
+// unescape unescapes a string
+func unescape(s string, first int, sb *strings.Builder) string {
+	pos := sb.Len()
+	sb.Grow(pos + len(s))
+	sb.WriteString(s[:first])
 
 LOOP:
 	for i := first; i < len(s); i++ {
 		switch s[i] {
 		case '%':
 			if len(s) < i+3 {
-				t.WriteString(s[i:])
+				sb.WriteString(s[i:])
 				break LOOP
 			}
 			if !isPercentEscape(s, i) {
-				t.WriteString(s[i : i+3])
+				sb.WriteString(s[i : i+3])
 			} else {
-				t.WriteByte(unhex(s[i+1])<<4 | unhex(s[i+2]))
+				sb.WriteByte(unhex(s[i+1])<<4 | unhex(s[i+2]))
 			}
 			i += 2
 		case '+':
-			t.WriteByte(' ')
+			sb.WriteByte(' ')
 		default:
-			t.WriteByte(s[i])
+			sb.WriteByte(s[i])
 		}
 	}
 
-	return t.String()
+	return sb.String()[pos:]
+}
+
+func Unescape(s string) string {
+	var sb strings.Builder
+	return UnescapeTo(s, &sb)
+}
+
+// unescape unescapes a string; the mode specifies
+// which section of the URL string is being unescaped.
+func UnescapeTo(s string, sb *strings.Builder) string {
+	first := strings.IndexAny(s, "%+")
+	if first == -1 {
+		return s
+	}
+
+	return unescape(s, first, sb)
+}
+
+// unescape unescapes a string; the mode specifies
+// which section of the URL string is being unescaped.
+func UnescapeNameTo(s string, sb *strings.Builder) (name string, nameTag string) {
+	first := strings.IndexAny(s, "%+")
+	if first == -1 {
+		pos := sb.Len()
+		sb.WriteString("__name__=")
+		end := sb.Len()
+		sb.WriteString(s)
+		name = sb.String()[end:]
+		nameTag = sb.String()[pos:]
+		return
+	}
+
+	pos := sb.Len()
+	sb.WriteString("__name__=")
+	name = unescape(s, first, sb)
+	nameTag = sb.String()[pos:]
+	return
 }

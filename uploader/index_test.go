@@ -528,15 +528,14 @@ func benchmarkIndexParseFile(b *testing.B, bm *indexBench, points []point, wantP
 	defer os.Remove(filename)
 
 	b.Run(bm.name, func(b *testing.B) {
+		base := &Base{
+			queue:   make(chan string, 1024),
+			inQueue: make(map[string]bool),
+			logger:  logger,
+			config:  &Config{TableName: "test", DisableDailyIndex: bm.disableDailyIndex},
+		}
+		u := NewIndex(base)
 		for i := 0; i < b.N; i++ {
-			base := &Base{
-				queue:   make(chan string, 1024),
-				inQueue: make(map[string]bool),
-				logger:  logger,
-				config:  &Config{TableName: "test", DisableDailyIndex: bm.disableDailyIndex},
-			}
-			u := NewIndex(base)
-
 			out.Reset()
 
 			n, _, err := u.parseFile(filename, &out)
@@ -604,9 +603,58 @@ func BenchmarkIndexParseFileCompressedNoDaily(b *testing.B) {
 	benchmarkIndexParseFile(b, &bm, points, wantPoints)
 }
 
+func benchmarkIndexParseFileParallel(b *testing.B, bm *indexBench, points []point, wantPoints uint64) {
+	b.Run(bm.name, func(b *testing.B) {
+		logger := zapwriter.Logger("upload")
+		var out bytes.Buffer
+		out.Grow(524288)
+
+		filename, err := writeFile(points, bm.compress, bm.compressLevel)
+		if err != nil {
+			b.Fatalf("writeFile() got error: %v", err)
+		}
+		defer os.Remove(filename)
+
+		b.Run(bm.name, func(b *testing.B) {
+			base := &Base{
+				queue:   make(chan string, 1024),
+				inQueue: make(map[string]bool),
+				logger:  logger,
+				config:  &Config{TableName: "test", DisableDailyIndex: bm.disableDailyIndex},
+			}
+			u := NewIndex(base)
+
+			for i := 0; i < b.N; i++ {
+				out.Reset()
+
+				n, _, err := u.parseFile(filename, &out)
+				if err != nil {
+					b.Fatalf("Index.parseFile() got error: %v", err)
+				}
+				if n != wantPoints {
+					b.Fatalf("Index.parseFile() got %d, want %d", n, wantPoints)
+				}
+			}
+		})
+	})
+}
+
+func BenchmarkIndexParseFileUncompressedParallel(b *testing.B) {
+	points := generateMetricsLarge()
+	wantPoints := uint64(len(points) / 2)
+	wantPointsStr := strconv.FormatUint(wantPoints, 10)
+	bm := indexBench{
+		name:          fmt.Sprintf("%40s", "Uncompressed "+wantPointsStr),
+		compress:      config.CompAlgoNone,
+		compressLevel: 0,
+	}
+
+	benchmarkIndexParseFileParallel(b, &bm, points, wantPoints)
+}
+
 func TestIndexParseName_Overflow(t *testing.T) {
-	wb := RowBinary.GetWriteBuffer()
-	defer wb.Release()
+	indexBuf := getIndexBuffer()
+	defer releaseIndexBuffer(indexBuf)
 
 	logger := zapwriter.Logger("upload")
 	base := &Base{
@@ -626,14 +674,16 @@ func TestIndexParseName_Overflow(t *testing.T) {
 
 	name := sb.Bytes()
 
-	reverseName := make([]byte, len(name))
-	RowBinary.ReverseBytesTo(reverseName, name)
+	l := len(name)
+	if l > len(indexBuf.reverseName) {
+		indexBuf.reverseName = make([]byte, len(name)*2)
+	}
+	RowBinary.ReverseBytesTo(indexBuf.reverseName, name)
 
 	treeDate := uint16(DefaultTreeDate)
 	days := uint16(10)
 	version := uint32(time.Now().Unix())
-	newUniq := make(map[string]bool)
 
-	err := u.parseName(name, reverseName, treeDate, days, version, u.config.DisableDailyIndex, newUniq, wb)
+	err := u.parseName(name, indexBuf.reverseName, treeDate, days, version, u.config.DisableDailyIndex, indexBuf)
 	assert.Equal(t, errBufOverflow, err)
 }

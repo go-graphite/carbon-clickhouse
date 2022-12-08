@@ -24,7 +24,7 @@ func (sb *Builder) Len() int {
 // total space allocated for the string being built and includes any bytes
 // already written.
 func (sb *Builder) Cap() int {
-	return len(sb.data)
+	return cap(sb.data)
 }
 
 // Bytes returns the accumulated bytes.
@@ -46,7 +46,7 @@ func (sb *Builder) String() string {
 func (sb *Builder) Grow(capacity int) {
 	if capacity > sb.Cap() {
 		b := make([]byte, capacity)
-		copy(b, sb.data[0:sb.length])
+		copy(b, sb.data[:sb.length])
 		sb.data = b
 	}
 }
@@ -55,6 +55,13 @@ func (sb *Builder) Grow(capacity int) {
 func (sb *Builder) Reset() {
 	if sb.length > 0 {
 		sb.length = 0
+	}
+}
+
+// Truncate descrease the Builder length (dangerouse for partually truncated UTF strings).
+func (sb *Builder) Truncate(length int) {
+	if sb.length > length {
+		sb.length = length
 	}
 }
 

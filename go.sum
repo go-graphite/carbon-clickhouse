@@ -49,6 +49,8 @@ github.com/lomik/zapwriter v0.0.0-20170315193840-d4499a33b592 h1:NEjGY17W0lNlYFX
 github.com/lomik/zapwriter v0.0.0-20170315193840-d4499a33b592/go.mod h1:8xn4WUTM35HWUh6BGz2NkXFmD2l4D420gb4lL8OPJcg=
 github.com/msaf1980/go-stringutils v0.1.0 h1:MFkZ4AEXsUA5Ggyrn3C8v0AIrXYhA7qizxlMLm3nZ+M=
 github.com/msaf1980/go-stringutils v0.1.0/go.mod h1:AxmV/6JuQUAtZJg5XmYATB5ZwCWgtpruVHY03dswRf8=
+github.com/msaf1980/go-stringutils v0.1.4 h1:UwsIT0hplHVucqbknk3CoNqKkmIuSHhsbBldXxyld5U=
+github.com/msaf1980/go-stringutils v0.1.4/go.mod h1:AxmV/6JuQUAtZJg5XmYATB5ZwCWgtpruVHY03dswRf8=
 github.com/pierrec/lz4 v2.5.2+incompatible h1:WCjObylUIOlKy/+7Abdn34TLIkXiA4UWUMhxq9m9ZXI=
 github.com/pierrec/lz4 v2.5.2+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

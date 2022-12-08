@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary/reader"
 	"github.com/lomik/carbon-clickhouse/helper/config"
 	"github.com/lomik/carbon-clickhouse/helper/escape"
@@ -90,9 +89,10 @@ func TestTagsParse(t *testing.T) {
 
 func TestTagsParseToSlice(t *testing.T) {
 	tests := []struct {
-		metric   string
-		wantName string
-		wantTags []string
+		metric      string
+		wantName    string
+		wantNameTag string
+		wantTags    []string
 	}{
 		{
 			metric: escape.Path("instance:cpu_utilization?ratio_avg") +
@@ -100,16 +100,20 @@ func TestTagsParseToSlice(t *testing.T) {
 				"&" + escape.Query("fqdn") + "=" + escape.Query("asd&a") +
 				"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
 				"&" + escape.Query("job") + "=" + escape.Query("node&a b"),
-			wantName: "instance:cpu_utilization?ratio_avg",
-			wantTags: []string{"dc=qwe+1", "fqdn=asd&a", "instance=10.33.10.10:9100", "job=node&a b"},
+			wantName:    "instance:cpu_utilization?ratio_avg",
+			wantNameTag: "__name__=instance:cpu_utilization?ratio_avg",
+			wantTags:    []string{"dc=qwe+1", "fqdn=asd&a", "instance=10.33.10.10:9100", "job=node&a b"},
 		},
 		{
-			metric:   "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node",
-			wantName: "instance:cpu_utilization:ratio_avg",
-			wantTags: []string{"dc=qwe", "fqdn=asd", "instance=10.33.10.10_9100", "job=node"},
+			metric:      "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node",
+			wantName:    "instance:cpu_utilization:ratio_avg",
+			wantNameTag: "__name__=instance:cpu_utilization:ratio_avg",
+			wantTags:    []string{"dc=qwe", "fqdn=asd", "instance=10.33.10.10_9100", "job=node"},
 		},
 	}
 
+	tagsBuf := getTagsBuffer()
+	defer releaseTagsBuffer(tagsBuf)
 	for i, tt := range tests {
 		t.Run(tt.metric+" ["+strconv.Itoa(i)+"]", func(t *testing.T) {
 			assert := assert.New(t)
@@ -127,12 +131,14 @@ func TestTagsParseToSlice(t *testing.T) {
 			}
 			sort.Strings(mTags)
 
-			name, tags, err := tagsParseToSlice(tt.metric)
+			tagsBuf.nameBuf.Reset()
+			name, nameTag, tags, err := tagsParseToSlice(tt.metric, tagsBuf)
 			if err != nil {
 				t.Errorf("tagParseToSlice: %s", err.Error())
 			}
 			assert.Equal(tt.wantName, name)
 			assert.Equal(mTags, tags)
+			assert.Equal(tt.wantNameTag, nameTag)
 			assert.Equal(tt.wantTags, tags)
 		})
 	}
@@ -177,14 +183,18 @@ func BenchmarkTagParseToSlice(b *testing.B) {
 	metric := escape.Path("instance:cpu_utilization:ratio_avg") +
 		"?" + escape.Query("dc") + "=" + escape.Query("qwe") +
 		"&" + escape.Query("fqdn") + "=" + escape.Query("asd") +
-		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10_9100") +
-		"&" + escape.Query("job") + "=" + escape.Query("node")
+		"&" + escape.Query("instance") + "=" + escape.Query("10.33.10.10:9100") +
+		"&" + escape.Query("job") + "=" + escape.Query("node b")
+
+	tagsBuf := getTagsBuffer()
+	defer releaseTagsBuffer(tagsBuf)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _, _ = tagsParseToSlice(metric)
+		tagsBuf.nameBuf.Reset()
+		_, _, _, _ = tagsParseToSlice(metric, tagsBuf)
 	}
 }
 
@@ -212,13 +222,6 @@ func BenchmarkKeyConcat(b *testing.B) {
 }
 
 func BenchmarkTaggedParseNameShort(b *testing.B) {
-	// locate reusable buffers
-	tag1 := make([]string, 0, 32)
-	wb := RowBinary.GetWriteBuffer()
-	tagsBuf := RowBinary.GetWriteBuffer()
-	defer wb.Release()
-	defer tagsBuf.Release()
-
 	logger := zapwriter.Logger("upload")
 
 	base := &Base{
@@ -230,22 +233,20 @@ func BenchmarkTaggedParseNameShort(b *testing.B) {
 	u := NewTagged(base)
 
 	name := "instance:cpu_utilization:ratio_avg?dc=qwe&fqdn=asd&instance=10.33.10.10_9100&job=node"
+	tagsBuf := getTagsBuffer()
+	defer releaseTagsBuffer(tagsBuf)
+
+	b.ReportAllocs()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		version := uint32(time.Now().Unix())
-		if err := u.parseName(name, uint16(i), version, tag1, wb, tagsBuf); err != nil {
+		if err := u.parseName(name, uint16(i), version, tagsBuf); err != nil {
 			b.Fatalf("Tagged.parseName() error = %v", err)
 		}
 	}
 }
 
 func BenchmarkTaggedParseNameLong(b *testing.B) {
-	// locate reusable buffers
-	tag1 := make([]string, 0, 32)
-	wb := RowBinary.GetWriteBuffer()
-	tagsBuf := RowBinary.GetWriteBuffer()
-	defer wb.Release()
-	defer tagsBuf.Release()
-
 	logger := zapwriter.Logger("upload")
 	base := &Base{
 		queue:   make(chan string, 1024),
@@ -256,9 +257,14 @@ func BenchmarkTaggedParseNameLong(b *testing.B) {
 	u := NewTagged(base)
 
 	name := "k8s.production-cl1.nginx_ingress_controller_response_size_bucket?app_kubernetes_io_component=controller&app_kubernetes_io_instance=ingress-nginx&app_kubernetes_io_managed_by=Helm&app_kubernetes_io_name=ingress-nginx&app_kubernetes_io_version=0_32_0&controller_class=nginx&controller_namespace=ingress-nginx&controller_pod=ingress-nginx-controller-d2ppr&helm_sh_chart=ingress-nginx-2_3_0&host=vm1_test_int&ingress=web-ingress&instance=192_168_0.10&job=kubernetes-service-endpoints&kubernetes_name=ingress-nginx-controller-metrics&kubernetes_namespace=ingress-nginx&kubernetes_node=k8s-n03&le=10&method=GET&namespace=web-app&path=_&service=web-app&status=500"
+	tagsBuf := getTagsBuffer()
+	defer releaseTagsBuffer(tagsBuf)
+
+	b.ReportAllocs()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		version := uint32(time.Now().Unix())
-		if err := u.parseName(name, uint16(i), version, tag1, wb, tagsBuf); err != nil {
+		if err := u.parseName(name, uint16(i), version, tagsBuf); err != nil {
 			b.Fatalf("Tagged.parseName() error = %v", err)
 		}
 	}
@@ -506,16 +512,21 @@ func verifyTaggedUploaded(t *testing.T, b io.Reader, points []point, start, end 
 	)
 
 	br := reader.NewReader(b)
-
+	tagsBuf := getTagsBuffer()
+	defer releaseTagsBuffer(tagsBuf)
 	for i, point := range points {
 		if strings.IndexByte(point.path, '?') == -1 {
 			continue
 		}
-		name, tags, err := tagsParseToSlice(point.path)
+		tagsBuf.nameBuf.Reset()
+		name, nameTag, tags, err := tagsParseToSlice(point.path, tagsBuf)
 		if err != nil {
 			t.Fatalf("urlParse [%d]: %v,\nwant\n%+v", i, err, point)
 		}
-		nameTag := "__name__=" + name
+		wantNameTag := "__name__=" + name
+		if wantNameTag != nameTag {
+			t.Fatalf("nameTag [%d]: %q, want %q", i, nameTag, wantNameTag)
+		}
 		tags = append([]string{nameTag}, tags...)
 		for i := 0; i < len(tags); i++ {
 			if err = rec.Read(br); err != nil {
@@ -684,11 +695,8 @@ func BenchmarkTaggedParseFileCompressed(b *testing.B) {
 }
 
 func TestTagged_parseName_Overflow(t *testing.T) {
-	var tag1 []string
-	wb := RowBinary.GetWriteBuffer()
-	tagsBuf := RowBinary.GetWriteBuffer()
-	defer wb.Release()
-	defer tagsBuf.Release()
+	tagsBuf := getTagsBuffer()
+	defer releaseTagsBuffer(tagsBuf)
 
 	logger := zapwriter.Logger("upload")
 	base := &Base{
@@ -697,7 +705,11 @@ func TestTagged_parseName_Overflow(t *testing.T) {
 		logger:  logger,
 		config:  &Config{TableName: "test"},
 	}
-	var sb strings.Builder
+	var (
+		sb      strings.Builder
+		nameBuf strings.Builder
+	)
+
 	sb.WriteString("very_long_name_field1.very_long_name_field2.very_long_name_field3.very_long_name_field4?")
 	for i := 0; i < 100; i++ {
 		if i > 0 {
@@ -706,6 +718,56 @@ func TestTagged_parseName_Overflow(t *testing.T) {
 		sb.WriteString(fmt.Sprintf("very_long_tag%d=very_long_value%d", i, i))
 	}
 	u := NewTagged(base)
-	err := u.parseName(sb.String(), 10, 1, tag1, wb, tagsBuf)
+	nameBuf.Reset()
+	err := u.parseName(sb.String(), 10, 1, tagsBuf)
 	assert.Equal(t, errBufOverflow, err)
+}
+
+func benchmarkTaggedParseFileParallel(b *testing.B, bm *taggedBench, points []point, wantPoints uint64) {
+	b.Run(bm.name, func(b *testing.B) {
+		logger := zapwriter.Logger("upload")
+		var out bytes.Buffer
+		out.Grow(524288)
+
+		filename, err := writeFile(points, bm.compress, bm.compressLevel)
+		if err != nil {
+			b.Fatalf("writeFile() got error: %v", err)
+		}
+		defer os.Remove(filename)
+
+		base := &Base{
+			queue:   make(chan string, 1024),
+			inQueue: make(map[string]bool),
+			logger:  logger,
+			config:  &Config{TableName: "test"},
+		}
+		u := NewTagged(base)
+
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				out.Reset()
+
+				n, _, err := u.parseFile(filename, &out)
+				if err != nil {
+					b.Fatalf("Tagged.parseFile() got error: %v", err)
+				}
+				if n != wantPoints {
+					b.Fatalf("Tagged.parseFile() got %d, want %d", n, wantPoints)
+				}
+			}
+		})
+	})
+}
+
+func BenchmarkTaggedParseFileUncompressedParallel(b *testing.B) {
+	points := generateMetricsLarge()
+	wantPoints := uint64(len(points) / 2)
+	wantPointsStr := strconv.FormatUint(wantPoints, 10)
+	bm := taggedBench{
+		name:          fmt.Sprintf("%40s", "Uncompressed "+wantPointsStr),
+		compress:      config.CompAlgoNone,
+		compressLevel: 0,
+	}
+
+	benchmarkTaggedParseFileParallel(b, &bm, points, wantPoints)
 }
