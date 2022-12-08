@@ -157,9 +157,8 @@ func BenchmarkTelegrafHttpJson5(b *testing.B) {
 			}
 		}
 	}()
-	r := &TelegrafHttpJson{
-		Base: NewBase(zapwriter.Logger("telegraf"), tags.DisabledTagConfig()),
-	}
+	r := &TelegrafHttpJson{}
+	r.Init(zapwriter.Logger("telegraf"), tags.DisabledTagConfig())
 
 	r.Base.writeChan = writeChan
 
