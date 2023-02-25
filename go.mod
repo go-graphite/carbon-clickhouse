@@ -20,7 +20,7 @@ require (
 	github.com/zentures/cityhash v0.0.0-20131128155616-cdd6a94144ab
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.7.1
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/net v0.7.0
 	google.golang.org/genproto v0.0.0-20201014134559-03b6142f0dc9 // indirect
 	google.golang.org/grpc v1.27.0
 )
