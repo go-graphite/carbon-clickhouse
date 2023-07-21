@@ -16,8 +16,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lomik/carbon-clickhouse/helper/stop"
 	"go.uber.org/zap"
+
+	"github.com/lomik/carbon-clickhouse/helper/config"
+	"github.com/lomik/carbon-clickhouse/helper/stop"
 )
 
 type Base struct {
@@ -250,9 +252,19 @@ func (u *Base) insertRowBinary(table string, data io.Reader) error {
 		return err
 	}
 
+	transport := &http.Transport{DisableKeepAlives: true}
+
+	if u.config.TLS != nil {
+		tlsConfig, err := config.ParseClientTLSConfig(u.config.TLS)
+		if err != nil {
+			return err
+		}
+		transport.TLSClientConfig = tlsConfig
+	}
+
 	client := &http.Client{
 		Timeout:   u.config.Timeout.Value(),
-		Transport: &http.Transport{DisableKeepAlives: true},
+		Transport: transport,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
