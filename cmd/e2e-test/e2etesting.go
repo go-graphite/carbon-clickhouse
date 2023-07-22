@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -174,16 +173,17 @@ func testCarbonClickhouse(
 		ConfigTpl: testDir + "/" + test.ConfigTpl,
 		TestDir:   absoluteDir,
 	}
+	var (
+		tlsurl string
+	)
 	if test.HasTLSSettings() {
-		url, exists := clickhouse.TLSURL()
-		if exists {
-			err = cch.Start(clickhouse.URL(), url)
-		} else {
-			err = errors.New("test has tls settings but there is no clickhouse tls url")
+		tlsurl = clickhouse.TLSURL()
+		if tlsurl == "" {
+			logger.Error("test has tls settings but there is no clickhouse tls url")
+			return false
 		}
-	} else {
-		err = cch.Start(clickhouse.URL(), "")
 	}
+	err = cch.Start(clickhouse.URL(), tlsurl)
 	if err != nil {
 		logger.Error("starting carbon-clickhouse",
 			zap.String("config", test.name),

@@ -4,15 +4,12 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path"
 	"runtime"
 	"time"
 
 	"go.uber.org/zap"
-
-	helpercfg "github.com/lomik/carbon-clickhouse/helper/config"
 )
 
 type MainConfig struct {
@@ -136,8 +133,7 @@ func main() {
 
 	failed := 0
 	total := 0
-	for chVersion := range chVersions {
-		ch := chVersions[chVersion]
+	for chVersion, ch := range chVersions {
 		if exist, out := containerExist(ClickhouseContainerName); exist {
 			logger.Error("clickhouse already exist",
 				zap.String("container", ClickhouseContainerName),
@@ -170,23 +166,6 @@ func main() {
 				total++
 			} else {
 				for _, config := range configs {
-					testDir := config.Test.dir
-					client := &http.Client{Timeout: time.Minute}
-					if ch.TLSEnabled && config.Test.HasTLSSettings() {
-						conf, err := helpercfg.ParseClientTLSConfig(&helpercfg.TLS{
-							Certificates: []helpercfg.CertificatePair{{testDir + "/client.key", testDir + "/client.crt"}},
-							CACertFiles:  []string{testDir + "/ca.crt"},
-						})
-						if err != nil {
-							logger.Error("failed to parse tls")
-							failed += len(config.Test.InputTypes)
-						}
-						client.Transport = &http.Transport{
-							TLSClientConfig:   conf,
-							DisableKeepAlives: true,
-						}
-					}
-					ch.SetClient(client)
 					if config.Test.chVersions[chVersion] {
 						testFailed, testTotal := runTest(config, &ch, rootDir, *verbose, *breakOnError, logger)
 						failed += testFailed

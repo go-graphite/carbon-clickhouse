@@ -32,7 +32,6 @@ type Clickhouse struct {
 	url          string `toml:"-"`
 	tlsurl       string `toml:"-"`
 	container    string `toml:"-"`
-	client       *http.Client
 }
 
 func (c *Clickhouse) CheckConfig(rootDir string) error {
@@ -75,7 +74,6 @@ func (c *Clickhouse) Start() (string, error) {
 		return "", err
 	}
 	port := strings.Split(c.httpAddress, ":")[1]
-	c.client = http.DefaultClient
 	c.url = "http://" + c.httpAddress
 
 	c.container = ClickhouseContainerName
@@ -155,11 +153,8 @@ func (c *Clickhouse) URL() string {
 	return c.url
 }
 
-func (c *Clickhouse) TLSURL() (string, bool) {
-	if c.tlsurl == "" {
-		return "", false
-	}
-	return c.tlsurl, true
+func (c *Clickhouse) TLSURL() string {
+	return c.tlsurl
 }
 
 func (c *Clickhouse) Container() string {
@@ -177,7 +172,7 @@ func (c *Clickhouse) Query(sql string) (string, error) {
 		return "", err
 	}
 
-	resp, err := c.client.Do(request)
+	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return "", err
 	}
@@ -191,15 +186,11 @@ func (c *Clickhouse) Query(sql string) (string, error) {
 	return string(msg), nil
 }
 
-func (c *Clickhouse) SetClient(client *http.Client) {
-	c.client = client
-}
-
 func (c *Clickhouse) Alive() bool {
 	if len(c.container) == 0 {
 		return false
 	}
-	req, err := http.DefaultClient.Get("http://" + c.httpAddress)
+	req, err := http.DefaultClient.Get(c.URL())
 	if err != nil {
 		return false
 	}
