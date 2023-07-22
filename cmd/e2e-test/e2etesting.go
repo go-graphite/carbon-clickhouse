@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/lomik/carbon-clickhouse/helper/tests"
 	"go.uber.org/zap"
+
+	"github.com/lomik/carbon-clickhouse/helper/tests"
 )
 
 type InputType int
@@ -104,14 +105,16 @@ func sendPlain(network, address string, input []string) error {
 	}
 }
 
-func verifyOut(chURL string, verify Verify) []string {
+func verifyOut(ch *Clickhouse, verify Verify) []string {
+	chURL := ch.URL()
 	var errs []string
 
 	q := []byte(verify.Query)
 	req, err := http.NewRequest("POST", chURL, bytes.NewBuffer(q))
-
-	client := &http.Client{Timeout: time.Second * 5}
-	resp, err := client.Do(req)
+	if err != nil {
+		return []string{err.Error()}
+	}
+	resp, err := ch.client.Do(req)
 	if err != nil {
 		return []string{err.Error()}
 	}
@@ -210,7 +213,7 @@ func testCarbonClickhouse(
 			verifyFailed := 0
 			time.Sleep(10 * time.Second)
 			for _, verify := range test.Verify {
-				if errs := verifyOut(clickhouse.URL(), verify); len(errs) > 0 {
+				if errs := verifyOut(clickhouse, verify); len(errs) > 0 {
 					testSuccess = false
 					verifyFailed++
 					for _, e := range errs {

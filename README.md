@@ -31,11 +31,11 @@ make
 2. Create tables.
 
 ```sql
-CREATE TABLE graphite ( 
-  Path String,  
-  Value Float64,  
-  Time UInt32,  
-  Date Date,  
+CREATE TABLE graphite (
+  Path String,
+  Value Float64,
+  Time UInt32,
+  Date Date,
   Timestamp UInt32
 ) ENGINE = GraphiteMergeTree('graphite_rollup')
 PARTITION BY toYYYYMM(Date)
@@ -135,7 +135,7 @@ url = "http://localhost:8123/"
 compress-data = true
 timeout = "1m0s"
 # save zero value to Timestamp column (for point and posts-reverse tables)
-zero-timestamp = false 
+zero-timestamp = false
 
 [upload.graphite_index]
 type = "index"
@@ -181,6 +181,23 @@ disable-daily-index = false
 #     "a.b.c.d",  # all tags (but __name__) will be ignored for metrics like a.b.c.d?tagName1=tagValue1&tagName2=tagValue2...
 #     "*",  # all tags (but __name__) will be ignored for all metrics; this is the only special case with wildcards
 # ]
+#
+# It is possible to connect to clickhouse with OpenSSL certificates (mTLS) like below:
+# [upload.graphite]
+# type = "points"
+# table = "graphite"
+# threads = 1
+# compress-data = true
+# zero-timestamp = false
+# timeout = "1m0s"
+# url = "https://localhost:8443/" # url is https
+# [upload.graphite.tls]
+# ca-cert = [ "<path/to/rootCA.crt>", "<path/to/other/rootCA.crt>" ]
+# server-name = "<server-name>"
+# insecure-skip-verify = false # if true, server certificates will not be validated
+# [[upload.graphite.tls.certificates]]
+# key = "<path/to/client.key>"
+# cert = "<path/to/client.crt>"
 
 [udp]
 listen = ":2003"
@@ -239,14 +256,14 @@ concat = "."
 # /debug/receive/grpc/dropped/
 # /debug/receive/prometheus/dropped/
 # /debug/receive/telegraf_http_json/dropped/
-[pprof] 
+[pprof]
 listen = "localhost:7007"
 enabled = false
 
-# You can use tag matching like in InfluxDB. Format is exactly the same.
-# It will parse all metrics that don't have tags yet.
-# For more information see https://docs.influxdata.com/influxdb/v1.7/supported_protocols/graphite/
-# Example:
+# you can use tag matching like in influxdb. format is exactly the same.
+# it will parse all metrics that don't have tags yet.
+# for more information see https://docs.influxdata.com/influxdb/v1.7/supported_protocols/graphite/
+# example:
 # [convert_to_tagged]
 # enabled = true 
 # separator = "_"
