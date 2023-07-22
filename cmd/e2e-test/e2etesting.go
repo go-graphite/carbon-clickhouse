@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -119,7 +120,7 @@ func verifyOut(ch *Clickhouse, verify Verify) []string {
 	if err != nil {
 		return []string{err.Error()}
 	}
-	resp, err := ch.client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return []string{err.Error()}
 	}
@@ -163,22 +164,25 @@ func testCarbonClickhouse(
 
 	err := clickhouse.CheckConfig(rootDir)
 	if err != nil {
-		testSuccess = false
-		return
+		return false
 	}
-
+	absoluteDir, err := filepath.Abs(test.dir)
+	if err != nil {
+		return false
+	}
 	cch := CarbonClickhouse{
 		ConfigTpl: testDir + "/" + test.ConfigTpl,
+		TestDir:   absoluteDir,
 	}
 	if test.HasTLSSettings() {
 		url, exists := clickhouse.TLSURL()
 		if exists {
-			err = cch.Start(url)
+			err = cch.Start(clickhouse.URL(), url)
 		} else {
 			err = errors.New("test has tls settings but there is no clickhouse tls url")
 		}
 	} else {
-		err = cch.Start(clickhouse.URL())
+		err = cch.Start(clickhouse.URL(), "")
 	}
 	if err != nil {
 		logger.Error("starting carbon-clickhouse",

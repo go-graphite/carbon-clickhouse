@@ -9,17 +9,17 @@ chunk-auto-interval = ""
 [upload.graphite_index]
 type = "index"
 table = "graphite_index"
-url = "{{ .CLICKHOUSE_URL }}/"
+url = "{{ .CLICKHOUSE_TLS_URL }}/"
 timeout = "2m30s"
 cache-ttl = "1h"
 disable-daily-index = true
 [upload.graphite_index.tls]
-ca-cert = [ "tests/tls/rootCA.crt"]
+ca-cert = [ "{{- .TEST_DIR -}}/ca.crt"]
 server-name = "localhost"
 insecure-skip-verify = false
 [[upload.graphite_index.tls.certificates]]
-key = "tests/tls/client.key"
-cert = "tests/tls/client.crt"
+key = "{{- .TEST_DIR -}}/client.key"
+cert = "{{- .TEST_DIR -}}/client.crt"
 
 [upload.graphite_tags]
 type = "tagged"
@@ -39,16 +39,16 @@ zero-timestamp = true
 [upload.graphite]
 type = "points"
 table = "graphite"
-url = "{{ .CLICKHOUSE_URL }}/"
+url = "{{ .CLICKHOUSE_TLS_URL }}/"
 timeout = "2m30s"
 zero-timestamp = true
 [upload.graphite.tls]
-ca-cert = [ "tests/tls/rootCA.crt"]
+ca-cert = [ "{{- .TEST_DIR -}}/ca.crt"]
 server-name = "localhost"
 insecure-skip-verify = false
 [[upload.graphite.tls.certificates]]
-key = "tests/tls/client.key"
-cert = "tests/tls/client.crt"
+key = "{{- .TEST_DIR -}}/client.key"
+cert = "{{- .TEST_DIR -}}/client.crt"
 
 [tcp]
 listen = "{{ .CCH_ADDR }}"
