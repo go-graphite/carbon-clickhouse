@@ -30,6 +30,7 @@ type Clickhouse struct {
 	httpAddress  string `toml:"-"`
 	httpsAddress string `toml:"-"`
 	url          string `toml:"-"`
+	tlsurl       string `toml:"-"`
 	container    string `toml:"-"`
 	client       *http.Client
 }
@@ -97,7 +98,7 @@ func (c *Clickhouse) Start() (string, error) {
 			return "", err
 		}
 		port = strings.Split(c.httpsAddress, ":")[1]
-		c.url = "https://" + c.httpsAddress
+		c.tlsurl = "https://" + c.httpsAddress
 		chStart = append(chStart,
 			"-v", c.Dir+"/server.crt:/etc/clickhouse-server/server.crt",
 			"-v", c.Dir+"/server.key:/etc/clickhouse-server/server.key",
@@ -152,6 +153,13 @@ func (c *Clickhouse) Delete() (string, error) {
 
 func (c *Clickhouse) URL() string {
 	return c.url
+}
+
+func (c *Clickhouse) TLSURL() (string, bool) {
+	if c.tlsurl == "" {
+		return "", false
+	}
+	return c.tlsurl, true
 }
 
 func (c *Clickhouse) Container() string {

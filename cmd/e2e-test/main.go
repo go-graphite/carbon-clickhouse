@@ -172,7 +172,7 @@ func main() {
 				for _, config := range configs {
 					testDir := config.Test.dir
 					client := &http.Client{Timeout: time.Minute}
-					if ch.TLSEnabled {
+					if ch.TLSEnabled && config.Test.HasTLSSettings() {
 						conf, err := helpercfg.ParseClientTLSConfig(&helpercfg.TLS{
 							Certificates: []helpercfg.CertificatePair{{testDir + "/client.key", testDir + "/client.crt"}},
 							CACertFiles:  []string{testDir + "/ca.crt"},

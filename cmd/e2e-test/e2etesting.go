@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -70,6 +71,10 @@ type TestSchema struct {
 	dir        string          `yaml:"-"`
 	name       string          `yaml:"-"` // test alias (from config name)
 	chVersions map[string]bool `toml:"-"`
+}
+
+func (schema *TestSchema) HasTLSSettings() bool {
+	return strings.Contains(schema.dir, "tls")
 }
 
 func getFreeTCPPort(name string) (string, error) {
@@ -165,7 +170,16 @@ func testCarbonClickhouse(
 	cch := CarbonClickhouse{
 		ConfigTpl: testDir + "/" + test.ConfigTpl,
 	}
-	err = cch.Start(clickhouse.URL())
+	if test.HasTLSSettings() {
+		url, exists := clickhouse.TLSURL()
+		if exists {
+			err = cch.Start(url)
+		} else {
+			err = errors.New("test has tls settings but there is no clickhouse tls url")
+		}
+	} else {
+		err = cch.Start(clickhouse.URL())
+	}
 	if err != nil {
 		logger.Error("starting carbon-clickhouse",
 			zap.String("config", test.name),
