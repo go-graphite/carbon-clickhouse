@@ -255,9 +255,14 @@ func (u *Base) insertRowBinary(table string, data io.Reader) error {
 	transport := &http.Transport{DisableKeepAlives: true}
 
 	if u.config.TLS != nil {
-		tlsConfig, err := config.ParseClientTLSConfig(u.config.TLS)
+		tlsConfig, warns, err := config.ParseClientTLSConfig(u.config.TLS)
 		if err != nil {
 			return err
+		}
+		if len(warns) > 0 {
+			u.logger.Warn("insecure options detected, while parsing HTTP Client TLS Config for uploader",
+				zap.Strings("warnings", warns),
+			)
 		}
 		transport.TLSClientConfig = tlsConfig
 	}
