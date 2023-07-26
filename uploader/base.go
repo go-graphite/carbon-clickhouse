@@ -18,7 +18,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/lomik/carbon-clickhouse/helper/config"
 	"github.com/lomik/carbon-clickhouse/helper/stop"
 )
 
@@ -237,41 +236,21 @@ func (u *Base) insertRowBinary(table string, data io.Reader) error {
 
 	q.Set("query", fmt.Sprintf("INSERT INTO %s FORMAT RowBinary", table))
 	p.RawQuery = q.Encode()
-	queryUrl := p.String()
+	queryURL := p.String()
 
 	var req *http.Request
 
 	if u.config.CompressData {
-		req, err = http.NewRequest("POST", queryUrl, compress(data))
+		req, err = http.NewRequest("POST", queryURL, compress(data))
 		req.Header.Add("Content-Encoding", "gzip")
 	} else {
-		req, err = http.NewRequest("POST", queryUrl, data)
+		req, err = http.NewRequest("POST", queryURL, data)
 	}
 
 	if err != nil {
 		return err
 	}
-
-	transport := &http.Transport{DisableKeepAlives: true}
-
-	if u.config.TLS != nil {
-		tlsConfig, warns, err := config.ParseClientTLSConfig(u.config.TLS)
-		if err != nil {
-			return err
-		}
-		if len(warns) > 0 {
-			u.logger.Warn("insecure options detected, while parsing HTTP Client TLS Config for uploader",
-				zap.Strings("warnings", warns),
-			)
-		}
-		transport.TLSClientConfig = tlsConfig
-	}
-
-	client := &http.Client{
-		Timeout:   u.config.Timeout.Value(),
-		Transport: transport,
-	}
-	resp, err := client.Do(req)
+	resp, err := u.config.client.Do(req)
 	if err != nil {
 		return err
 	}
