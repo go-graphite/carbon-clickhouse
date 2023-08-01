@@ -260,10 +260,10 @@ concat = "."
 listen = "localhost:7007"
 enabled = false
 
-# you can use tag matching like in influxdb. format is exactly the same.
-# it will parse all metrics that don't have tags yet.
-# for more information see https://docs.influxdata.com/influxdb/v1.7/supported_protocols/graphite/
-# example:
+# You can use tag matching like in InfluxDB. Format is exactly the same.
+# It will parse all metrics that don't have tags yet.
+# For more information see https://docs.influxdata.com/influxdb/v1.7/supported_protocols/graphite/
+# Example:
 # [convert_to_tagged]
 # enabled = true 
 # separator = "_"
