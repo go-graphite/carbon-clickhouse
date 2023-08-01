@@ -1,0 +1,156 @@
+[test]
+config_template = "carbon-clickhouse.conf.tpl"
+input = [ 
+    "test.host1.cpu.loadavg 10.2 1625478240",
+    "cpu.loadavg;env=test2;host=host1;env=test 21.4 1625478300",
+    "test2.host1.cpu0.user 10.2 1625478240",
+    "test2.host1.cpu0.idle 10.2 1625478240",
+    "test2.host1.cpu0.system 10.2 1625478240",
+    "test2.host1.cpu0.iowait 10.2 1625478240",
+    "test2.host1.cpu1.user 10.2 1625478240",
+    "test2.host1.cpu1.idle 10.2 1625478240",
+    "test2.host1.cpu1.system 10.2 1625478240",
+    "test2.host1.cpu1.iowait 10.2 1625478240",
+    "test2.host1.cpu2.user 10.2 1625478240",
+    "test2.host1.cpu2.idle 10.2 1625478240",
+    "test2.host1.cpu2.system 10.2 1625478240",
+    "test2.host1.cpu2.iowait 10.2 1625478240",
+    "test2.host1.cpu3.user 10.2 1625478240",
+    "test2.host1.cpu3.idle 10.2 1625478240",
+    "test2.host1.cpu3.system 10.2 1625478240",
+    "test2.host1.cpu3.iowait 10.2 1625478240",
+    "test2.host1.cpu-total.user 10.2 1625478240",
+    "test2.host1.cpu-total.idle 10.2 1625478240",
+    "test2.host1.cpu-total.system 10.2 1625478240",
+    "test2.host1.cpu-total.iowait 10.2 1625478240",
+    "test2.host2.cpu.loadavg 9.4 1625478300",
+    "test2.host2.cpu0.user 10.2 1625478240",
+    "test2.host2.cpu0.idle 10.2 1625478240",
+    "test2.host2.cpu0.system 10.2 1625478240",
+    "test2.host2.cpu0.iowait 10.2 1625478240",
+    "test2.host2.cpu1.user 10.2 1625478240",
+    "test2.host2.cpu1.idle 10.2 1625478240",
+    "test2.host2.cpu1.system 10.2 1625478240",
+    "test2.host2.cpu1.iowait 10.2 1625478240",
+    "test2.host2.cpu2.user 10.2 1625478240",
+    "test2.host2.cpu2.idle 10.2 1625478240",
+    "test2.host2.cpu2.system 10.2 1625478240",
+    "test2.host2.cpu2.iowait 10.2 1625478240",
+    "test2.host2.cpu3.user 10.2 1625478240",
+    "test2.host2.cpu3.idle 10.2 1625478240",
+    "test2.host2.cpu3.system 10.2 1625478240",
+    "test2.host2.cpu3.iowait 10.2 1625478240",
+    "test2.host2.cpu-total.user 10.2 1625478240",
+    "test2.host2.cpu-total.idle 10.2 1625478240",
+    "test2.host2.cpu-total.system 10.2 1625478240",
+    "test2.host2.cpu-total.iowait 10.2 1625478240",
+    "test2.host31.cpu.loadavg 9.4 1625478300",
+    "test2.host31.cpu0.user 10.2 1625478240",
+    "test2.host31.cpu0.idle 10.2 1625478240",
+    "test2.host31.cpu0.system 10.2 1625478240",
+    "test2.host31.cpu0.iowait 10.2 1625478240",
+    "test2.host31.cpu1.user 10.2 1625478240",
+    "test2.host31.cpu1.idle 10.2 1625478240",
+    "test2.host31.cpu1.system 10.2 1625478240",
+    "test2.host31.cpu1.iowait 10.2 1625478240",
+    "test2.host31.cpu2.user 10.2 1625478240",
+    "test2.host31.cpu2.idle 10.2 1625478240",
+    "test2.host31.cpu2.system 10.2 1625478240",
+    "test2.host31.cpu2.iowait 10.2 1625478240",
+    "test2.host31.cpu3.user 10.2 1625478240",
+    "test2.host31.cpu3.idle 10.2 1625478240",
+    "test2.host31.cpu3.system 10.2 1625478240",
+    "test2.host31.cpu3.iowait 10.2 1625478240",
+    "test2.host31.cpu-total.user 10.2 1625478240",
+    "test2.host31.cpu-total.idle 10.2 1625478240",
+    "test2.host31.cpu-total.system 10.2 1625478240",
+    "test2.host31.cpu-total.iowait 10.2 1625478240",
+    "test2.host32.cpu.loadavg 9.4 1625478300",
+    "test2.host32.cpu0.user 10.2 1625478240",
+    "test2.host32.cpu0.idle 10.2 1625478240",
+    "test2.host32.cpu0.system 10.2 1625478240",
+    "test2.host32.cpu0.iowait 10.2 1625478240",
+    "test2.host32.cpu1.user 10.2 1625478240",
+    "test2.host32.cpu1.idle 10.2 1625478240",
+    "test2.host32.cpu1.system 10.2 1625478240",
+    "test2.host32.cpu1.iowait 10.2 1625478240",
+    "test2.host32.cpu2.user 10.2 1625478240",
+    "test2.host32.cpu2.idle 10.2 1625478240",
+    "test2.host32.cpu2.system 10.2 1625478240",
+    "test2.host32.cpu2.iowait 10.2 1625478240",
+    "test2.host32.cpu3.user 10.2 1625478240",
+    "test2.host32.cpu3.idle 10.2 1625478240",
+    "test2.host32.cpu3.system 10.2 1625478240",
+    "test2.host32.cpu3.iowait 10.2 1625478240",
+    "test2.host32.cpu-total.user 10.2 1625478240",
+    "test2.host32.cpu-total.idle 10.2 1625478240",
+    "test2.host32.cpu-total.system 10.2 1625478240",
+    "test2.host32.cpu-total.iowait 10.2 1625478240",
+    "cpu.loadavg;env=test;host=host1 2.1 1625478240",
+    "test.host1.cpu.loadavg 9.4 1625478300",
+    "cpu.loadavg;host=host1;env=test 1.3 1625478360",
+    "spec_symbols;minus=-;plus=+;percent=%;underscore=_;colon=:;hash=#;forward=/ 5.1 1625478360",
+    "non-ascii.иван;tagged=true 1.2 1625478240"
+]
+
+[[test.clickhouse]]
+version = "21.3"
+tls = true
+dir = "tests/clickhouse/rollup_tls"
+
+[[test.clickhouse]]
+version = "22.8"
+tls = true
+dir = "tests/clickhouse/rollup_tls"
+
+[[test.clickhouse]]
+version = "latest"
+tls = true
+dir = "tests/clickhouse/rollup_tls"
+
+# test.host1.cpu.loadavg 10.2 1625478240
+[[test.verify]]
+query = "SELECT Date, Level, Path FROM graphite_index WHERE Path LIKE 'test.%' OR Path LIKE '%.test' GROUP BY Date, Level, Path, Version ORDER BY Date, Level, Path"
+#query = "SELECT Date, Level, Path FROM graphite_index WHERE Path LIKE 'test.%' OR Path LIKE '%.test' ORDER BY Date, Level"
+output = [
+    "1970-02-12 20001 test.",
+    "1970-02-12 20002 test.host1.",
+    "1970-02-12 20003 test.host1.cpu.",
+    "1970-02-12 20004 test.host1.cpu.loadavg",
+    "1970-02-12 30004 loadavg.cpu.host1.test",
+]
+[[test.verify]]
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite WHERE Path LIKE 'test.%' ORDER BY Time, Path"
+output = [
+    "test.host1.cpu.loadavg 10.2 1625478240 2021-07-05 0",
+    "test.host1.cpu.loadavg 9.4 1625478300 2021-07-05 0",
+]
+[[test.verify]]
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite_reverse WHERE Path LIKE '%.test' ORDER BY Time, Path"
+output = [
+    "loadavg.cpu.host1.test 10.2 1625478240 2021-07-05 0",
+    "loadavg.cpu.host1.test 9.4 1625478300 2021-07-05 0",
+]
+
+# cpu.loadavg;env=test;host=host1 21.4 1625478300
+[[test.verify]]
+query = "SELECT Date, Tag1, Path, arraySort(Tags) as Tags FROM graphite_tags WHERE Path LIKE 'cpu.loadavg%' ORDER BY Date, Tag1, Path"
+output = [
+    "2021-07-05 __name__=cpu.loadavg cpu.loadavg?env=test&host=host1 ['__name__=cpu.loadavg','env=test','host=host1']",
+    "2021-07-05 env=test cpu.loadavg?env=test&host=host1 ['__name__=cpu.loadavg','env=test','host=host1']",
+    "2021-07-05 host=host1 cpu.loadavg?env=test&host=host1 ['__name__=cpu.loadavg','env=test','host=host1']",
+]
+[[test.verify]]
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite WHERE Path LIKE 'cpu.loadavg?%' ORDER BY Time, Path"
+output = [
+    "cpu.loadavg?env=test&host=host1 2.1 1625478240 2021-07-05 0",
+    "cpu.loadavg?env=test&host=host1 21.4 1625478300 2021-07-05 0",
+    "cpu.loadavg?env=test&host=host1 1.3 1625478360 2021-07-05 0",
+]
+[[test.verify]]
+query = "SELECT Path, Value, Time, Date, Timestamp FROM graphite_reverse WHERE Path LIKE 'cpu.loadavg?%' ORDER BY Time, Path"
+output = [
+    "cpu.loadavg?env=test&host=host1 2.1 1625478240 2021-07-05 0",
+    "cpu.loadavg?env=test&host=host1 21.4 1625478300 2021-07-05 0",
+    "cpu.loadavg?env=test&host=host1 1.3 1625478360 2021-07-05 0",
+]

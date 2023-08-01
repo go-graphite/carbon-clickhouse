@@ -16,8 +16,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lomik/carbon-clickhouse/helper/stop"
 	"go.uber.org/zap"
+
+	"github.com/lomik/carbon-clickhouse/helper/stop"
 )
 
 type Base struct {
@@ -235,26 +236,21 @@ func (u *Base) insertRowBinary(table string, data io.Reader) error {
 
 	q.Set("query", fmt.Sprintf("INSERT INTO %s FORMAT RowBinary", table))
 	p.RawQuery = q.Encode()
-	queryUrl := p.String()
+	queryURL := p.String()
 
 	var req *http.Request
 
 	if u.config.CompressData {
-		req, err = http.NewRequest("POST", queryUrl, compress(data))
+		req, err = http.NewRequest("POST", queryURL, compress(data))
 		req.Header.Add("Content-Encoding", "gzip")
 	} else {
-		req, err = http.NewRequest("POST", queryUrl, data)
+		req, err = http.NewRequest("POST", queryURL, data)
 	}
 
 	if err != nil {
 		return err
 	}
-
-	client := &http.Client{
-		Timeout:   u.config.Timeout.Value(),
-		Transport: &http.Transport{DisableKeepAlives: true},
-	}
-	resp, err := client.Do(req)
+	resp, err := u.config.client.Do(req)
 	if err != nil {
 		return err
 	}

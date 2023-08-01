@@ -133,8 +133,7 @@ func main() {
 
 	failed := 0
 	total := 0
-	for chVersion := range chVersions {
-		ch := chVersions[chVersion]
+	for chVersion, ch := range chVersions {
 		if exist, out := containerExist(ClickhouseContainerName); exist {
 			logger.Error("clickhouse already exist",
 				zap.String("container", ClickhouseContainerName),

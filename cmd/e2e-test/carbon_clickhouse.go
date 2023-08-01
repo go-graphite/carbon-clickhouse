@@ -14,6 +14,7 @@ import (
 type CarbonClickhouse struct {
 	Binary    string `toml:"binary"`
 	ConfigTpl string `toml:"template"`
+	TestDir   string `toml:"-"`
 
 	storeDir   string    `toml:"-"`
 	configFile string    `toml:"-"`
@@ -21,7 +22,7 @@ type CarbonClickhouse struct {
 	cmd        *exec.Cmd `toml:"-"`
 }
 
-func (c *CarbonClickhouse) Start(clickhouseURL string) error {
+func (c *CarbonClickhouse) Start(clickhouseURL string, clickhouseTLSURL string) error {
 	if c.cmd != nil {
 		return fmt.Errorf("carbon-clickhouse already started")
 	}
@@ -52,13 +53,17 @@ func (c *CarbonClickhouse) Start(clickhouseURL string) error {
 		return err
 	}
 	param := struct {
-		CLICKHOUSE_URL string
-		CCH_STORE_DIR  string
-		CCH_ADDR       string
+		CLICKHOUSE_URL     string
+		CLICKHOUSE_TLS_URL string
+		CCH_STORE_DIR      string
+		CCH_ADDR           string
+		TEST_DIR           string
 	}{
-		CLICKHOUSE_URL: clickhouseURL,
-		CCH_STORE_DIR:  c.storeDir,
-		CCH_ADDR:       c.address,
+		CLICKHOUSE_URL:     clickhouseURL,
+		CLICKHOUSE_TLS_URL: clickhouseTLSURL,
+		CCH_STORE_DIR:      c.storeDir,
+		CCH_ADDR:           c.address,
+		TEST_DIR:           c.TestDir,
 	}
 
 	c.configFile = path.Join(c.storeDir, "carbon-clickhouse.conf")

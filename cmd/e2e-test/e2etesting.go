@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/lomik/carbon-clickhouse/helper/tests"
 	"go.uber.org/zap"
+
+	"github.com/lomik/carbon-clickhouse/helper/tests"
 )
 
 type InputType int
@@ -71,6 +73,10 @@ type TestSchema struct {
 	chVersions map[string]bool `toml:"-"`
 }
 
+func (schema *TestSchema) HasTLSSettings() bool {
+	return strings.Contains(schema.dir, "tls")
+}
+
 func getFreeTCPPort(name string) (string, error) {
 	if len(name) == 0 {
 		name = "127.0.0.1:0"
@@ -104,14 +110,16 @@ func sendPlain(network, address string, input []string) error {
 	}
 }
 
-func verifyOut(chURL string, verify Verify) []string {
+func verifyOut(ch *Clickhouse, verify Verify) []string {
+	chURL := ch.URL()
 	var errs []string
 
 	q := []byte(verify.Query)
 	req, err := http.NewRequest("POST", chURL, bytes.NewBuffer(q))
-
-	client := &http.Client{Timeout: time.Second * 5}
-	resp, err := client.Do(req)
+	if err != nil {
+		return []string{err.Error()}
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return []string{err.Error()}
 	}
@@ -155,14 +163,27 @@ func testCarbonClickhouse(
 
 	err := clickhouse.CheckConfig(rootDir)
 	if err != nil {
-		testSuccess = false
-		return
+		return false
 	}
-
+	absoluteDir, err := filepath.Abs(test.dir)
+	if err != nil {
+		return false
+	}
 	cch := CarbonClickhouse{
 		ConfigTpl: testDir + "/" + test.ConfigTpl,
+		TestDir:   absoluteDir,
 	}
-	err = cch.Start(clickhouse.URL())
+	var (
+		tlsurl string
+	)
+	if test.HasTLSSettings() {
+		tlsurl = clickhouse.TLSURL()
+		if tlsurl == "" {
+			logger.Error("test has tls settings but there is no clickhouse tls url")
+			return false
+		}
+	}
+	err = cch.Start(clickhouse.URL(), tlsurl)
 	if err != nil {
 		logger.Error("starting carbon-clickhouse",
 			zap.String("config", test.name),
@@ -210,7 +231,7 @@ func testCarbonClickhouse(
 			verifyFailed := 0
 			time.Sleep(10 * time.Second)
 			for _, verify := range test.Verify {
-				if errs := verifyOut(clickhouse.URL(), verify); len(errs) > 0 {
+				if errs := verifyOut(clickhouse, verify); len(errs) > 0 {
 					testSuccess = false
 					verifyFailed++
 					for _, e := range errs {
