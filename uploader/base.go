@@ -268,5 +268,9 @@ func (u *Base) insertRowBinary(table string, data *io.PipeReader) error {
 		return fmt.Errorf("clickhouse response status %d: %s", resp.StatusCode, string(body))
 	}
 
+	if exceptionCode := resp.Header.Get("X-Clickhouse-Exception-Code"); exceptionCode != "" && exceptionCode != "0" {
+		return fmt.Errorf("clickhouse exception code %s", exceptionCode)
+	}
+
 	return nil
 }
