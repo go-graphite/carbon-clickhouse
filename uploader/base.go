@@ -213,20 +213,26 @@ func (u *Base) uploadWorker(ctx context.Context) {
 	}
 }
 
-func compress(data io.Reader) io.Reader {
+func compress(data *io.PipeReader) io.Reader {
 	pr, pw := io.Pipe()
 	gw := gzip.NewWriter(pw)
 
 	go func() {
-		_, _ = io.Copy(gw, data)
-		gw.Close()
-		pw.Close()
+		_, err := io.Copy(gw, data)
+		if err != nil {
+			data.CloseWithError(err)
+			pw.CloseWithError(err)
+		} else {
+			data.Close()
+			gw.Close()
+			pw.Close()
+		}
 	}()
 
 	return pr
 }
 
-func (u *Base) insertRowBinary(table string, data io.Reader) error {
+func (u *Base) insertRowBinary(table string, data *io.PipeReader) error {
 	p, err := url.Parse(u.config.URL)
 	if err != nil {
 		return err
