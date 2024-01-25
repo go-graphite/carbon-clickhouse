@@ -75,6 +75,7 @@ func (u *cached) upload(ctx context.Context, logger *zap.Logger, filename string
 		err = u.insertRowBinary(
 			u.query,
 			pipeReader,
+			filename,
 		)
 		uploadResult <- err
 		if err != nil {

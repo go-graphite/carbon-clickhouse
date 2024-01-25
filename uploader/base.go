@@ -213,7 +213,10 @@ func (u *Base) uploadWorker(ctx context.Context) {
 	}
 }
 
-func compress(data *io.PipeReader) io.Reader {
+func (u *Base) compress(data *io.PipeReader, filename string) io.Reader {
+	logger := u.logger.With(zap.String("filename", filename))
+	logger.Debug("Compress started")
+
 	pr, pw := io.Pipe()
 	gw := gzip.NewWriter(pw)
 
@@ -227,12 +230,13 @@ func compress(data *io.PipeReader) io.Reader {
 			gw.Close()
 			pw.Close()
 		}
+		logger.With(zap.Error(err)).Debug("Compress finished")
 	}()
 
 	return pr
 }
 
-func (u *Base) insertRowBinary(table string, data *io.PipeReader) error {
+func (u *Base) insertRowBinary(table string, data *io.PipeReader, filename string) error {
 	p, err := url.Parse(u.config.URL)
 	if err != nil {
 		return err
@@ -247,7 +251,7 @@ func (u *Base) insertRowBinary(table string, data *io.PipeReader) error {
 	var req *http.Request
 
 	if u.config.CompressData {
-		req, err = http.NewRequest("POST", queryURL, compress(data))
+		req, err = http.NewRequest("POST", queryURL, u.compress(data, filename))
 		req.Header.Add("Content-Encoding", "gzip")
 	} else {
 		req, err = http.NewRequest("POST", queryURL, data)
@@ -263,6 +267,13 @@ func (u *Base) insertRowBinary(table string, data *io.PipeReader) error {
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
+
+	u.logger.With(
+		zap.String("filename", filename),
+		zap.Int("statusCode", resp.StatusCode),
+		zap.String("header", fmt.Sprintf("%v", resp.Header)),
+		zap.String("body", string(body)),
+	).Debug("Insert request finished")
 
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("clickhouse response status %d: %s", resp.StatusCode, string(body))

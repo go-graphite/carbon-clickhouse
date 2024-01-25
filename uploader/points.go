@@ -84,10 +84,17 @@ func (u *Points) upload(ctx context.Context, logger *zap.Logger, filename string
 	uploadResult = make(chan error, 1)
 
 	u.Go(func(ctx context.Context) {
+		logger := u.logger.With(zap.String("filename", filename))
+		logger.Debug("insertRowBinary started")
+
 		err := u.insertRowBinary(
 			u.query,
 			pipeReader,
+			filename,
 		)
+
+		logger.With(zap.Error(err)).Debug("insertRowBinary finished")
+
 		uploadResult <- err
 		if err != nil {
 			_ = pipeReader.CloseWithError(err)
