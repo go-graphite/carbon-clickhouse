@@ -258,6 +258,10 @@ func (u *Base) insertRowBinary(table string, data io.Reader) error {
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
+	if exceptionCode := resp.Header.Get("X-Clickhouse-Exception-Code"); exceptionCode != "" && exceptionCode != "0" {
+		return fmt.Errorf("clickhouse exception code %s, response status %d: %s", exceptionCode, resp.StatusCode, string(body))
+	}
+
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("clickhouse response status %d: %s", resp.StatusCode, string(body))
 	}
