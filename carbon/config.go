@@ -250,7 +250,7 @@ func PrintDefaultConfig() error {
 }
 
 // ReadConfig ...
-func ReadConfig(filename string) (*Config, error) {
+func ReadConfig(filename string, exactConfig bool) (*Config, error) {
 	var err error
 
 	cfg := NewConfig()
@@ -265,8 +265,17 @@ func ReadConfig(filename string) (*Config, error) {
 		// @TODO: fix for config starts with [logging]
 		body = strings.Replace(body, "\n[logging]\n", "\n[[logging]]\n", -1)
 
-		if _, err := toml.Decode(body, cfg); err != nil {
+		md, err := toml.Decode(body, cfg)
+
+		if err != nil {
 			return nil, err
+		}
+
+		if exactConfig {
+			undecoded := md.Undecoded()
+			if len(undecoded) > 0 {
+				return nil, fmt.Errorf("Config file (%s) contains unknown keys: %q", filename, undecoded)
+			}
 		}
 	}
 

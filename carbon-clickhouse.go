@@ -47,6 +47,7 @@ func main() {
 	configFile := flag.String("config", "/etc/carbon-clickhouse/carbon-clickhouse.conf", "Filename of config")
 	printDefaultConfig := flag.Bool("config-print-default", false, "Print default config")
 	checkConfig := flag.Bool("check-config", false, "Check config and exit")
+	exactConfig := flag.Bool("exact-config", false, "Ensure that all config params are contained in the target struct.")
 	printVersion := flag.Bool("version", false, "Print version")
 	cat := flag.String("cat", "", "Print RowBinary file in TabSeparated format")
 	bincat := flag.String("recover", "", "Read all good records from corrupted data file. Write binary data to stdout")
@@ -102,7 +103,7 @@ func main() {
 
 	app := carbon.New(*configFile)
 
-	if err = app.ParseConfig(); err != nil {
+	if err = app.ParseConfig(*exactConfig); err != nil {
 		log.Fatal(err)
 	}
 
