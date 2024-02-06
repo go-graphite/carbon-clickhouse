@@ -47,8 +47,8 @@ func New(configFilename string) *App {
 }
 
 // configure loads config from config file, schemas.conf, aggregation.conf
-func (app *App) configure() error {
-	cfg, err := ReadConfig(app.ConfigFilename)
+func (app *App) configure(exactConfig bool) error {
+	cfg, err := ReadConfig(app.ConfigFilename, exactConfig)
 	if err != nil {
 		return err
 	}
@@ -88,11 +88,11 @@ func (app *App) configure() error {
 }
 
 // ParseConfig loads config from config file
-func (app *App) ParseConfig() error {
+func (app *App) ParseConfig(exactConfig bool) error {
 	app.Lock()
 	defer app.Unlock()
 
-	return app.configure()
+	return app.configure(exactConfig)
 }
 
 // Stop all socket listeners
