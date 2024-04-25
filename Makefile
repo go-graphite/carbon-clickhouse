@@ -22,6 +22,7 @@ all: $(NAME)
 .PHONY: clean
 clean:
 	rm -f $(NAME)
+	rm -f e2e-test
 	rm -rf out
 	rm -f *deb *rpm
 	rm -f sha256sum md5sum
