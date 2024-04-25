@@ -83,7 +83,7 @@ jobs:
     - name: Install packaging dependencies
       run: |
         gem install fpm package_cloud
-        go get github.com/mitchellh/gox@latest
+        go install github.com/mitchellh/gox@latest
 
     - name: Check packaging
       run: |
