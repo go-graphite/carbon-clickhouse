@@ -16,8 +16,8 @@ jobs:
     strategy:
       matrix:
         go:
-          - ^1.18
-          - ^1.19
+          - ^1.20
+          - ^1.21
           - ^1
     steps:
 
@@ -78,7 +78,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '2.7' # Version range or exact version of a Ruby version to use, using semvers version range syntax.
+        ruby-version: '3.3' # Version range or exact version of a Ruby version to use, using semvers version range syntax.
 
     - name: Install packaging dependencies
       run: |
