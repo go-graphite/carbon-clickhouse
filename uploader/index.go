@@ -204,7 +204,7 @@ LineLoop:
 		err = u.parseName(name, reverseName, treeDate, days, version, u.config.DisableDailyIndex, indexBuf)
 		if err != nil {
 			u.logger.Warn("parse",
-				zap.String("metric", nameStr), zap.String("type", "tagged"), zap.String("name", filename), zap.Error(err),
+				zap.String("metric", nameStr), zap.String("type", "index"), zap.String("name", filename), zap.Error(err),
 			)
 			continue LineLoop
 		}
