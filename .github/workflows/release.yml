@@ -36,7 +36,7 @@ jobs:
     - name: Install packaging dependencies
       run: |
         gem install fpm package_cloud
-        cd && go install github.com/mitchellh/gox@latest
+        cd && go install github.com/mitchellh/gox@v1.0.1
 
     - name: Build packages
       id: build
