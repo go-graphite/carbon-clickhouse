@@ -1,5 +1,4 @@
 NAME:=carbon-clickhouse
-MAINTAINER:="Roman Lomonosov <r.lomonosov@gmail.com>"
 DESCRIPTION:="Graphite metrics receiver with ClickHouse as storage"
 MODULE:=github.com/lomik/carbon-clickhouse
 
@@ -36,51 +35,29 @@ e2e-test: $(NAME)
 test:
 	$(GO) test -race ./...
 
-gox-build:
-	rm -rf out
+gox-build: out/$(NAME)-linux-amd64 out/$(NAME)-linux-arm64 out/root/etc/$(NAME)/$(NAME).conf
+
+ARCH = amd64 arm64
+out/$(NAME)-linux-%: out $(SRCS)
+	GOOS=linux GOARCH=$* $(GO) build -o $@ $(MODULE)
+
+out:
 	mkdir -p out
-	gox -os="linux" -arch="amd64" -arch="arm64" -output="out/$(NAME)-{{.OS}}-{{.Arch}}"  github.com/lomik/$(NAME)
-	ls -la out/
-	mkdir -p out/root/etc/$(NAME)/
-	./out/$(NAME)-linux-amd64 -config-print-default > out/root/etc/$(NAME)/$(NAME).conf
-
-fpm-deb:
-	$(MAKE) fpm-build-deb ARCH=amd64
-	$(MAKE) fpm-build-deb ARCH=arm64
-fpm-rpm:
-	$(MAKE) fpm-build-rpm ARCH=amd64
-	$(MAKE) fpm-build-rpm ARCH=arm64
-
-fpm-build-deb:
-	fpm -s dir -t deb -n $(NAME) -v $(VERSION) \
-		--deb-priority optional --category admin \
-		--force \
-		--url https://github.com/lomik/$(NAME) \
-		--description $(DESCRIPTION) \
-		-m $(MAINTAINER) \
-		--license "MIT" \
-		-a $(ARCH) \
-		--config-files /etc/$(NAME)/$(NAME).conf \
-		--config-files /etc/logrotate.d/$(NAME) \
-		out/$(NAME)-linux-$(ARCH)=/usr/bin/$(NAME) \
-		deploy/root/=/ \
-		out/root/=/
 
 
-fpm-build-rpm:
-	fpm -s dir -t rpm -n $(NAME) -v $(VERSION) \
-		--force \
-		--rpm-compression bzip2 --rpm-os linux \
-		--url https://github.com/lomik/$(NAME) \
-		--description $(DESCRIPTION) \
-		-m $(MAINTAINER) \
-		--license "MIT" \
-		-a $(ARCH) \
-		--config-files /etc/$(NAME)/$(NAME).conf \
-		--config-files /etc/logrotate.d/$(NAME) \
-		out/$(NAME)-linux-$(ARCH)=/usr/bin/$(NAME) \
-		deploy/root/=/ \
-		out/root/=/
+out/root/etc/$(NAME)/$(NAME).conf: $(NAME)
+	mkdir -p "$(shell dirname $@)"
+	./$(NAME) -config-print-default > $@
+
+nfpm-deb: gox-build
+	$(MAKE) nfpm-build-deb ARCH=amd64
+	$(MAKE) nfpm-build-deb ARCH=arm64
+nfpm-rpm: gox-build
+	$(MAKE) nfpm-build-rpm ARCH=amd64
+	$(MAKE) nfpm-build-rpm ARCH=arm64
+
+nfpm-build-%: nfpm.yaml
+	NAME=$(NAME) DESCRIPTION=$(DESCRIPTION) ARCH=$(ARCH) VERSION_STRING=$(VERSION) nfpm package --packager $*
 
 .ONESHELL:
 RPM_VERSION:=$(subst -,_,$(VERSION))
