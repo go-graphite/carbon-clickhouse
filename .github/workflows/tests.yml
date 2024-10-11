@@ -75,19 +75,10 @@ jobs:
     #   env:
     #     CGO_ENABLED: 1
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.3' # Version range or exact version of a Ruby version to use, using semvers version range syntax.
-
-    - name: Install packaging dependencies
-      run: |
-        gem install fpm package_cloud
-        go install github.com/mitchellh/gox@latest
-
     - name: Check packaging
       run: |
-        make DEVEL=1 gox-build fpm-deb fpm-rpm
+        go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.40.0
+        make DEVEL=1 nfpm-deb nfpm-rpm
         make sum-files
 
     - name: Artifact
