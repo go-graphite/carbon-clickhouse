@@ -32,40 +32,58 @@ make
 
 ```sql
 CREATE TABLE graphite (
-  Path String,
-  Value Float64,
-  Time UInt32,
-  Date Date,
-  Timestamp UInt32
+  Path String CODEC(ZSTD(3)), -- better compression
+  Value Float64 CODEC(Gorilla, LZ4), -- better codec for Floats
+  Time UInt32 CODEC(DoubleDelta, LZ4), -- will be almost always 0
+  Date Date CODEC(DoubleDelta, LZ4), -- will be almost always 0
+  Timestamp UInt32 CODEC(DoubleDelta, LZ4) TTL Date + INTERVAL 1 MONTH-- will be almost always 0, good to go in 1 month
 ) ENGINE = GraphiteMergeTree('graphite_rollup')
-PARTITION BY toYYYYMM(Date)
+PARTITION BY toYearWeek(Date)
 ORDER BY (Path, Time);
 
--- optional table for faster metric search
 CREATE TABLE graphite_index (
-  Date Date,
-  Level UInt32,
-  Path String,
-  Version UInt32
+  Date Date CODEC(DoubleDelta, LZ4), -- will be almost always 0
+  Level UInt32 CODEC(DoubleDelta, LZ4), -- will be almost always 0
+  Path String CODEC(ZSTD(3)), -- better compression
+  Version UInt32 TTL toDateTime(Version) + INTERVAL 2 DAY -- is necessary only for the current day
 ) ENGINE = ReplacingMergeTree(Version)
-PARTITION BY toYYYYMM(Date)
+PARTITION BY toYYYYMMDD(Date)
 ORDER BY (Level, Path, Date);
 
--- optional table for storing Graphite tags
 CREATE TABLE graphite_tagged (
-  Date Date,
-  Tag1 String,
-  Path String,
-  Tags Array(String),
-  Version UInt32
+  Date Date CODEC(DoubleDelta, LZ4), -- will be almost always 0
+  Tag1 String CODEC(ZSTD(3)), -- better compression
+  Path String CODEC(ZSTD(3)), -- better compression
+  Tags Array(String) CODEC(ZSTD(3)), -- better compression
+  Version UInt32 TTL toDateTime(Version) + INTERVAL 2 DAY -- is necessary only for the current day
 ) ENGINE = ReplacingMergeTree(Version)
-PARTITION BY toYYYYMM(Date)
+PARTITION BY toYYYYMMDD(Date)
 ORDER BY (Tag1, Path, Date);
 ```
 
 [GraphiteMergeTree documentation](https://clickhouse.tech/docs/en/engines/table-engines/mergetree-family/graphitemergetree/)
 
 You can create Replicated tables. See [ClickHouse documentation](https://clickhouse.tech/docs/en/engines/table-engines/mergetree-family/replication/)
+
+3. One should always use [graphite-ch-optimizer](https://github.com/innogames/graphite-ch-optimizer) together with carbon-clickhouse and [graphite-clickhouse](https://github.com/go-graphite/graphite-clickhouse). Without it, the rules from `graphite-rollup` configuration aren't applied automatically. 
+
+### Fine tuning the `PARTITION BY` for graphite data table
+
+The current `toYearWeek` function used in the `PARTITION BY` is the rule of thumb. When `graphite-ch-optimizer` works, it launches `OPTIMIZE TABLE graphite PARTITION ID 'YYYYWW' FINAL` once per configured interval. When the partition is too big, it processes it a few or even several of times.
+
+If the partition contains too many data, and optimization runs too long, it could be an option to reduce the partition size, e.g. by using `toYYYYMMDD(toStartOfInterval(Date, toIntervalDay(3)))`.
+
+Here's the `clickhouse` query to play with `toStartOfInterval`
+
+```sql
+SELECT
+    toDate(number) AS Date,
+    toYYYYMMDD(Date) AS `YMD`,
+    toYearWeek(Date) AS YW,
+    toYYYYMMDD(toStartOfInterval(Date, toIntervalDay(3))) AS `3YMD`
+FROM system.numbers
+LIMIT 19900, 50
+```
 
 ## Configuration
 ```
