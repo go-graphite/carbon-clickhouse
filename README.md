@@ -36,7 +36,7 @@ CREATE TABLE graphite (
   Value Float64 CODEC(Gorilla, LZ4), -- better codec for Floats
   Time UInt32 CODEC(DoubleDelta, LZ4), -- will be almost always 0
   Date Date CODEC(DoubleDelta, LZ4), -- will be almost always 0
-  Timestamp UInt32 CODEC(DoubleDelta, LZ4) TTL Date + INTERVAL 1 MONTH-- will be almost always 0, good to go in 1 month
+  Timestamp UInt32 CODEC(DoubleDelta, LZ4) TTL Date + INTERVAL 1 MONTH -- will be almost always 0, good to go in 1 month
 ) ENGINE = GraphiteMergeTree('graphite_rollup')
 PARTITION BY toYearWeek(Date)
 ORDER BY (Path, Time);
