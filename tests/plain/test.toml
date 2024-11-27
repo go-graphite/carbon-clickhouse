@@ -89,7 +89,7 @@ input = [
     "cpu.loadavg;env=test;host=host1 2.1 1625478240",
     "test.host1.cpu.loadavg 9.4 1625478300",
     "cpu.loadavg;host=host1;env=test 1.3 1625478360",
-    "spec_symbols;minus=-;plus=+;percent=%;underscore=_;colon=:;hash=#;forward=/a 5.1 1625478360",
+    "spec_symbols;minus=-;plus=+;percent=%;underscore=_;colon=:;hash=#;forward/0=/0 5.1 1625478360",
     "non-ascii.иван;tagged=true 1.2 1625478240"
 ]
 
@@ -154,7 +154,7 @@ output = [
     "cpu.loadavg?env=test&host=host1 1.3 1625478360 2021-07-05 0",
 ]
 
-# Tests for issue #116
+# Tests for issues: #116 #135
 # spec_symbols;minus=-;plus=+;percent=%;underscore=_;colon=:;hash=#;forward/0=/0 5.1 1625478360
 [[test.verify]]
 query = "SELECT Date, Tag1, Path, arraySort(Tags) as Tags FROM graphite_tags WHERE Path LIKE 'spec_symbols?%' ORDER BY Date, Tag1, Path"
