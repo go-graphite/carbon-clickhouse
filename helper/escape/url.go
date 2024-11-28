@@ -182,7 +182,7 @@ func escapeTo(s string, mode encoding, sb *stringutils.Builder) {
 	if pos == 0 {
 		sb.WriteString(s)
 		return
-	} else if pos < len(s)-1 {
+	} else if pos < len(s) {
 		sb.WriteString(s[pos:])
 	}
 }
