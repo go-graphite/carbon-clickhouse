@@ -84,6 +84,7 @@ func (c *Clickhouse) Start() (string, error) {
 		"--name", c.container,
 		"--ulimit", "nofile=262144:262144",
 		"-p", port + ":8123",
+		"-e", "CLICKHOUSE_SKIP_USER_SETUP=1",
 		// "-e", "TZ=" + tz, // workaround for TZ=":/etc/localtime"
 		"-v", c.Dir + "/config.xml:/etc/clickhouse-server/config.xml",
 		"-v", c.Dir + "/users.xml:/etc/clickhouse-server/users.xml",
