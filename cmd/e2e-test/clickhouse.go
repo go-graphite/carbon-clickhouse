@@ -85,9 +85,9 @@ func (c *Clickhouse) Start() (string, error) {
 		"--ulimit", "nofile=262144:262144",
 		"-p", port + ":8123",
 		// "-e", "TZ=" + tz, // workaround for TZ=":/etc/localtime"
-		"-v", c.Dir + "/config.xml:/etc/clickhouse-server/config.xml",
-		"-v", c.Dir + "/users.xml:/etc/clickhouse-server/users.xml",
+		"-v", c.Dir + "/config.xml:/etc/clickhouse-server/config.d/config.xml",
 		"-v", c.Dir + "/rollup.xml:/etc/clickhouse-server/config.d/rollup.xml",
+		"-v", c.Dir + "/users.xml:/etc/clickhouse-server/users.d/users.xml",
 		"-v", c.Dir + "/init.sql:/docker-entrypoint-initdb.d/init.sql",
 	}
 	if c.TLSEnabled {
