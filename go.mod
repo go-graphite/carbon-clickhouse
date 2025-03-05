@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/protobuf v1.5.0
+	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049
 	github.com/json-iterator/go v1.1.12
 	github.com/lomik/graphite-pickle v0.0.0-20171221213606-614e8df42119
