@@ -15,7 +15,7 @@ Docker images are available on [packages](https://github.com/lomik/carbon-clickh
 
 ## Build
 
-Required golang 1.18+
+Required golang 1.23+
 
 ```sh
 # build binary
