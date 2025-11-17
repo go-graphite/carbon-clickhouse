@@ -28,7 +28,7 @@ func (rcv *UDP) Addr() net.Addr {
 
 func (rcv *UDP) Stat(send func(metric string, value float64)) {
 	rcv.SendStat(send, "metricsReceived", "errors", "incompleteReceived", "futureDropped", "pastDropped",
-		"tooLongDropped")
+		"tooLongDropped", "blacklistRegexDropped")
 }
 
 func (rcv *UDP) receiveWorker(ctx context.Context) {

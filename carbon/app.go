@@ -256,6 +256,7 @@ func (app *App) Start() (err error) {
 			receiver.DropPast(uint32(conf.Tcp.DropPast.Value().Seconds())),
 			receiver.DropLongerThan(conf.Tcp.DropLongerThan),
 			receiver.ReadTimeout(uint32(conf.Tcp.ReadTimeout.Value().Seconds())),
+			receiver.BlacklistRegex(conf.Common.BlacklistRegex),
 		)
 
 		if err != nil {
@@ -274,6 +275,7 @@ func (app *App) Start() (err error) {
 			receiver.DropFuture(uint32(conf.Udp.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Udp.DropPast.Value().Seconds())),
 			receiver.DropLongerThan(conf.Udp.DropLongerThan),
+			receiver.BlacklistRegex(conf.Common.BlacklistRegex),
 		)
 
 		if err != nil {
@@ -292,6 +294,7 @@ func (app *App) Start() (err error) {
 			receiver.DropFuture(uint32(conf.Pickle.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Pickle.DropPast.Value().Seconds())),
 			receiver.DropLongerThan(conf.Pickle.DropLongerThan),
+			receiver.BlacklistRegex(conf.Common.BlacklistRegex),
 		)
 
 		if err != nil {
@@ -309,6 +312,7 @@ func (app *App) Start() (err error) {
 			receiver.DropFuture(uint32(conf.Grpc.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Grpc.DropPast.Value().Seconds())),
 			receiver.DropLongerThan(conf.Grpc.DropLongerThan),
+			receiver.BlacklistRegex(conf.Common.BlacklistRegex),
 		)
 
 		if err != nil {
@@ -326,6 +330,7 @@ func (app *App) Start() (err error) {
 			receiver.DropFuture(uint32(conf.Prometheus.DropFuture.Value().Seconds())),
 			receiver.DropPast(uint32(conf.Prometheus.DropPast.Value().Seconds())),
 			receiver.DropLongerThan(conf.Prometheus.DropLongerThan),
+			receiver.BlacklistRegex(conf.Common.BlacklistRegex),
 		)
 
 		if err != nil {
@@ -344,6 +349,7 @@ func (app *App) Start() (err error) {
 			receiver.DropPast(uint32(conf.TelegrafHttpJson.DropPast.Value().Seconds())),
 			receiver.DropLongerThan(conf.TelegrafHttpJson.DropLongerThan),
 			receiver.ConcatChar(conf.TelegrafHttpJson.Concat),
+			receiver.BlacklistRegex(conf.Common.BlacklistRegex),
 		)
 
 		if err != nil {

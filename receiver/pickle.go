@@ -33,7 +33,7 @@ func (rcv *Pickle) Addr() net.Addr {
 
 func (rcv *Pickle) Stat(send func(metric string, value float64)) {
 	rcv.SendStat(send, "metricsReceived", "messagesReceived", "errors", "active", "futureDropped", "pastDropped",
-		"tooLongDropped")
+		"tooLongDropped", "blacklistRegexDropped")
 }
 
 func (rcv *Pickle) HandleConnection(conn net.Conn) {

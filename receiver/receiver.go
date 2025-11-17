@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
@@ -85,6 +86,18 @@ func ConcatChar(concat string) Option {
 	return func(r interface{}) error {
 		if t, ok := r.(*Base); ok {
 			t.concatCharacter = concat
+		}
+		return nil
+	}
+}
+
+// BlacklistRegex creates option for New constructor
+func BlacklistRegex(regex string) Option {
+	return func(r interface{}) error {
+		if t, ok := r.(*Base); ok {
+			if regex != "" {
+				t.blacklistRegex = regexp.MustCompile(regex)
+			}
 		}
 		return nil
 	}
